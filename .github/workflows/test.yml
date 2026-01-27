@@ -1,0 +1,136 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, master, testing]
+  pull_request:
+    branches: [main, master, testing]
+
+jobs:
+  test:
+    name: Run Database Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      - name: 🔧 Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 🚀 Start Supabase local instance
+        id: start-supabase
+        run: |
+          echo "Starting Supabase local instance..."
+          supabase start
+          echo "Supabase started successfully"
+        env:
+          SUPABASE_DB_PASSWORD: postgres
+
+      - name: ⏳ Wait for Supabase to be ready and extract keys
+        id: supabase-config
+        run: |
+          echo "Waiting for Supabase services to be ready..."
+          max_attempts=60
+          attempt=0
+          
+          # Default values for local Supabase
+          API_URL="http://127.0.0.1:54321"
+          DEFAULT_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+          ANON_KEY="$DEFAULT_ANON_KEY"
+          SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwgnWNReilDMblYTn_I0"
+          
+          # Wait for Supabase CLI status and API to respond
+          while [ $attempt -lt $max_attempts ]; do
+            # First check if Supabase status command works
+            if supabase status > /dev/null 2>&1; then
+              # Try to extract actual keys from JSON status
+              STATUS_JSON=$(supabase status --output json 2>/dev/null || echo "{}")
+              
+              # Extract API URL
+              EXTRACTED_URL=$(echo "$STATUS_JSON" | grep -o '"APIUrl":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ -n "$EXTRACTED_URL" ]; then
+                API_URL="$EXTRACTED_URL"
+              fi
+              
+              # Extract anon key (try different field names)
+              EXTRACTED_ANON=$(echo "$STATUS_JSON" | grep -oE '"(anonKey|anon_key|anonKey)":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ -z "$EXTRACTED_ANON" ]; then
+                # Try Publishable key field
+                EXTRACTED_ANON=$(echo "$STATUS_JSON" | grep -o '"Publishable":"[^"]*"' | head -1 | cut -d'"' -f4)
+              fi
+              if [ -n "$EXTRACTED_ANON" ]; then
+                ANON_KEY="$EXTRACTED_ANON"
+              fi
+              
+              # Extract service role key
+              EXTRACTED_SERVICE=$(echo "$STATUS_JSON" | grep -oE '"(serviceRoleKey|service_role_key|SERVICE_ROLE_KEY|Secret)":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ -n "$EXTRACTED_SERVICE" ]; then
+                SERVICE_ROLE_KEY="$EXTRACTED_SERVICE"
+              fi
+              
+              # Test if API endpoint is responding
+              if curl -sf --max-time 5 "${API_URL}/rest/v1/" -H "apikey: ${ANON_KEY}" > /dev/null 2>&1; then
+                echo "✓ Supabase API is ready and responding at ${API_URL}"
+                break
+              fi
+            fi
+            
+            attempt=$((attempt + 1))
+            if [ $((attempt % 5)) -eq 0 ]; then
+              echo "Still waiting for Supabase... (attempt $attempt/$max_attempts)"
+            fi
+            sleep 2
+          done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Supabase failed to become ready after $max_attempts attempts (120 seconds)"
+            echo "Current Supabase status:"
+            supabase status || true
+            echo ""
+            echo "Debug: Testing API connection..."
+            echo "API URL: ${API_URL}"
+            curl -v --max-time 5 "${API_URL}/rest/v1/" -H "apikey: ${ANON_KEY}" || true
+            exit 1
+          fi
+          
+          echo "✓ Supabase is fully ready for testing at ${API_URL}"
+          echo "SUPABASE_URL=${API_URL}" >> $GITHUB_ENV
+          echo "SUPABASE_ANON_KEY=${ANON_KEY}" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}" >> $GITHUB_ENV
+          echo "Extracted keys (first 20 chars):"
+          echo "  URL: ${API_URL}"
+          echo "  Anon Key: ${ANON_KEY:0:20}..."
+          echo "  Service Key: ${SERVICE_ROLE_KEY:0:20}..."
+
+      - name: 📊 Display Supabase status
+        if: success()
+        run: |
+          echo "Supabase instance status:"
+          supabase status || true
+
+      - name: 🧪 Run test suite
+        run: npm test
+        env:
+          CI: true
+          SUPABASE_URL: ${{ env.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: 🛑 Stop Supabase
+        if: always()
+        run: |
+          echo "Stopping Supabase instance..."
+          supabase stop || true
