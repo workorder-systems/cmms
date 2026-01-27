@@ -3,8 +3,16 @@ name: Test Suite
 on:
   push:
     branches: [main, master, testing]
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/**'
+      - '.github/workflows/test.yml'
   pull_request:
     branches: [main, master, testing]
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/**'
+      - '.github/workflows/test.yml'
 
 jobs:
   test:
