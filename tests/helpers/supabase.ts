@@ -22,11 +22,18 @@ function getSupabaseConfig(): { url: string; anonKey: string } {
     const statusOutput = execSync('supabase status --output json', {
       encoding: 'utf-8',
     });
-    const status = JSON.parse(statusOutput);
+    const status = JSON.parse(statusOutput) as Record<string, unknown>;
+    
+    // Try multiple possible field names for anon key
+    const anonKey = 
+      (status.anonKey as string) ||
+      (status.anon_key as string) ||
+      (status.Publishable as string) ||
+      '';
     
     return {
-      url: status.APIUrl || 'http://127.0.0.1:54321',
-      anonKey: status.anonKey || '',
+      url: (status.APIUrl as string) || 'http://127.0.0.1:54321',
+      anonKey: anonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
     };
   } catch {
     // Fallback to default local values
