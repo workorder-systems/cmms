@@ -1,0 +1,28 @@
+{
+  "name": "database",
+  "version": "1.0.0",
+  "description": "Supabase database with TypeScript tests",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "test:setup": "supabase start && npm run test",
+    "test:teardown": "supabase stop"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@faker-js/faker": "^9.0.0",
+    "@supabase/supabase-js": "^2.39.3",
+    "@types/node": "^20.11.5",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  }
+}
