@@ -1,0 +1,96 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, master, testing]
+  pull_request:
+    branches: [main, master, testing]
+
+jobs:
+  test:
+    name: Run Database Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      - name: 🔧 Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 🚀 Start Supabase local instance
+        id: start-supabase
+        run: |
+          echo "Starting Supabase local instance..."
+          supabase start
+          echo "Supabase started successfully"
+        env:
+          SUPABASE_DB_PASSWORD: postgres
+
+      - name: ⏳ Wait for Supabase to be ready
+        run: |
+          echo "Waiting for Supabase services to be ready..."
+          max_attempts=60
+          attempt=0
+          
+          # Wait for Supabase CLI status to be available and API to respond
+          while [ $attempt -lt $max_attempts ]; do
+            if supabase status > /dev/null 2>&1; then
+              # Extract API URL and anon key from JSON status (portable approach)
+              STATUS_JSON=$(supabase status --output json 2>/dev/null || echo "{}")
+              API_URL=$(echo "$STATUS_JSON" | sed -n 's/.*"APIUrl":"\([^"]*\)".*/\1/p')
+              ANON_KEY=$(echo "$STATUS_JSON" | sed -n 's/.*"anonKey":"\([^"]*\)".*/\1/p')
+              
+              # Verify API endpoint is actually responding
+              if [ -n "$API_URL" ] && [ -n "$ANON_KEY" ]; then
+                if curl -sf "${API_URL}/rest/v1/" -H "apikey: ${ANON_KEY}" > /dev/null 2>&1; then
+                  echo "✓ Supabase API is ready and responding at ${API_URL}"
+                  break
+                fi
+              fi
+            fi
+            
+            attempt=$((attempt + 1))
+            if [ $((attempt % 5)) -eq 0 ]; then
+              echo "Still waiting for Supabase... (attempt $attempt/$max_attempts)"
+            fi
+            sleep 2
+          done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Supabase failed to become ready after $max_attempts attempts (120 seconds)"
+            echo "Current Supabase status:"
+            supabase status || true
+            exit 1
+          fi
+          
+          echo "✓ Supabase is fully ready for testing"
+
+      - name: 📊 Display Supabase status
+        if: success()
+        run: |
+          echo "Supabase instance status:"
+          supabase status || true
+
+      - name: 🧪 Run test suite
+        run: npm test
+        env:
+          CI: true
+
+      - name: 🛑 Stop Supabase
+        if: always()
+        run: |
+          echo "Stopping Supabase instance..."
+          supabase stop || true
