@@ -45,20 +45,18 @@ jobs:
           max_attempts=60
           attempt=0
           
-          # Wait for Supabase CLI status to be available and API to respond
+          # Default values for local Supabase
+          API_URL="http://127.0.0.1:54321"
+          ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+          
+          # Wait for Supabase CLI status and API to respond
           while [ $attempt -lt $max_attempts ]; do
+            # First check if Supabase status command works
             if supabase status > /dev/null 2>&1; then
-              # Extract API URL and anon key from JSON status (portable approach)
-              STATUS_JSON=$(supabase status --output json 2>/dev/null || echo "{}")
-              API_URL=$(echo "$STATUS_JSON" | sed -n 's/.*"APIUrl":"\([^"]*\)".*/\1/p')
-              ANON_KEY=$(echo "$STATUS_JSON" | sed -n 's/.*"anonKey":"\([^"]*\)".*/\1/p')
-              
-              # Verify API endpoint is actually responding
-              if [ -n "$API_URL" ] && [ -n "$ANON_KEY" ]; then
-                if curl -sf "${API_URL}/rest/v1/" -H "apikey: ${ANON_KEY}" > /dev/null 2>&1; then
-                  echo "✓ Supabase API is ready and responding at ${API_URL}"
-                  break
-                fi
+              # Test if API endpoint is responding (this is what matters)
+              if curl -sf --max-time 5 "${API_URL}/rest/v1/" -H "apikey: ${ANON_KEY}" > /dev/null 2>&1; then
+                echo "✓ Supabase API is ready and responding at ${API_URL}"
+                break
               fi
             fi
             
@@ -73,10 +71,14 @@ jobs:
             echo "❌ Supabase failed to become ready after $max_attempts attempts (120 seconds)"
             echo "Current Supabase status:"
             supabase status || true
+            echo ""
+            echo "Debug: Testing API connection..."
+            echo "API URL: ${API_URL}"
+            curl -v --max-time 5 "${API_URL}/rest/v1/" -H "apikey: ${ANON_KEY}" || true
             exit 1
           fi
           
-          echo "✓ Supabase is fully ready for testing"
+          echo "✓ Supabase is fully ready for testing at ${API_URL}"
 
       - name: 📊 Display Supabase status
         if: success()
