@@ -38,5 +38,14 @@ npm test
 Detailed architecture and database rules live in:
 - [`supabase/README.md`](supabase/README.md)
 
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and migration rules.
+
+## Security
+Please review [SECURITY.md](SECURITY.md) for how to report vulnerabilities.
+
+## Support
+Use GitHub Issues for bug reports and feature requests.
+
 ## License
 Licensed under AGPL-3.0-or-later. See [LICENSE](LICENSE).
