@@ -1037,6 +1037,7 @@ create policy plugin_installations_select_authenticated
   to authenticated
   using (
     authz.is_tenant_member(auth.uid(), tenant_id)
+    and authz.has_permission(auth.uid(), tenant_id, 'tenant.admin')
   );
 
 create policy plugin_installations_select_anon
@@ -1138,7 +1139,7 @@ join int.plugins p on p.id = pi.plugin_id
 where pi.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_plugin_installations is
-  'Tenant-scoped plugin installation status for the current tenant context. Includes plugin metadata and configuration references.';
+  'Tenant-scoped plugin installation status for the current tenant context. Admin-only view; includes plugin metadata and configuration references.';
 
 create or replace function public.rpc_install_plugin(
   p_tenant_id uuid,

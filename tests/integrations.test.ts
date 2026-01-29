@@ -99,4 +99,33 @@ describe('Integrations and plugins', () => {
 
     expect(errorMessage).toContain('tenant.admin');
   });
+
+  it('hides plugin installations from non-admin users', async () => {
+    const adminClient = createTestClient();
+    await createTestUser(adminClient);
+    const tenantId = await createTestTenant(adminClient);
+    await setTenantContext(adminClient, tenantId);
+
+    await registerPlugin(serviceClient, 'hidden_plugin', 'Hidden Plugin');
+
+    const { data: installationId, error } = await adminClient.rpc('rpc_install_plugin', {
+      p_tenant_id: tenantId,
+      p_plugin_key: 'hidden_plugin',
+    });
+    expect(error).toBeNull();
+    expect(installationId).toBeDefined();
+
+    const memberClient = createTestClient();
+    const { user: member } = await createTestUser(memberClient);
+    await addUserToTenant(adminClient, member.id, tenantId);
+    await setTenantContext(memberClient, tenantId);
+
+    const { data: installations, error: viewError } = await memberClient
+      .from('v_plugin_installations')
+      .select('id')
+      .eq('id', installationId as string);
+
+    expect(viewError).toBeNull();
+    expect(installations.length).toBe(0);
+  });
 });
