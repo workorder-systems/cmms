@@ -28,12 +28,11 @@ This plan covers the ADRs that are still in **Proposed** status:
    - Confirm current `int` schema usage (likely empty) and existing RLS patterns.
 
 **Current snapshot (2026-01-29):**
-- No `int` tables exist yet in migrations.
+- `int` tables are now introduced for plugins and installations.
 - No `deleted_at` columns exist in `app` or `cfg` tables.
-- Summary/overview views use singular resource names today
-  (`v_work_order_summary`, `v_asset_summary`, `v_location_summary`,
-  `v_tenant_overview`), which will need versioned renames or documented
-  exceptions once ADR 0010 is enforced.
+- Summary/overview views use plural resource names per ADR 0010
+  (`v_work_orders_summary`, `v_assets_summary`, `v_locations_summary`,
+  `v_tenants_overview`).
 
 ## Plan by ADR
 

@@ -728,31 +728,31 @@ comment on function public.refresh_tenant_analytics(uuid) is
 revoke all on function public.refresh_tenant_analytics(uuid) from public;
 grant execute on function public.refresh_tenant_analytics(uuid) to authenticated;
 
-create or replace view public.v_work_order_summary as
+create or replace view public.v_work_orders_summary as
 select *
 from public.mv_work_order_summary
 where tenant_id = authz.get_current_tenant_id();
 
-comment on view public.v_work_order_summary is 
-  'Tenant-scoped work order summary. Returns data for current tenant context only. Filters materialized view by tenant.';
+comment on view public.v_work_orders_summary is 
+  'Tenant-scoped work orders summary. Returns data for current tenant context only. Filters materialized view by tenant.';
 
-create or replace view public.v_asset_summary as
+create or replace view public.v_assets_summary as
 select *
 from public.mv_asset_summary
 where tenant_id = authz.get_current_tenant_id();
 
-comment on view public.v_asset_summary is 
-  'Tenant-scoped asset summary. Returns data for current tenant context only. Filters materialized view by tenant.';
+comment on view public.v_assets_summary is 
+  'Tenant-scoped assets summary. Returns data for current tenant context only. Filters materialized view by tenant.';
 
-create or replace view public.v_location_summary as
+create or replace view public.v_locations_summary as
 select *
 from public.mv_location_summary
 where tenant_id = authz.get_current_tenant_id();
 
-comment on view public.v_location_summary is 
-  'Tenant-scoped location summary. Returns data for current tenant context only. Filters materialized view by tenant.';
+comment on view public.v_locations_summary is 
+  'Tenant-scoped locations summary. Returns data for current tenant context only. Filters materialized view by tenant.';
 
-create or replace view public.v_tenant_overview as
+create or replace view public.v_tenants_overview as
 select *
 from public.mv_tenant_overview
 where tenant_id = authz.get_current_tenant_id()
@@ -763,7 +763,7 @@ where tenant_id = authz.get_current_tenant_id()
       and user_id = (select auth.uid())
   );
 
-comment on view public.v_tenant_overview is 
+comment on view public.v_tenants_overview is 
   'Tenant overview for current tenant. Only accessible to tenant members. Filters materialized view by tenant and membership.';
 
 select public.refresh_analytics_views();
