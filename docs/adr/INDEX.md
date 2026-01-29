@@ -10,6 +10,8 @@
 | [0006](0006-permissions-and-abac-model.md) | Permissions and ABAC model | Accepted | 2026-01-28 |
 | [0007](0007-deletion-policy.md) | Deletion policy (soft vs hard delete) | Proposed | 2026-01-28 |
 | [0008](0008-public-api-versioning.md) | Public view and RPC versioning | Proposed | 2026-01-28 |
+| [0009](0009-audit-retention-and-access.md) | Audit retention and access policy | Proposed | 2026-01-28 |
+| [0010](0010-public-api-naming-conventions.md) | Public view and RPC naming conventions | Proposed | 2026-01-28 |
 
 ## Maintenance
 
