@@ -248,6 +248,10 @@ create index if not exists entity_changes_user_created_idx
 create index if not exists entity_changes_operation_created_idx 
   on audit.entity_changes (operation, created_at desc);
 
+create index if not exists entity_changes_tenant_table_record_idx
+  on audit.entity_changes (tenant_id, table_name, record_id)
+  where tenant_id is not null;
+
 create index if not exists entity_changes_created_at_brin_idx 
   on audit.entity_changes using brin (created_at);
 
@@ -273,6 +277,10 @@ create index if not exists permission_changes_tenant_created_idx
 
 create index if not exists permission_changes_target_user_idx 
   on audit.permission_changes (target_user_id, created_at desc) 
+  where target_user_id is not null;
+
+create index if not exists permission_changes_tenant_target_idx
+  on audit.permission_changes (tenant_id, target_user_id, created_at desc)
   where target_user_id is not null;
 
 create index if not exists permission_changes_change_type_idx 
