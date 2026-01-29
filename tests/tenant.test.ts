@@ -1,22 +1,16 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
-import { createTestTenant, getTenantBySlug } from './helpers/tenant';
+import { createTestTenant, getTenantBySlug, setTenantContext } from './helpers/tenant';
 import { makeTenant } from './helpers/faker';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Tenant Management', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Tenant Creation', () => {
@@ -30,7 +24,7 @@ describe('Tenant Management', () => {
       expect(typeof tenantId).toBe('string');
 
       // Verify tenant exists
-      const tenant = await getTenantBySlug(serviceClient, tenantSlug);
+      const tenant = await getTenantBySlug(client, tenantSlug);
       expect(tenant).toBeDefined();
       expect(tenant?.name).toBe(tenantName);
       expect(tenant?.slug).toBe(tenantSlug);
@@ -40,12 +34,11 @@ describe('Tenant Management', () => {
       const { name: tenantName, slug: tenantSlug } = makeTenant();
       const tenantId = await createTestTenant(client, tenantName, tenantSlug);
 
-      // Check for admin role
-      const { data: adminRole, error: adminError } = await serviceClient
-        .schema('cfg')
-        .from('tenant_roles')
+      await setTenantContext(client, tenantId);
+
+      const { data: adminRole, error: adminError } = await client
+        .from('v_tenant_roles')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('key', 'admin')
         .single();
 
@@ -53,12 +46,9 @@ describe('Tenant Management', () => {
       expect(adminRole).toBeDefined();
       expect(adminRole.is_system).toBe(true);
 
-      // Check for member role
-      const { data: memberRole, error: memberError } = await serviceClient
-        .schema('cfg')
-        .from('tenant_roles')
+      const { data: memberRole, error: memberError } = await client
+        .from('v_tenant_roles')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('key', 'member')
         .single();
 
@@ -72,12 +62,10 @@ describe('Tenant Management', () => {
       const { name: tenantName, slug: tenantSlug } = makeTenant();
       const tenantId = await createTestTenant(client, tenantName, tenantSlug);
 
-      // Check for default work order statuses
-      const { data: statuses, error: statusError } = await serviceClient
-        .schema('cfg')
-        .from('status_catalogs')
+      await setTenantContext(client, tenantId);
+      const { data: statuses, error: statusError } = await client
+        .from('v_status_catalogs')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('entity_type', 'work_order');
 
       expect(statusError).toBeNull();
@@ -90,12 +78,9 @@ describe('Tenant Management', () => {
       expect(statusKeys).toContain('assigned');
       expect(statusKeys).toContain('completed');
 
-      // Check for default priorities
-      const { data: priorities, error: priorityError } = await serviceClient
-        .schema('cfg')
-        .from('priority_catalogs')
+      const { data: priorities, error: priorityError } = await client
+        .from('v_priority_catalogs')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('entity_type', 'work_order');
 
       expect(priorityError).toBeNull();
@@ -114,18 +99,15 @@ describe('Tenant Management', () => {
       const { name: tenantName, slug: tenantSlug } = makeTenant();
       const tenantId = await createTestTenant(client, tenantName, tenantSlug);
 
-      // Check membership
-      const { data: membership, error } = await serviceClient
-        .schema('app')
-        .from('tenant_memberships')
-        .select('*')
-        .eq('user_id', user.id)
+      await setTenantContext(client, tenantId);
+      const { data: membership, error } = await client
+        .from('v_user_tenant_roles')
+        .select('tenant_id')
         .eq('tenant_id', tenantId)
         .single();
 
       expect(error).toBeNull();
       expect(membership).toBeDefined();
-      expect(membership.user_id).toBe(user.id);
       expect(membership.tenant_id).toBe(tenantId);
     });
 
@@ -135,29 +117,17 @@ describe('Tenant Management', () => {
       const tenantSlug = `admin-role-test-${Date.now()}`;
       const tenantId = await createTestTenant(client, tenantName, tenantSlug);
 
-      // Get admin role ID
-      const { data: adminRole } = await serviceClient
-        .schema('cfg')
-        .from('tenant_roles')
-        .select('id')
+      await setTenantContext(client, tenantId);
+      const { data: roleAssignment, error } = await client
+        .from('v_user_tenant_roles')
+        .select('tenant_id, role_key')
         .eq('tenant_id', tenantId)
-        .eq('key', 'admin')
-        .single();
-
-      // Check role assignment
-      const { data: roleAssignment, error } = await serviceClient
-        .schema('app')
-        .from('user_tenant_roles')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('tenant_id', tenantId)
-        .eq('tenant_role_id', adminRole.id)
+        .eq('role_key', 'admin')
         .single();
 
       expect(error).toBeNull();
       expect(roleAssignment).toBeDefined();
-      expect(roleAssignment.user_id).toBe(user.id);
-      expect(roleAssignment.tenant_role_id).toBe(adminRole.id);
+      expect(roleAssignment.tenant_id).toBe(tenantId);
     });
   });
 

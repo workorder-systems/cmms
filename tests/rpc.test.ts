@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
-import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
+import { createTestUser, getUserEmail, TEST_PASSWORD } from './helpers/auth';
 import {
   createTestTenant,
   addUserToTenant,
@@ -15,12 +11,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('RPC Functions', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('rpc_set_tenant_context', () => {
@@ -60,19 +54,15 @@ describe('RPC Functions', () => {
 
   describe('rpc_invite_user_to_tenant', () => {
     it('should require tenant.admin permission', async () => {
-      const { user: admin } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
+      const adminClient = createTestClient();
+      await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
 
-      const { user: member } = await createTestUser(client);
-      await addUserToTenant(serviceClient, member.id, tenantId);
+      const memberClient = createTestClient();
+      const { user: member } = await createTestUser(memberClient);
+      await addUserToTenant(adminClient, member.id, tenantId);
 
       // Sign in as member (no tenant.admin)
-      const memberClient = createTestClient();
-      const { error: signInErr } = await memberClient.auth.signInWithPassword({
-        email: getUserEmail(member),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
       await setTenantContext(memberClient, tenantId);
 
       const { user: invitee } = await createTestUser(client);
@@ -89,19 +79,15 @@ describe('RPC Functions', () => {
 
   describe('rpc_assign_permission_to_role', () => {
     it('should require tenant.admin permission', async () => {
-      const { user: admin } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
+      const adminClient = createTestClient();
+      await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
 
-      const { user: member } = await createTestUser(client);
-      await addUserToTenant(serviceClient, member.id, tenantId);
+      const memberClient = createTestClient();
+      const { user: member } = await createTestUser(memberClient);
+      await addUserToTenant(adminClient, member.id, tenantId);
 
       // Sign in as member
-      const memberClient = createTestClient();
-      const { error: signInErr } = await memberClient.auth.signInWithPassword({
-        email: getUserEmail(member),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
       await setTenantContext(memberClient, tenantId);
 
       const error = await expectRPCError(memberClient, 'rpc_assign_permission_to_role', {

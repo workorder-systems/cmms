@@ -1,22 +1,16 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
-import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
+import { createTestUser } from './helpers/auth';
 import { createTestTenant, addUserToTenant, setTenantContext } from './helpers/tenant';
 import { createTestLocation } from './helpers/entities';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Locations', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Location Creation', () => {
@@ -24,15 +18,14 @@ describe('Locations', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const locationId = await createTestLocation(serviceClient, tenantId, 'Building A');
+      const locationId = await createTestLocation(client, tenantId, 'Building A');
 
       expect(locationId).toBeDefined();
       expect(typeof locationId).toBe('string');
 
-      // Verify location exists (using app schema)
-      const { data: location, error } = await serviceClient
-        .schema('app')
-        .from('locations')
+      await setTenantContext(client, tenantId);
+      const { data: location, error } = await client
+        .from('v_locations')
         .select('*')
         .eq('id', locationId)
         .single();
@@ -48,22 +41,17 @@ describe('Locations', () => {
       const tenantId = await createTestTenant(client);
 
       // Create parent location
-      const parentId = await createTestLocation(serviceClient, tenantId, 'Building A');
+      const parentId = await createTestLocation(client, tenantId, 'Building A');
 
       // Create child location
-      const childId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Floor 1',
-        parentId
-      );
+      const childId = await createTestLocation(client, tenantId, 'Floor 1', parentId);
 
       expect(childId).toBeDefined();
 
       // Verify parent-child relationship
-      const { data: child, error } = await serviceClient
-        .schema('app')
-        .from('locations')
+      await setTenantContext(client, tenantId);
+      const { data: child, error } = await client
+        .from('v_locations')
         .select('*')
         .eq('id', childId)
         .single();
@@ -76,37 +64,22 @@ describe('Locations', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const buildingId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Building A'
-      );
-      const floorId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Floor 1',
-        buildingId
-      );
-      const roomId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Room 101',
-        floorId
-      );
+      const buildingId = await createTestLocation(client, tenantId, 'Building A');
+      const floorId = await createTestLocation(client, tenantId, 'Floor 1', buildingId);
+      const roomId = await createTestLocation(client, tenantId, 'Room 101', floorId);
 
       // Verify hierarchy
-      const { data: room } = await serviceClient
-        .schema('app')
-        .from('locations')
+      await setTenantContext(client, tenantId);
+      const { data: room } = await client
+        .from('v_locations')
         .select('*')
         .eq('id', roomId)
         .single();
 
       expect(room.parent_location_id).toBe(floorId);
 
-      const { data: floor } = await serviceClient
-        .schema('app')
-        .from('locations')
+      const { data: floor } = await client
+        .from('v_locations')
         .select('*')
         .eq('id', floorId)
         .single();
@@ -117,32 +90,18 @@ describe('Locations', () => {
 
   describe('Tenant Isolation', () => {
     it('should only allow users to see their tenant locations', async () => {
-      const { user: user1 } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
-
-      const { user: user2 } = await createTestUser(client);
-      const tenantId2 = await createTestTenant(client);
-
-      // Create locations in both tenants
-      const location1 = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Tenant 1 Location'
-      );
-      const location2 = await createTestLocation(
-        serviceClient,
-        tenantId2,
-        'Tenant 2 Location'
-      );
-
-      // Sign in as user1
       const client1 = createTestClient();
-      const { error: signInErr } = await client1.auth.signInWithPassword({
-        email: getUserEmail(user1),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
+      await createTestUser(client1);
+      const tenantId1 = await createTestTenant(client1);
       await setTenantContext(client1, tenantId1);
+
+      const client2 = createTestClient();
+      await createTestUser(client2);
+      const tenantId2 = await createTestTenant(client2);
+      await setTenantContext(client2, tenantId2);
+
+      const location1 = await createTestLocation(client1, tenantId1, 'Tenant 1 Location');
+      const location2 = await createTestLocation(client2, tenantId2, 'Tenant 2 Location');
 
       // User1 should only see tenant1 locations (view + RLS)
       const { data: locations, error } = await client1
@@ -159,56 +118,41 @@ describe('Locations', () => {
 
   describe('Location Validation', () => {
     it('should validate parent location belongs to same tenant', async () => {
-      const { user: user1 } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
-      const tenantId2 = await createTestTenant(client);
+      const ownerClient1 = createTestClient();
+      await createTestUser(ownerClient1);
+      const tenantId1 = await createTestTenant(ownerClient1);
 
-      const parentLocation = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Parent Location'
-      );
+      const ownerClient2 = createTestClient();
+      await createTestUser(ownerClient2);
+      const tenantId2 = await createTestTenant(ownerClient2);
+
+      const parentLocation = await createTestLocation(ownerClient1, tenantId1, 'Parent Location');
 
       // Try to create child in tenant2 with parent from tenant1
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('locations')
-        .insert({
-          tenant_id: tenantId2,
-          name: 'Child Location',
-          parent_location_id: parentLocation,
-        })
-        .select('id')
-        .single();
+      const { data, error } = await ownerClient2.rpc('rpc_create_location', {
+        p_tenant_id: tenantId2,
+        p_name: 'Child Location',
+        p_parent_location_id: parentLocation,
+      });
 
       expect(error).toBeDefined();
       expect(error?.message).toContain('same tenant');
     });
 
     it('should prevent circular location references', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
+      const ownerClient = createTestClient();
+      await createTestUser(ownerClient);
+      const tenantId = await createTestTenant(ownerClient);
 
-      const location1 = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Location 1'
-      );
-      const location2 = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Location 2',
-        location1
-      );
+      const location1 = await createTestLocation(ownerClient, tenantId, 'Location 1');
+      const location2 = await createTestLocation(ownerClient, tenantId, 'Location 2', location1);
 
       // Try to make location1 a child of location2 (creating cycle)
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('locations')
-        .update({ parent_location_id: location2 })
-        .eq('id', location1)
-        .select('id')
-        .single();
+      const { data, error } = await ownerClient.rpc('rpc_update_location', {
+        p_tenant_id: tenantId,
+        p_location_id: location1,
+        p_parent_location_id: location2,
+      });
 
       expect(error).toBeDefined();
       // Error message can vary depending on the underlying constraint/trigger path.
@@ -223,7 +167,7 @@ describe('Locations', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const locationId = await createTestLocation(serviceClient, tenantId, 'Old Name');
+      const locationId = await createTestLocation(client, tenantId, 'Old Name');
 
       const { error } = await client.rpc('rpc_update_location', {
         p_tenant_id: tenantId,
@@ -233,10 +177,9 @@ describe('Locations', () => {
 
       expect(error).toBeNull();
 
-      // Verify update
-      const { data: location } = await serviceClient
-        .schema('app')
-        .from('locations')
+      await setTenantContext(client, tenantId);
+      const { data: location } = await client
+        .from('v_locations')
         .select('*')
         .eq('id', locationId)
         .single();
@@ -251,7 +194,7 @@ describe('Locations', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const locationId = await createTestLocation(serviceClient, tenantId, 'To Delete');
+      const locationId = await createTestLocation(client, tenantId, 'To Delete');
 
       const { error } = await client.rpc('rpc_delete_location', {
         p_tenant_id: tenantId,
@@ -260,10 +203,9 @@ describe('Locations', () => {
 
       expect(error).toBeNull();
 
-      // Verify deletion
-      const { data: location } = await serviceClient
-        .schema('app')
-        .from('locations')
+      await setTenantContext(client, tenantId);
+      const { data: location } = await client
+        .from('v_locations')
         .select('*')
         .eq('id', locationId)
         .single();
@@ -275,26 +217,20 @@ describe('Locations', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const parentId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Parent Location'
-      );
-      const childId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Child Location',
-        parentId
-      );
+      const parentId = await createTestLocation(client, tenantId, 'Parent Location');
+      const childId = await createTestLocation(client, tenantId, 'Child Location', parentId);
 
       // Delete parent
-      await serviceClient.schema('app').from('locations').delete().eq('id', parentId);
+      await client.rpc('rpc_delete_location', {
+        p_tenant_id: tenantId,
+        p_location_id: parentId,
+      });
 
       // Verify child's parent_location_id is set to NULL
-      const { data: child } = await serviceClient
-        .schema('app')
-        .from('locations')
-        .select('*')
+      await setTenantContext(client, tenantId);
+      const { data: child } = await client
+        .from('v_locations')
+        .select('parent_location_id')
         .eq('id', childId)
         .single();
 

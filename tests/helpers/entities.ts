@@ -8,7 +8,7 @@ import {
 } from './faker';
 
 /**
- * Create a test location.
+ * Create a test location via public RPC.
  * If name is not provided, a realistic site/building name is generated.
  */
 export async function createTestLocation(
@@ -19,24 +19,17 @@ export async function createTestLocation(
 ): Promise<string> {
   const finalName = name ?? makeLocationName();
 
-  // Use service role client to access app schema directly
-  // Note: client should be service role client for direct table access
-  const { data, error } = await client
-    .schema('app')
-    .from('locations')
-    .insert({
-      tenant_id: tenantId,
-      name: finalName,
-      parent_location_id: parentId || null,
-    })
-    .select('id')
-    .single();
+  const { data, error } = await client.rpc('rpc_create_location', {
+    p_tenant_id: tenantId,
+    p_name: finalName,
+    p_parent_location_id: parentId || null,
+  });
 
   if (error) {
     throw new Error(`Failed to create location: ${error.message}`);
   }
 
-  return data.id;
+  return data as string;
 }
 
 /**
@@ -65,38 +58,19 @@ export async function createTestDepartment(
 }
 
 /**
- * Create a test department via direct insert (bypasses RLS using service role client).
- *
- * Use this for test setup when you don't want to exercise the RPC permission checks.
+ * Create a test department (alias for RPC-based creation).
  */
 export async function createTestDepartmentDirect(
-  serviceClient: SupabaseClient,
+  client: SupabaseClient,
   tenantId: string,
   name?: string,
   code?: string
 ): Promise<string> {
-  const finalName = name ?? makeDepartmentName();
-
-  const { data, error } = await serviceClient
-    .schema('app')
-    .from('departments')
-    .insert({
-      tenant_id: tenantId,
-      name: finalName,
-      code: code || null,
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to create department (direct): ${error.message}`);
-  }
-
-  return data.id;
+  return createTestDepartment(client, tenantId, name, code);
 }
 
 /**
- * Create a test asset.
+ * Create a test asset via public RPC.
  * If fields like name/assetNumber are not provided, realistic CMMS-style values are generated.
  */
 export async function createTestAsset(
@@ -111,27 +85,21 @@ export async function createTestAsset(
   const finalName = name ?? makeAssetName();
   const finalAssetNumber = assetNumber ?? null;
 
-  // Use service role client to access app schema directly
-  // Note: client should be service role client for direct table access
-  const { data, error } = await client
-    .schema('app')
-    .from('assets')
-    .insert({
-      tenant_id: tenantId,
-      name: finalName,
-      location_id: locationId || null,
-      department_id: departmentId || null,
-      asset_number: finalAssetNumber,
-      status,
-    })
-    .select('id')
-    .single();
+  const { data, error } = await client.rpc('rpc_create_asset', {
+    p_tenant_id: tenantId,
+    p_name: finalName,
+    p_description: null,
+    p_asset_number: finalAssetNumber,
+    p_location_id: locationId || null,
+    p_department_id: departmentId || null,
+    p_status: status,
+  });
 
   if (error) {
     throw new Error(`Failed to create asset: ${error.message}`);
   }
 
-  return data.id;
+  return data as string;
 }
 
 /**
@@ -170,60 +138,41 @@ export async function createTestWorkOrder(
 }
 
 /**
- * Create a test work order via direct insert (bypasses RLS using service role client).
- *
- * Use this for test setup when you don't want to exercise the RPC permission + rate-limiting guards.
+ * Create a test work order (alias for RPC-based creation).
  */
 export async function createTestWorkOrderDirect(
-  serviceClient: SupabaseClient,
+  client: SupabaseClient,
   tenantId: string,
   title?: string,
   description?: string,
   priority: string = 'medium',
-  status: string = 'draft',
   assignedTo?: string,
   locationId?: string,
   assetId?: string,
   dueDate?: Date
 ): Promise<string> {
-  const finalTitle = title ?? makeWorkOrderTitle();
-
-  const { data, error } = await serviceClient
-    .schema('app')
-    .from('work_orders')
-    .insert({
-      tenant_id: tenantId,
-      title: finalTitle,
-      description: description || null,
-      priority,
-      status,
-      assigned_to: assignedTo || null,
-      location_id: locationId || null,
-      asset_id: assetId || null,
-      due_date: dueDate?.toISOString() || null,
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to create work order (direct): ${error.message}`);
-  }
-
-  return data.id;
+  return createTestWorkOrder(
+    client,
+    tenantId,
+    title,
+    description,
+    priority,
+    assignedTo,
+    locationId,
+    assetId,
+    dueDate
+  );
 }
 
 /**
- * Get work order by ID
+ * Get work order by ID (via public view).
  */
 export async function getWorkOrder(
   client: SupabaseClient,
   workOrderId: string
 ): Promise<any> {
-  // Use service role client to access app schema directly
-  // Note: client should be service role client for direct table access
   const { data, error } = await client
-    .schema('app')
-    .from('work_orders')
+    .from('v_work_orders')
     .select('*')
     .eq('id', workOrderId)
     .single();

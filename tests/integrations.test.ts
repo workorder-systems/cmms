@@ -8,7 +8,6 @@ import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
 import {
   createTestTenant,
   addUserToTenant,
-  assignRoleToUser,
   setTenantContext,
 } from './helpers/tenant';
 import { expectRPCError } from './helpers/rpc';
@@ -83,8 +82,7 @@ describe('Integrations and plugins', () => {
     await registerPlugin(serviceClient, 'locked_plugin', 'Locked Plugin');
 
     const { user: member } = await createTestUser(client);
-    await addUserToTenant(serviceClient, member.id, tenantId);
-    await assignRoleToUser(serviceClient, member.id, tenantId, 'member');
+    await addUserToTenant(adminClient, member.id, tenantId);
 
     const memberClient = createTestClient();
     const { error: signInErr } = await memberClient.auth.signInWithPassword({

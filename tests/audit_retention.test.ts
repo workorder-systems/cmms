@@ -1,14 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
 import {
   createTestTenant,
   addUserToTenant,
-  assignRoleToUser,
   setTenantContext,
 } from './helpers/tenant';
 import { expectRPCError } from './helpers/rpc';
@@ -16,12 +11,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Audit retention and access', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   it('allows tenant admins to manage audit retention configs', async () => {
@@ -54,8 +47,7 @@ describe('Audit retention and access', () => {
     const tenantId = await createTestTenant(adminClient);
 
     const { user: member } = await createTestUser(client);
-    await addUserToTenant(serviceClient, member.id, tenantId);
-    await assignRoleToUser(serviceClient, member.id, tenantId, 'member');
+    await addUserToTenant(adminClient, member.id, tenantId);
 
     const memberClient = createTestClient();
     const { error: signInErr } = await memberClient.auth.signInWithPassword({

@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import { createTestTenant, setTenantContext } from './helpers/tenant';
 import { createTestDepartment, createTestAsset, createTestLocation } from './helpers/entities';
@@ -11,12 +7,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Deletion policy (ADR 0007)', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   it('hard deletes departments and audits delete events', async () => {
@@ -32,9 +26,8 @@ describe('Deletion policy (ADR 0007)', () => {
     });
     expect(deleteError).toBeNull();
 
-    const { data: remaining, error: fetchError } = await serviceClient
-      .schema('app')
-      .from('departments')
+    const { data: remaining, error: fetchError } = await client
+      .from('v_departments')
       .select('id')
       .eq('id', departmentId);
 
@@ -58,7 +51,7 @@ describe('Deletion policy (ADR 0007)', () => {
     const tenantId = await createTestTenant(client);
     await setTenantContext(client, tenantId);
 
-    const assetId = await createTestAsset(serviceClient, tenantId, 'Disposable Asset');
+    const assetId = await createTestAsset(client, tenantId, 'Disposable Asset');
 
     const { error: deleteError } = await client.rpc('rpc_delete_asset', {
       p_tenant_id: tenantId,
@@ -66,9 +59,8 @@ describe('Deletion policy (ADR 0007)', () => {
     });
     expect(deleteError).toBeNull();
 
-    const { data: remaining, error: fetchError } = await serviceClient
-      .schema('app')
-      .from('assets')
+    const { data: remaining, error: fetchError } = await client
+      .from('v_assets')
       .select('id')
       .eq('id', assetId);
 
@@ -92,7 +84,7 @@ describe('Deletion policy (ADR 0007)', () => {
     const tenantId = await createTestTenant(client);
     await setTenantContext(client, tenantId);
 
-    const locationId = await createTestLocation(serviceClient, tenantId, 'Temporary Location');
+    const locationId = await createTestLocation(client, tenantId, 'Temporary Location');
 
     const { error: deleteError } = await client.rpc('rpc_delete_location', {
       p_tenant_id: tenantId,
@@ -100,9 +92,8 @@ describe('Deletion policy (ADR 0007)', () => {
     });
     expect(deleteError).toBeNull();
 
-    const { data: remaining, error: fetchError } = await serviceClient
-      .schema('app')
-      .from('locations')
+    const { data: remaining, error: fetchError } = await client
+      .from('v_locations')
       .select('id')
       .eq('id', locationId);
 

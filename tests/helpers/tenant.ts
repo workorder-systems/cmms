@@ -42,134 +42,46 @@ export async function createTestTenant(
 }
 
 /**
- * Create a tenant via direct insert (bypasses RLS using service role client).
- *
- * Use this only for test setup where you explicitly do NOT want to exercise the
- * `rpc_create_tenant` permission/auth flows (e.g., anonymous access tests).
- */
-export async function createTestTenantDirect(
-  serviceClient: SupabaseClient,
-  name?: string,
-  slug?: string
-): Promise<string> {
-  const generated = makeTenant();
-  const finalName = name ?? generated.name;
-  const finalSlug = slug ?? generated.slug;
-
-  const { data, error } = await serviceClient
-    .schema('app')
-    .from('tenants')
-    .insert({
-      name: finalName,
-      slug: finalSlug,
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    // If the slug is already in use (e.g. from a previous test run), reuse the existing tenant.
-    if (error.code === '23505' && error.message?.includes('tenants_slug_unique')) {
-      const { data: existing, error: fetchError } = await serviceClient
-        .schema('app')
-        .from('tenants')
-        .select('id')
-        .eq('slug', finalSlug)
-        .single();
-
-      if (!fetchError && existing) {
-        return existing.id;
-      }
-    }
-
-    throw new Error(`Failed to create tenant (direct): ${error.message}`);
-  }
-
-  return data.id;
-}
-
-/**
- * Add a user to a tenant (bypasses RLS using service role client)
- * Creates a membership record
+ * Add a user to a tenant by assigning the member role.
+ * Requires tenant.admin permission on the caller.
  */
 export async function addUserToTenant(
-  serviceClient: SupabaseClient,
+  adminClient: SupabaseClient,
   userId: string,
   tenantId: string
 ): Promise<void> {
-  // Use service role client to access app schema directly
-  const { error } = await serviceClient
-    .schema('app')
-    .from('tenant_memberships')
-    .insert({
-      user_id: userId,
-      tenant_id: tenantId,
-    });
-
-  if (error) {
-    // Ignore duplicate key errors (user already member)
-    if (error.code === '23505') {
-      return;
-    }
-    throw new Error(`Failed to add user to tenant: ${error.message}`);
-  }
+  await assignRoleToUser(adminClient, userId, tenantId, 'member');
 }
 
 /**
- * Assign a role to a user in a tenant (bypasses RLS using service role client)
+ * Assign a role to a user in a tenant using the public RPC.
  */
 export async function assignRoleToUser(
-  serviceClient: SupabaseClient,
+  adminClient: SupabaseClient,
   userId: string,
   tenantId: string,
   roleKey: string
 ): Promise<void> {
-  // First get the role ID (using cfg schema)
-  const { data: role, error: roleError } = await serviceClient
-    .schema('cfg')
-    .from('tenant_roles')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('key', roleKey)
-    .single();
-
-  if (roleError || !role) {
-    throw new Error(`Role ${roleKey} not found in tenant: ${roleError?.message}`);
-  }
-
-  // Ensure user is a member first
-  await addUserToTenant(serviceClient, userId, tenantId);
-
-  // Assign the role (using app schema)
-  const { error } = await serviceClient
-    .schema('app')
-    .from('user_tenant_roles')
-    .insert({
-      user_id: userId,
-      tenant_id: tenantId,
-      tenant_role_id: role.id,
-      assigned_by: userId, // Self-assigned for test purposes
-    });
+  const { error } = await adminClient.rpc('rpc_assign_role_to_user', {
+    p_tenant_id: tenantId,
+    p_user_id: userId,
+    p_role_key: roleKey,
+  });
 
   if (error) {
-    // Ignore duplicate key errors (role already assigned)
-    if (error.code === '23505') {
-      return;
-    }
     throw new Error(`Failed to assign role: ${error.message}`);
   }
 }
 
 /**
- * Get tenant by slug (uses service client to bypass RLS)
+ * Get tenant by slug (uses public view scoped to current user).
  */
 export async function getTenantBySlug(
-  serviceClient: SupabaseClient,
+  client: SupabaseClient,
   slug: string
 ): Promise<{ id: string; name: string; slug: string } | null> {
-  // Use service role client to access app schema directly
-  const { data, error } = await serviceClient
-    .schema('app')
-    .from('tenants')
+  const { data, error } = await client
+    .from('v_tenants')
     .select('id, name, slug')
     .eq('slug', slug)
     .single();

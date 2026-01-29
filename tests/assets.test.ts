@@ -1,27 +1,20 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import { createTestTenant, addUserToTenant, setTenantContext } from './helpers/tenant';
 import {
   createTestLocation,
   createTestDepartment,
-  createTestDepartmentDirect,
   createTestAsset,
 } from './helpers/entities';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Assets', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Creating assets', () => {
@@ -29,15 +22,14 @@ describe('Assets', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const assetId = await createTestAsset(serviceClient, tenantId, 'HVAC Unit #5');
+      const assetId = await createTestAsset(client, tenantId, 'HVAC Unit #5');
 
       expect(assetId).toBeDefined();
       expect(typeof assetId).toBe('string');
 
-      // Verify asset exists
-      const { data: asset, error } = await serviceClient
-        .schema('app')
-        .from('assets')
+      await setTenantContext(client, tenantId);
+      const { data: asset, error } = await client
+        .from('v_assets')
         .select('*')
         .eq('id', assetId)
         .single();
@@ -52,23 +44,19 @@ describe('Assets', () => {
     it('should create an asset assigned to a site (location)', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const locationId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Building A'
-      );
+      const locationId = await createTestLocation(client, tenantId, 'Building A');
 
       const assetId = await createTestAsset(
-        serviceClient,
+        client,
         tenantId,
         'Asset with Location',
         locationId
       );
 
       // Verify location assignment
-      const { data: asset } = await serviceClient
-        .schema('app')
-        .from('assets')
+      await setTenantContext(client, tenantId);
+      const { data: asset } = await client
+        .from('v_assets')
         .select('*')
         .eq('id', assetId)
         .single();
@@ -79,10 +67,10 @@ describe('Assets', () => {
     it('should create an asset assigned to a maintenance department', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const departmentId = await createTestDepartmentDirect(serviceClient, tenantId, 'Engineering');
+      const departmentId = await createTestDepartment(client, tenantId, 'Engineering');
 
       const assetId = await createTestAsset(
-        serviceClient,
+        client,
         tenantId,
         'Asset with Department',
         undefined,
@@ -90,9 +78,9 @@ describe('Assets', () => {
       );
 
       // Verify department assignment
-      const { data: asset } = await serviceClient
-        .schema('app')
-        .from('assets')
+      await setTenantContext(client, tenantId);
+      const { data: asset } = await client
+        .from('v_assets')
         .select('*')
         .eq('id', assetId)
         .single();
@@ -106,24 +94,15 @@ describe('Assets', () => {
       const tenantId1 = await createTestTenant(client);
       const tenantId2 = await createTestTenant(client);
 
-      const locationId = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Location'
-      );
+      const locationId = await createTestLocation(client, tenantId1, 'Location');
 
       // Try to create asset in tenant2 with location from tenant1
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('assets')
-        .insert({
-          tenant_id: tenantId2,
-          name: 'Asset',
-          location_id: locationId,
-          status: 'active',
-        })
-        .select('id')
-        .single();
+      const { data, error } = await client.rpc('rpc_create_asset', {
+        p_tenant_id: tenantId2,
+        p_name: 'Asset',
+        p_location_id: locationId,
+        p_status: 'active',
+      });
 
       expect(error).toBeDefined();
       expect(error?.message).toContain('same tenant');
@@ -133,20 +112,15 @@ describe('Assets', () => {
       const tenantId1 = await createTestTenant(client);
       const tenantId2 = await createTestTenant(client);
 
-      const departmentId = await createTestDepartmentDirect(serviceClient, tenantId1, 'Department');
+      const departmentId = await createTestDepartment(client, tenantId1, 'Department');
 
       // Try to create asset in tenant2 with department from tenant1
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('assets')
-        .insert({
-          tenant_id: tenantId2,
-          name: 'Asset',
-          department_id: departmentId,
-          status: 'active',
-        })
-        .select('id')
-        .single();
+      const { data, error } = await client.rpc('rpc_create_asset', {
+        p_tenant_id: tenantId2,
+        p_name: 'Asset',
+        p_department_id: departmentId,
+        p_status: 'active',
+      });
 
       expect(error).toBeDefined();
       expect(error?.message).toContain('same tenant');
@@ -159,16 +133,11 @@ describe('Assets', () => {
       const tenantId = await createTestTenant(client);
 
       // Try to create asset with invalid status
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('assets')
-        .insert({
-          tenant_id: tenantId,
-          name: 'Asset',
-          status: 'invalid_status',
-        })
-        .select('id')
-        .single();
+      const { data, error } = await client.rpc('rpc_create_asset', {
+        p_tenant_id: tenantId,
+        p_name: 'Asset',
+        p_status: 'invalid_status',
+      });
 
       expect(error).toBeDefined();
       expect(error?.message).toContain('status catalog');
@@ -180,7 +149,7 @@ describe('Assets', () => {
 
       // Default statuses should include 'active'
       const assetId = await createTestAsset(
-        serviceClient,
+        client,
         tenantId,
         'Asset',
         undefined,
@@ -199,7 +168,7 @@ describe('Assets', () => {
       const tenantId = await createTestTenant(client);
 
       await createTestAsset(
-        serviceClient,
+        client,
         tenantId,
         'Asset 1',
         undefined,
@@ -208,17 +177,12 @@ describe('Assets', () => {
       );
 
       // Try to create another asset with same asset_number
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('assets')
-        .insert({
-          tenant_id: tenantId,
-          name: 'Asset 2',
-          asset_number: 'ASSET-001',
-          status: 'active',
-        })
-        .select('id')
-        .single();
+      const { data, error } = await client.rpc('rpc_create_asset', {
+        p_tenant_id: tenantId,
+        p_name: 'Asset 2',
+        p_asset_number: 'ASSET-001',
+        p_status: 'active',
+      });
 
       expect(error).toBeDefined();
       expect(error?.code).toBe('23505'); // Unique violation
@@ -231,7 +195,7 @@ describe('Assets', () => {
       const tenantId2 = await createTestTenant(client);
 
       const asset1 = await createTestAsset(
-        serviceClient,
+        client,
         tenantId1,
         'Asset 1',
         undefined,
@@ -239,7 +203,7 @@ describe('Assets', () => {
         'SHARED-001'
       );
       const asset2 = await createTestAsset(
-        serviceClient,
+        client,
         tenantId2,
         'Asset 2',
         undefined,
@@ -257,7 +221,7 @@ describe('Assets', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const assetId = await createTestAsset(serviceClient, tenantId, 'Old Name');
+      const assetId = await createTestAsset(client, tenantId, 'Old Name');
 
       const { error } = await client.rpc('rpc_update_asset', {
         p_tenant_id: tenantId,
@@ -267,10 +231,9 @@ describe('Assets', () => {
 
       expect(error).toBeNull();
 
-      // Verify update
-      const { data: asset } = await serviceClient
-        .schema('app')
-        .from('assets')
+      await setTenantContext(client, tenantId);
+      const { data: asset } = await client
+        .from('v_assets')
         .select('*')
         .eq('id', assetId)
         .single();
@@ -284,7 +247,7 @@ describe('Assets', () => {
       const tenantId = await createTestTenant(client);
 
       const assetId = await createTestAsset(
-        serviceClient,
+        client,
         tenantId,
         'Asset',
         undefined,
@@ -301,10 +264,9 @@ describe('Assets', () => {
 
       expect(error).toBeNull();
 
-      // Verify status update
-      const { data: asset } = await serviceClient
-        .schema('app')
-        .from('assets')
+      await setTenantContext(client, tenantId);
+      const { data: asset } = await client
+        .from('v_assets')
         .select('*')
         .eq('id', assetId)
         .single();
@@ -318,7 +280,7 @@ describe('Assets', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const assetId = await createTestAsset(serviceClient, tenantId, 'To Delete');
+      const assetId = await createTestAsset(client, tenantId, 'To Delete');
 
       const { error } = await client.rpc('rpc_delete_asset', {
         p_tenant_id: tenantId,
@@ -327,10 +289,9 @@ describe('Assets', () => {
 
       expect(error).toBeNull();
 
-      // Verify deletion
-      const { data: asset } = await serviceClient
-        .schema('app')
-        .from('assets')
+      await setTenantContext(client, tenantId);
+      const { data: asset } = await client
+        .from('v_assets')
         .select('*')
         .eq('id', assetId)
         .single();
