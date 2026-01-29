@@ -1,7 +1,7 @@
 # ADR 0002: Modules vs plugins vs integrations
 
 Date: 2026-01-28
-Status: Proposed
+Status: Accepted
 
 ## Context
 

@@ -1,7 +1,7 @@
 # ADR 0009: Audit retention and access policy
 
 Date: 2026-01-28
-Status: Proposed
+Status: Accepted
 
 ## Context
 

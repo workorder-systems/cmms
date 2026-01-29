@@ -1,7 +1,7 @@
 # ADR 0010: Public view and RPC naming conventions
 
 Date: 2026-01-28
-Status: Proposed
+Status: Accepted
 
 ## Context
 

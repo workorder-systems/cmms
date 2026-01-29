@@ -1,7 +1,7 @@
 # ADR 0007: Deletion policy (soft vs hard delete)
 
 Date: 2026-01-28
-Status: Proposed
+Status: Accepted
 
 ## Context
 
