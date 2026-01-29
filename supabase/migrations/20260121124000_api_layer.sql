@@ -1237,14 +1237,10 @@ select
   wo.created_at, 
   wo.updated_at
 from app.work_orders wo
-where wo.tenant_id in (
-  select tenant_id
-  from app.tenant_memberships
-  where user_id = auth.uid()
-);
+where wo.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_work_orders is 
-  'Work orders view scoped to the current user''s tenant memberships. Underlying table RLS still applies; view filters rows by tenant_id using auth.uid(). Used by frontend to list and display work orders.';
+  'Work orders view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display work orders.';
 
 create or replace view public.v_assets as
 select 
@@ -1259,14 +1255,10 @@ select
   a.created_at, 
   a.updated_at
 from app.assets a
-where a.tenant_id in (
-  select tenant_id
-  from app.tenant_memberships
-  where user_id = auth.uid()
-);
+where a.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_assets is 
-  'Assets view scoped to the current user''s tenant memberships. Underlying table RLS still applies; view filters rows by tenant_id using auth.uid(). Used by frontend to list and display assets.';
+  'Assets view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display assets.';
 
 create or replace view public.v_locations as
 select 
@@ -1278,14 +1270,10 @@ select
   l.created_at, 
   l.updated_at
 from app.locations l
-where l.tenant_id in (
-  select tenant_id
-  from app.tenant_memberships
-  where user_id = auth.uid()
-);
+where l.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_locations is 
-  'Locations view scoped to the current user''s tenant memberships. Underlying table RLS still applies; view filters rows by tenant_id using auth.uid(). Used by frontend to list and display locations.';
+  'Locations view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display locations.';
 
 create or replace view public.v_tenants as
 select
@@ -1378,12 +1366,8 @@ select
   d.created_at,
   d.updated_at
 from app.departments d
-where d.tenant_id in (
-  select tenant_id
-  from app.tenant_memberships
-  where user_id = auth.uid()
-);
+where d.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_departments is 
-  'Departments view scoped to the current user''s tenant memberships. Underlying table RLS still applies; view filters rows by tenant_id using auth.uid(). Used by frontend to list and display departments.';
+  'Departments view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display departments.';
 
