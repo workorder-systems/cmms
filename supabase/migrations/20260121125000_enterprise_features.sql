@@ -495,6 +495,10 @@ create trigger locations_audit_trigger
   after insert or update or delete on app.locations
   for each row execute function audit.log_entity_change();
 
+create trigger departments_audit_trigger
+  after insert or update or delete on app.departments
+  for each row execute function audit.log_entity_change();
+
 create trigger tenants_audit_trigger
   after insert or update or delete on app.tenants
   for each row execute function audit.log_entity_change();
