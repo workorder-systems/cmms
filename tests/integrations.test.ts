@@ -14,55 +14,24 @@ import {
 import { expectRPCError } from './helpers/rpc';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-async function ensurePlugin(
+async function registerPlugin(
   serviceClient: SupabaseClient,
   key: string,
   name: string
 ): Promise<string> {
-  const { data, error } = await serviceClient
-    .schema('int')
-    .from('plugins')
-    .insert({
-      key,
-      name,
-      description: 'Test plugin',
-      is_integration: false,
-      is_active: true,
-    })
-    .select('id')
-    .single();
+  const { data, error } = await serviceClient.rpc('rpc_register_plugin', {
+    p_key: key,
+    p_name: name,
+    p_description: 'Test plugin',
+    p_is_integration: false,
+    p_is_active: true,
+  });
 
-  if (!error) {
-    return data.id as string;
+  if (error) {
+    throw new Error(`Failed to register plugin: ${error.message}`);
   }
 
-  if (error.code === '23505') {
-    const { data: existing, error: fetchError } = await serviceClient
-      .schema('int')
-      .from('plugins')
-      .select('id, is_active')
-      .eq('key', key)
-      .single();
-
-    if (fetchError || !existing) {
-      throw new Error(`Failed to fetch existing plugin: ${fetchError?.message}`);
-    }
-
-    if (!existing.is_active) {
-      const { error: updateError } = await serviceClient
-        .schema('int')
-        .from('plugins')
-        .update({ is_active: true })
-        .eq('id', existing.id);
-      if (updateError) {
-        throw new Error(`Failed to reactivate plugin: ${updateError.message}`);
-      }
-    }
-
-    return existing.id as string;
-  }
-
-  throw new Error(`Failed to create plugin: ${error.message}`);
+  return data as string;
 }
 
 describe('Integrations and plugins', () => {
@@ -80,7 +49,7 @@ describe('Integrations and plugins', () => {
     const tenantId = await createTestTenant(client);
     await setTenantContext(client, tenantId);
 
-    await ensurePlugin(serviceClient, 'sample_plugin', 'Sample Plugin');
+    await registerPlugin(serviceClient, 'sample_plugin', 'Sample Plugin');
 
     const { data: installationId, error } = await client.rpc('rpc_install_plugin', {
       p_tenant_id: tenantId,
@@ -111,7 +80,7 @@ describe('Integrations and plugins', () => {
     const tenantId = await createTestTenant(adminClient);
     await setTenantContext(adminClient, tenantId);
 
-    await ensurePlugin(serviceClient, 'locked_plugin', 'Locked Plugin');
+    await registerPlugin(serviceClient, 'locked_plugin', 'Locked Plugin');
 
     const { user: member } = await createTestUser(client);
     await addUserToTenant(serviceClient, member.id, tenantId);

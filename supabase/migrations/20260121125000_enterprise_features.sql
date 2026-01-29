@@ -683,6 +683,20 @@ create policy audit_retention_configs_delete_anon
   to anon
   using (false);
 
+create or replace view public.v_audit_retention_configs as
+select
+  id,
+  tenant_id,
+  retention_months,
+  is_active,
+  created_at,
+  updated_at
+from cfg.audit_retention_configs
+where tenant_id = authz.get_current_tenant_id();
+
+comment on view public.v_audit_retention_configs is
+  'Tenant-scoped audit retention configuration for the current tenant context. Requires tenant.admin access via RLS.';
+
 create or replace view public.v_audit_permission_changes as
 select
   id,
@@ -709,6 +723,49 @@ where tenant_id = authz.get_current_tenant_id()
 
 comment on view public.v_audit_permission_changes is
   'Tenant-scoped permission audit log view. Only accessible to tenant admins. Returns permission change events for current tenant context.';
+
+create or replace function public.rpc_set_audit_retention_config(
+  p_tenant_id uuid,
+  p_retention_months integer,
+  p_is_active boolean default true
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform authz.rpc_setup(p_tenant_id, 'tenant.admin');
+
+  if p_retention_months < 1 or p_retention_months > 120 then
+    raise exception using
+      message = 'Retention months must be between 1 and 120',
+      errcode = '23514';
+  end if;
+
+  insert into cfg.audit_retention_configs (
+    tenant_id,
+    retention_months,
+    is_active
+  )
+  values (
+    p_tenant_id,
+    p_retention_months,
+    p_is_active
+  )
+  on conflict (tenant_id)
+  do update set
+    retention_months = excluded.retention_months,
+    is_active = excluded.is_active,
+    updated_at = pg_catalog.now();
+end;
+$$;
+
+comment on function public.rpc_set_audit_retention_config(uuid, integer, boolean) is
+  'Creates or updates audit retention configuration for a tenant. Requires tenant.admin permission. Uses retention months between 1 and 120.';
+
+revoke all on function public.rpc_set_audit_retention_config(uuid, integer, boolean) from public;
+grant execute on function public.rpc_set_audit_retention_config(uuid, integer, boolean) to authenticated;
 
 create or replace function util.purge_audit_records(
   p_tenant_id uuid,
@@ -903,6 +960,67 @@ create policy plugins_delete_anon
   for delete
   to anon
   using (false);
+
+create or replace function public.rpc_register_plugin(
+  p_key text,
+  p_name text,
+  p_description text default null,
+  p_is_integration boolean default false,
+  p_is_active boolean default true
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_plugin_id uuid;
+begin
+  if length(pg_catalog.btrim(p_key)) = 0 then
+    raise exception using
+      message = 'Plugin key is required',
+      errcode = '23514';
+  end if;
+
+  if length(pg_catalog.btrim(p_name)) = 0 then
+    raise exception using
+      message = 'Plugin name is required',
+      errcode = '23514';
+  end if;
+
+  insert into int.plugins (
+    key,
+    name,
+    description,
+    is_integration,
+    is_active
+  )
+  values (
+    p_key,
+    p_name,
+    p_description,
+    p_is_integration,
+    p_is_active
+  )
+  on conflict (key)
+  do update set
+    name = excluded.name,
+    description = excluded.description,
+    is_integration = excluded.is_integration,
+    is_active = excluded.is_active,
+    updated_at = pg_catalog.now()
+  returning id into v_plugin_id;
+
+  return v_plugin_id;
+end;
+$$;
+
+comment on function public.rpc_register_plugin(text, text, text, boolean, boolean) is
+  'Registers or updates a plugin catalog entry. Intended for internal or service_role usage only.';
+
+revoke all on function public.rpc_register_plugin(text, text, text, boolean, boolean) from public;
+grant execute on function public.rpc_register_plugin(text, text, text, boolean, boolean) to service_role;
+grant execute on function public.rpc_register_plugin(text, text, text, boolean, boolean) to postgres;
 
 -- Plugin installations: tenant scoped; admin-managed.
 create policy plugin_installations_select_authenticated

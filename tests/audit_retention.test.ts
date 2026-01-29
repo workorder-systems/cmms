@@ -11,6 +11,7 @@ import {
   assignRoleToUser,
   setTenantContext,
 } from './helpers/tenant';
+import { expectRPCError } from './helpers/rpc';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Audit retention and access', () => {
@@ -28,29 +29,23 @@ describe('Audit retention and access', () => {
     const tenantId = await createTestTenant(client);
     await setTenantContext(client, tenantId);
 
-    const { data, error } = await client
-      .schema('cfg')
-      .from('audit_retention_configs')
-      .insert({
-        tenant_id: tenantId,
-        retention_months: 18,
-        is_active: true,
-      })
-      .select('tenant_id, retention_months')
+    const { error } = await client.rpc('rpc_set_audit_retention_config', {
+      p_tenant_id: tenantId,
+      p_retention_months: 18,
+      p_is_active: true,
+    });
+
+    expect(error).toBeNull();
+
+    const { data, error: viewError } = await client
+      .from('v_audit_retention_configs')
+      .select('tenant_id, retention_months, is_active')
+      .eq('tenant_id', tenantId)
       .single();
 
-    if (error?.code === '23505') {
-      const { error: updateError } = await client
-        .schema('cfg')
-        .from('audit_retention_configs')
-        .update({ retention_months: 18, is_active: true })
-        .eq('tenant_id', tenantId);
-      expect(updateError).toBeNull();
-    } else {
-      expect(error).toBeNull();
-      expect(data.tenant_id).toBe(tenantId);
-      expect(data.retention_months).toBe(18);
-    }
+    expect(viewError).toBeNull();
+    expect(data.tenant_id).toBe(tenantId);
+    expect(data.retention_months).toBe(18);
   });
 
   it('blocks non-admin users from writing audit retention configs', async () => {
@@ -70,18 +65,13 @@ describe('Audit retention and access', () => {
     expect(signInErr).toBeNull();
     await setTenantContext(memberClient, tenantId);
 
-    const { error } = await memberClient
-      .schema('cfg')
-      .from('audit_retention_configs')
-      .insert({
-        tenant_id: tenantId,
-        retention_months: 6,
-        is_active: true,
-      })
-      .select('tenant_id')
-      .single();
+    const errorMessage = await expectRPCError(memberClient, 'rpc_set_audit_retention_config', {
+      p_tenant_id: tenantId,
+      p_retention_months: 6,
+      p_is_active: true,
+    });
 
-    expect(error).toBeDefined();
+    expect(errorMessage).toContain('tenant.admin');
   });
 
   it('exposes audit permission changes only to tenant admins', async () => {
