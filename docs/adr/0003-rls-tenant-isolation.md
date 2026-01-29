@@ -9,6 +9,18 @@ The database is multi-tenant and must enforce strict tenant isolation. We need
 clear, consistent rules for how RLS is applied, how tenant context is derived,
 and what guarantees are (and are not) provided by session context.
 
+## Decision Drivers
+
+- Strong tenant isolation with minimal complexity.
+- Centralize security around `auth.uid()` and membership checks.
+- Keep RLS policies consistent and testable across modules.
+
+## Options Considered
+
+- Rely on `app.current_tenant_id` for security enforcement.
+- Use RLS membership checks + `auth.uid()` (selected).
+- Build a separate tenant-per-schema or tenant-per-db model.
+
 ## Decision
 
 1. **Enable RLS on all tenant-scoped tables.**
@@ -30,9 +42,30 @@ and what guarantees are (and are not) provided by session context.
    - `audit` is tenant-scoped and readable only by authorized tenant admins.
    - `public` contains read-only views and RPCs as the client contract.
 
+## Scope
+
+Applies to all tenant-scoped tables and public views/RPCs in this repository.
+It does not define support access or external data exports.
+
 ## Consequences
 
 - Tenant isolation is enforced consistently across all data access paths.
 - Client code must rely on public views and RPCs; direct table writes are blocked.
 - Session context is useful for convenience, but misuse does not weaken security.
 - New tables and views must follow these RLS and membership conventions.
+
+## Security and Privacy Considerations
+
+- RLS is the primary tenant boundary; no client uses service-role credentials.
+- Session context is never used as a security boundary.
+- Any privileged access (if ever needed) must be audited and isolated.
+
+## Operational Impact
+
+- New tables require RLS policies and membership checks.
+- Permission checks for writes live in RPC functions.
+
+## Testing / Verification
+
+- RLS tests verify membership isolation on all tenant-scoped tables.
+- RPC tests verify permission enforcement and error behavior.

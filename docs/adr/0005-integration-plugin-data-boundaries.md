@@ -10,6 +10,19 @@ not allow plugins to alter the database schema. We also need a clear boundary
 between what is stored in the database and what is stored externally (secrets,
 tokens, and runtime config).
 
+## Decision Drivers
+
+- Preserve database stability and tenant isolation.
+- Avoid storing secrets in Postgres.
+- Enable integrations without schema changes from plugin authors.
+
+## Options Considered
+
+- Allow plugins to add SQL migrations.
+- Store tokens and secrets in the database.
+- Keep a strict boundary: DB for metadata, external store for secrets
+  (selected).
+
 ## Decision
 
 1. **Plugins do not add SQL or schema changes.**
@@ -25,8 +38,28 @@ tokens, and runtime config).
    - Plugin code runs in a separate host/service and authenticates with
      tenant-scoped credentials.
 
+## Scope
+
+Defines data ownership boundaries for integrations and plugins. It does not
+choose a specific secrets manager or plugin runtime.
+
 ## Consequences
 
 - The core database remains stable and multi-tenant safe.
 - Integrations can be added without schema changes from plugin authors.
 - Secrets management and runtime isolation are enforced outside Postgres.
+
+## Security and Privacy Considerations
+
+- Secrets and tokens must never be stored in database tables.
+- Integration access uses tenant-scoped credentials and least privilege.
+
+## Operational Impact
+
+- Requires an external secrets store and plugin runtime service.
+- Installation metadata must be kept in sync with external secrets.
+
+## Testing / Verification
+
+- RLS tests for `int` tables once introduced.
+- Integration tests verify tenant scoping and secret references.

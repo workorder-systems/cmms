@@ -9,6 +9,18 @@ We need consistent terminology and boundaries for product capabilities, optional
 extensions, and external system connectivity. The platform is multi-tenant and
 must remain secure; we also want to avoid plugins adding SQL or schema changes.
 
+## Decision Drivers
+
+- Keep the data model stable and multi-tenant safe.
+- Make the roadmap predictable as new capabilities are added.
+- Enable optional extensions without database churn.
+
+## Options Considered
+
+- Treat all optional features as modules (schema changes everywhere).
+- Allow plugins to add SQL and schema changes.
+- Use a clear taxonomy with stable boundaries (selected).
+
 ## Decision
 
 1. **Module** (core product capability)
@@ -26,10 +38,35 @@ must remain secure; we also want to avoid plugins adding SQL or schema changes.
    - May be backend-only, UI-assisted, or both.
    - Stores secrets outside the database (with references in config).
 
+**Classification checklist**
+- Changes or adds core data model? **Module**
+- Optional behavior/UI around existing data? **Plugin**
+- External system connectivity? **Integration**
+
+## Scope
+
+Defines terminology and boundaries for architecture and documentation. It does
+not define implementation details of the plugin runtime or UI frameworks.
+
 ## Consequences
 
 - Core features that require data model changes must be implemented as modules.
 - Optional or niche capabilities should be implemented as plugins.
 - External systems are treated as integrations and follow plugin constraints.
-- This classification guides future architecture and documentation decisions.
+- This classification guides architecture, documentation, and roadmap decisions.
+
+## Security and Privacy Considerations
+
+- Plugins and integrations must adhere to the public API contract.
+- Secrets and tokens are stored outside the database.
+
+## Operational Impact
+
+- Teams can decide early whether a change requires migrations.
+- Integration effort is scoped to plugin runtime, not database changes.
+
+## Testing / Verification
+
+- Module changes require database migration and RLS tests.
+- Plugin changes require API contract and permission tests.
 
