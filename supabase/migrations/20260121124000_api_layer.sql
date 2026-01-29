@@ -1302,10 +1302,11 @@ select
   is_system,
   created_at,
   updated_at
-from cfg.tenant_roles;
+from cfg.tenant_roles
+where tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_tenant_roles is 
-  'Tenant roles view. Client must filter by tenant_id. RLS on underlying table enforces tenant isolation. Used by frontend to display and manage roles.';
+  'Tenant roles view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. RLS on underlying table enforces tenant isolation. Used by frontend to display and manage roles.';
 
 create or replace view public.v_user_tenant_roles as
 select
@@ -1322,7 +1323,7 @@ join cfg.tenant_roles tr on utr.tenant_role_id = tr.id
 where utr.user_id = auth.uid();
 
 comment on view public.v_user_tenant_roles is 
-  'Current user role assignments. Client must filter by tenant_id. RLS on underlying tables ensures users only see their own role assignments. Used by frontend to display user roles and permissions.';
+  'Current user role assignments across tenants. Client can filter by tenant_id as needed. RLS on underlying tables ensures users only see their own role assignments. Used by frontend to display user roles and permissions.';
 
 create or replace view public.v_permissions as
 select
@@ -1351,10 +1352,11 @@ select
   trp.granted_at
 from cfg.tenant_role_permissions trp
 join cfg.tenant_roles tr on trp.tenant_role_id = tr.id
-join cfg.permissions p on trp.permission_id = p.id;
+join cfg.permissions p on trp.permission_id = p.id
+where tr.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_role_permissions is 
-  'Role-permission mappings view. Client must filter by tenant_id. Join of tenant_roles, tenant_role_permissions, and permissions tables. RLS on underlying tables enforces tenant isolation. Used by frontend to display and manage role permissions.';
+  'Role-permission mappings view. Clients must set tenant context via rpc_set_tenant_context. Join of tenant_roles, tenant_role_permissions, and permissions tables. RLS on underlying tables enforces tenant isolation. Used by frontend to display and manage role permissions.';
 
 create or replace view public.v_departments as
 select 
