@@ -27,6 +27,14 @@ This plan covers the ADRs that are still in **Proposed** status:
 3. **Assess integration scaffolding.**
    - Confirm current `int` schema usage (likely empty) and existing RLS patterns.
 
+**Current snapshot (2026-01-29):**
+- No `int` tables exist yet in migrations.
+- No `deleted_at` columns exist in `app` or `cfg` tables.
+- Summary/overview views use singular resource names today
+  (`v_work_order_summary`, `v_asset_summary`, `v_location_summary`,
+  `v_tenant_overview`), which will need versioned renames or documented
+  exceptions once ADR 0010 is enforced.
+
 ## Plan by ADR
 
 ### ADR 0002: Modules vs plugins vs integrations

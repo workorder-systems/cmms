@@ -24,6 +24,22 @@ This database is designed with a strict public surface:
 - Internal schemas (`app`, `cfg`, `audit`, `util`, `authz`) are intended for
   service_role or internal tooling only.
 
+## Modules, plugins, integrations (ADR 0002 + 0005)
+- **Module**: core product capability that can change the data model.
+- **Plugin**: optional behavior/UI on top of existing modules (no schema changes).
+- **Integration**: plugin subtype that connects to external systems.
+- Plugins and integrations **must not** add SQL or schema changes.
+- Secrets/tokens live outside Postgres; only opaque references are stored in `int`.
+
+## Public API naming and versioning (ADR 0008 + 0010)
+- **Views:** `public.v_<resource>` with plural resource names.
+  - Summary/analytics: `public.v_<resource>_summary` or `_overview`.
+  - Breaking changes use versioned view names: `public.v_<resource>_v2`.
+- **RPCs:** `public.rpc_<verb>_<resource>` with consistent verbs.
+  - Breaking changes use versioned names: `public.rpc_<verb>_<resource>_v2`.
+- **Parameter ordering:** `p_tenant_id` first when required, then primary ids.
+- Prefer **additive changes**; document any breaking changes in migrations and ADRs.
+
 ## Security model (multi-tenant)
 - **RLS is enabled** on all tenant-scoped tables.
 - **Tenant isolation** is enforced via membership tables and `auth.uid()`.
