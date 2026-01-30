@@ -1157,7 +1157,9 @@ declare
   v_plugin_id uuid;
   v_installation_id uuid;
 begin
-  v_user_id := authz.rpc_setup(p_tenant_id, 'tenant.admin');
+  -- rpc_setup returns tenant_id, not user_id, so we need to get user_id separately
+  perform authz.rpc_setup(p_tenant_id, 'tenant.admin');
+  v_user_id := authz.validate_authenticated();
 
   perform util.check_rate_limit('plugin_install', null, 10, 1, v_user_id, p_tenant_id);
 
