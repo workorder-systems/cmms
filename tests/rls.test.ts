@@ -1,81 +1,58 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
-import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
+import { createTestUser } from './helpers/auth';
 import {
   createTestTenant,
-  createTestTenantDirect,
   addUserToTenant,
   assignRoleToUser,
   setTenantContext,
 } from './helpers/tenant';
-import { createTestLocation, createTestWorkOrderDirect } from './helpers/entities';
+import { createTestLocation, createTestWorkOrder } from './helpers/entities';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('RLS Policies', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Anonymous Access', () => {
     it('should prevent anonymous users from accessing tenant data', async () => {
-      const tenantId = await createTestTenantDirect(serviceClient);
-      const locationId = await createTestLocation(
-        serviceClient,
-        tenantId,
-        'Location'
-      );
+      const ownerClient = createTestClient();
+      await createTestUser(ownerClient);
+      const tenantId = await createTestTenant(ownerClient);
+      await setTenantContext(ownerClient, tenantId);
+      const locationId = await createTestLocation(ownerClient, tenantId, 'Location');
 
       // Anonymous client (no auth)
       const anonClient = createTestClient();
 
       const { data, error } = await anonClient
-        .schema('app')
-        .from('locations')
+        .from('v_locations')
         .select('*')
         .eq('id', locationId);
 
-      // RLS should block access with insufficient privilege
-      expect(error).toBeDefined();
-      expect(error?.code).toBe('42501');
+      expect(error).toBeNull();
+      expect(data.length).toBe(0);
     });
   });
 
   describe('Tenant Isolation', () => {
     it('should only allow users to see their tenant data', async () => {
-      const { user: user1 } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
-
-      const { user: user2 } = await createTestUser(client);
-      const tenantId2 = await createTestTenant(client);
-
-      const location1 = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Location 1'
-      );
-      const location2 = await createTestLocation(
-        serviceClient,
-        tenantId2,
-        'Location 2'
-      );
-
-      // Sign in as user1
       const client1 = createTestClient();
-      const { error: signInErr } = await client1.auth.signInWithPassword({
-        email: getUserEmail(user1),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
+      await createTestUser(client1);
+      const tenantId1 = await createTestTenant(client1);
       await setTenantContext(client1, tenantId1);
+
+      const client2 = createTestClient();
+      await createTestUser(client2);
+      const tenantId2 = await createTestTenant(client2);
+      await setTenantContext(client2, tenantId2);
+
+      const location1 = await createTestLocation(client1, tenantId1, 'Location 1');
+      const location2 = await createTestLocation(client2, tenantId2, 'Location 2');
 
       const { data: locations, error } = await client1
         .from('v_locations')
@@ -88,95 +65,61 @@ describe('RLS Policies', () => {
     });
 
     it('should prevent users from inserting into other tenants', async () => {
-      const { user: user1 } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
+      const ownerClient1 = createTestClient();
+      await createTestUser(ownerClient1);
+      const tenantId1 = await createTestTenant(ownerClient1);
 
-      const { user: user2 } = await createTestUser(client);
-      const tenantId2 = await createTestTenant(client);
-      await addUserToTenant(serviceClient, user2.id, tenantId2);
+      const ownerClient2 = createTestClient();
+      await createTestUser(ownerClient2);
+      const tenantId2 = await createTestTenant(ownerClient2);
 
-      // Sign in as user2
-      const client2 = createTestClient();
-      const { error: signInErr } = await client2.auth.signInWithPassword({
-        email: getUserEmail(user2),
-        password: TEST_PASSWORD,
+      const { error } = await ownerClient2.rpc('rpc_create_location', {
+        p_tenant_id: tenantId1,
+        p_name: 'Unauthorized Location',
       });
-      expect(signInErr).toBeNull();
-      await setTenantContext(client2, tenantId2);
-
-      const { data, error } = await client2
-        .schema('app')
-        .from('locations')
-        .insert({
-          tenant_id: tenantId1,
-          name: 'Unauthorized Location',
-        })
-        .select('id')
-        .single();
 
       expect(error).toBeDefined();
-      expect(error?.code).toBe('42501'); // Insufficient privilege
+      expect(error?.code).toBe('42501');
     });
 
     it('should prevent users from updating other tenants data', async () => {
-      const { user: user1 } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
+      const ownerClient1 = createTestClient();
+      await createTestUser(ownerClient1);
+      const tenantId1 = await createTestTenant(ownerClient1);
+      await setTenantContext(ownerClient1, tenantId1);
 
-      const { user: user2 } = await createTestUser(client);
-      const tenantId2 = await createTestTenant(client);
-      await addUserToTenant(serviceClient, user2.id, tenantId2);
+      const ownerClient2 = createTestClient();
+      await createTestUser(ownerClient2);
+      const tenantId2 = await createTestTenant(ownerClient2);
 
-      const location1 = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Location'
-      );
+      const location1 = await createTestLocation(ownerClient1, tenantId1, 'Location');
 
-      // Sign in as user2
-      const client2 = createTestClient();
-      const { error: signInErr } = await client2.auth.signInWithPassword({
-        email: getUserEmail(user2),
-        password: TEST_PASSWORD,
+      const { error } = await ownerClient2.rpc('rpc_update_location', {
+        p_tenant_id: tenantId2,
+        p_location_id: location1,
+        p_name: 'Unauthorized Update',
       });
-      expect(signInErr).toBeNull();
-
-      const { error } = await client2
-        .schema('app')
-        .from('locations')
-        .update({ name: 'Unauthorized Update' })
-        .eq('id', location1);
 
       expect(error).toBeDefined();
     });
 
     it('should prevent users from deleting other tenants data', async () => {
-      const { user: user1 } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
+      const ownerClient1 = createTestClient();
+      await createTestUser(ownerClient1);
+      const tenantId1 = await createTestTenant(ownerClient1);
+      await setTenantContext(ownerClient1, tenantId1);
 
-      const { user: user2 } = await createTestUser(client);
-      const tenantId2 = await createTestTenant(client);
-      await addUserToTenant(serviceClient, user2.id, tenantId2);
+      const ownerClient2 = createTestClient();
+      await createTestUser(ownerClient2);
+      const tenantId2 = await createTestTenant(ownerClient2);
 
-      const location1 = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Location'
-      );
+      const location1 = await createTestLocation(ownerClient1, tenantId1, 'Location');
 
-      // Sign in as user2
-      const client2 = createTestClient();
-      const { error: signInErr } = await client2.auth.signInWithPassword({
-        email: getUserEmail(user2),
-        password: TEST_PASSWORD,
+      // Try to delete tenant1's location as tenant2 admin
+      const { error } = await ownerClient2.rpc('rpc_delete_location', {
+        p_tenant_id: tenantId2,
+        p_location_id: location1,
       });
-      expect(signInErr).toBeNull();
-
-      // Try to delete tenant1's location
-      const { error } = await client2
-        .schema('app')
-        .from('locations')
-        .delete()
-        .eq('id', location1);
 
       expect(error).toBeDefined();
     });
@@ -188,20 +131,13 @@ describe('RLS Policies', () => {
       const { user: admin } = await createTestUser(adminClient);
       const tenantId = await createTestTenant(adminClient);
 
-      const memberBootstrapClient = createTestClient();
-      const { user: member } = await createTestUser(memberBootstrapClient);
-      await addUserToTenant(serviceClient, member.id, tenantId);
-      await assignRoleToUser(serviceClient, member.id, tenantId, 'member');
-
-      const woId = await createTestWorkOrderDirect(serviceClient, tenantId, 'Work Order');
-
-      // Sign in as member
       const memberClient = createTestClient();
-      const { error: signInErr } = await memberClient.auth.signInWithPassword({
-        email: getUserEmail(member),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
+      const { user: member } = await createTestUser(memberClient);
+      await addUserToTenant(adminClient, member.id, tenantId);
+      await assignRoleToUser(adminClient, member.id, tenantId, 'member');
+
+      const woId = await createTestWorkOrder(adminClient, tenantId, 'Work Order');
+
       await setTenantContext(memberClient, tenantId);
 
       // Member should see work order (has workorder.view permission)

@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
-import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
+import { createTestUser } from './helpers/auth';
 import {
   createTestTenant,
   addUserToTenant,
@@ -15,7 +11,6 @@ import {
   createTestLocation,
   createTestAsset,
   createTestWorkOrder,
-  createTestWorkOrderDirect,
   getWorkOrder,
   transitionWorkOrderStatus,
 } from './helpers/entities';
@@ -23,12 +18,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Work Orders', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Creating work orders', () => {
@@ -45,8 +38,8 @@ describe('Work Orders', () => {
       expect(workOrderId).toBeDefined();
       expect(typeof workOrderId).toBe('string');
 
-      // Verify work order exists
-      const workOrder = await getWorkOrder(serviceClient, workOrderId);
+      await setTenantContext(client, tenantId);
+      const workOrder = await getWorkOrder(client, workOrderId);
 
       expect(workOrder).toBeDefined();
       expect(workOrder.title).toBe('Fix HVAC Unit');
@@ -63,7 +56,8 @@ describe('Work Orders', () => {
         'Work Order'
       );
 
-      const workOrder = await getWorkOrder(serviceClient, workOrderId);
+      await setTenantContext(client, tenantId);
+      const workOrder = await getWorkOrder(client, workOrderId);
 
       expect(workOrder.status).toBe('draft');
     });
@@ -74,9 +68,9 @@ describe('Work Orders', () => {
       const { user: creator } = await createTestUser(creatorClient);
       const tenantId = await createTestTenant(creatorClient);
 
-      const assigneeBootstrapClient = createTestClient();
-      const { user: assignee } = await createTestUser(assigneeBootstrapClient);
-      await addUserToTenant(serviceClient, assignee.id, tenantId);
+      const assigneeClient = createTestClient();
+      const { user: assignee } = await createTestUser(assigneeClient);
+      await addUserToTenant(creatorClient, assignee.id, tenantId);
 
       const workOrderId = await createTestWorkOrder(
         creatorClient,
@@ -87,7 +81,8 @@ describe('Work Orders', () => {
         assignee.id
       );
 
-      const workOrder = await getWorkOrder(serviceClient, workOrderId);
+      await setTenantContext(creatorClient, tenantId);
+      const workOrder = await getWorkOrder(creatorClient, workOrderId);
 
       // Should be 'assigned' if that status exists, otherwise 'draft'
       expect(['draft', 'assigned']).toContain(workOrder.status);
@@ -112,25 +107,18 @@ describe('Work Orders', () => {
 
   describe('Tenant isolation', () => {
     it('should only expose work orders from the current tenant view', async () => {
-      const user1BootstrapClient = createTestClient();
-      const { user: user1 } = await createTestUser(user1BootstrapClient);
-      const tenantId1 = await createTestTenant(user1BootstrapClient);
+      const client1 = createTestClient();
+      await createTestUser(client1);
+      const tenantId1 = await createTestTenant(client1);
 
-      const user2BootstrapClient = createTestClient();
-      const { user: user2 } = await createTestUser(user2BootstrapClient);
-      const tenantId2 = await createTestTenant(user2BootstrapClient);
+      const client2 = createTestClient();
+      await createTestUser(client2);
+      const tenantId2 = await createTestTenant(client2);
 
       // Create work orders in both tenants
-      const wo1 = await createTestWorkOrderDirect(serviceClient, tenantId1, 'Tenant 1 WO');
-      const wo2 = await createTestWorkOrderDirect(serviceClient, tenantId2, 'Tenant 2 WO');
+      const wo1 = await createTestWorkOrder(client1, tenantId1, 'Tenant 1 WO');
+      const wo2 = await createTestWorkOrder(client2, tenantId2, 'Tenant 2 WO');
 
-      // Sign in as user1
-      const client1 = createTestClient();
-      const { error: signInErr } = await client1.auth.signInWithPassword({
-        email: getUserEmail(user1),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
       await setTenantContext(client1, tenantId1);
 
       // User1 should only see tenant1 work orders (use view)
@@ -151,11 +139,7 @@ describe('Work Orders', () => {
       const tenantId1 = await createTestTenant(client);
       const tenantId2 = await createTestTenant(client);
 
-      const assetId = await createTestAsset(
-        serviceClient,
-        tenantId1,
-        'Asset'
-      );
+      const assetId = await createTestAsset(client, tenantId1, 'Asset');
 
       // Try to create work order in tenant2 with asset from tenant1
       const { data, error } = await client.rpc('rpc_create_work_order', {
@@ -172,11 +156,7 @@ describe('Work Orders', () => {
       const tenantId1 = await createTestTenant(client);
       const tenantId2 = await createTestTenant(client);
 
-      const locationId = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Location'
-      );
+      const locationId = await createTestLocation(client, tenantId1, 'Location');
 
       // Try to create work order in tenant2 with location from tenant1
       const { data, error } = await client.rpc('rpc_create_work_order', {
@@ -240,20 +220,13 @@ describe('Work Orders', () => {
       const { user: admin } = await createTestUser(adminClient);
       const tenantId = await createTestTenant(adminClient);
 
-      const memberBootstrapClient = createTestClient();
-      const { user: member } = await createTestUser(memberBootstrapClient);
-      await addUserToTenant(serviceClient, member.id, tenantId);
-      await assignRoleToUser(serviceClient, member.id, tenantId, 'member');
+      const memberClient = createTestClient();
+      const { user: member } = await createTestUser(memberClient);
+      await addUserToTenant(adminClient, member.id, tenantId);
+      await assignRoleToUser(adminClient, member.id, tenantId, 'member');
 
       const workOrderId = await createTestWorkOrder(adminClient, tenantId, 'Work Order');
 
-      // Sign in as member (only has view permissions)
-      const memberClient = createTestClient();
-      const { error: signInErr } = await memberClient.auth.signInWithPassword({
-        email: getUserEmail(member),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
       await setTenantContext(memberClient, tenantId);
 
       // Member should not be able to transition due to invalid workflow transition

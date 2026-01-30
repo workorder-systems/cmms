@@ -1,7 +1,7 @@
 # ADR 0007: Deletion policy (soft vs hard delete)
 
 Date: 2026-01-28
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -56,6 +56,22 @@ separately.
 
 - Modules using soft deletes must include cleanup or retention policies.
 - Hard deletes may require safeguards in RPCs to prevent data loss.
+
+## Implementation status (2026-01-29)
+
+**Current policy:** hard delete only (no `deleted_at` columns).
+
+| Schema | Table | Policy | Notes |
+| --- | --- | --- | --- |
+| app | tenants | hard | audited in `audit.entity_changes` |
+| app | tenant_memberships | hard | audited in `audit.entity_changes` |
+| app | user_tenant_roles | hard | audited in `audit.entity_changes` |
+| app | locations | hard | audited in `audit.entity_changes` |
+| app | departments | hard | audited in `audit.entity_changes` |
+| app | assets | hard | audited in `audit.entity_changes` |
+| app | work_orders | hard | audited in `audit.entity_changes` |
+| cfg | tenant_roles | hard | audited in `audit.entity_changes` |
+| cfg | tenant_role_permissions | hard | audited in `audit.entity_changes` |
 
 ## Testing / Verification
 

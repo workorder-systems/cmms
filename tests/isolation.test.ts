@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
-import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
+import { createTestUser } from './helpers/auth';
 import {
   createTestTenant,
   addUserToTenant,
@@ -13,51 +9,33 @@ import {
 import {
   createTestLocation,
   createTestDepartment,
-  createTestDepartmentDirect,
   createTestAsset,
   createTestWorkOrder,
-  createTestWorkOrderDirect,
 } from './helpers/entities';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Multi-Tenant Isolation', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Data Isolation', () => {
     it('should isolate data between two tenants with different users', async () => {
-      const { user: userA } = await createTestUser(client);
-      const tenantIdA = await createTestTenant(client);
-
-      const { user: userB } = await createTestUser(client);
-      const tenantIdB = await createTestTenant(client);
-
-      // Create entities in both tenants
-      const locationA = await createTestLocation(
-        serviceClient,
-        tenantIdA,
-        'Location A'
-      );
-      const locationB = await createTestLocation(
-        serviceClient,
-        tenantIdB,
-        'Location B'
-      );
-
-      // Sign in as User A
       const clientA = createTestClient();
-      const { error: signInErrA } = await clientA.auth.signInWithPassword({
-        email: getUserEmail(userA),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErrA).toBeNull();
+      await createTestUser(clientA);
+      const tenantIdA = await createTestTenant(clientA);
       await setTenantContext(clientA, tenantIdA);
+
+      const clientB = createTestClient();
+      await createTestUser(clientB);
+      const tenantIdB = await createTestTenant(clientB);
+      await setTenantContext(clientB, tenantIdB);
+
+      const locationA = await createTestLocation(clientA, tenantIdA, 'Location A');
+      const locationB = await createTestLocation(clientB, tenantIdB, 'Location B');
 
       // User A should only see Tenant A's data (use view)
       const { data: locationsA } = await clientA
@@ -68,13 +46,6 @@ describe('Multi-Tenant Isolation', () => {
       expect(locationsA.length).toBe(1);
       expect(locationsA[0].id).toBe(locationA);
 
-      // Sign in as User B
-      const clientB = createTestClient();
-      const { error: signInErrB } = await clientB.auth.signInWithPassword({
-        email: getUserEmail(userB),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErrB).toBeNull();
       await setTenantContext(clientB, tenantIdB);
 
       // User B should only see Tenant B's data (use view)
@@ -88,42 +59,22 @@ describe('Multi-Tenant Isolation', () => {
     });
 
     it('should allow same-named entities in different tenants', async () => {
-      const tenantId1 = await createTestTenant(client);
-      const tenantId2 = await createTestTenant(client);
+      const client1 = createTestClient();
+      await createTestUser(client1);
+      const tenantId1 = await createTestTenant(client1);
 
-      // Create entities with same names in different tenants
-      const location1 = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Building A'
-      );
-      const location2 = await createTestLocation(
-        serviceClient,
-        tenantId2,
-        'Building A'
-      );
+      const client2 = createTestClient();
+      await createTestUser(client2);
+      const tenantId2 = await createTestTenant(client2);
 
-      const dept1 = await createTestDepartmentDirect(
-        serviceClient,
-        tenantId1,
-        'Engineering'
-      );
-      const dept2 = await createTestDepartmentDirect(
-        serviceClient,
-        tenantId2,
-        'Engineering'
-      );
+      const location1 = await createTestLocation(client1, tenantId1, 'Building A');
+      const location2 = await createTestLocation(client2, tenantId2, 'Building A');
 
-      const asset1 = await createTestAsset(
-        serviceClient,
-        tenantId1,
-        'HVAC Unit #1'
-      );
-      const asset2 = await createTestAsset(
-        serviceClient,
-        tenantId2,
-        'HVAC Unit #1'
-      );
+      const dept1 = await createTestDepartment(client1, tenantId1, 'Engineering');
+      const dept2 = await createTestDepartment(client2, tenantId2, 'Engineering');
+
+      const asset1 = await createTestAsset(client1, tenantId1, 'HVAC Unit #1');
+      const asset2 = await createTestAsset(client2, tenantId2, 'HVAC Unit #1');
 
       // All should be created successfully
       expect(location1).toBeDefined();
@@ -140,48 +91,25 @@ describe('Multi-Tenant Isolation', () => {
     });
 
     it('should verify complete isolation across all entity types', async () => {
-      const { user: user1 } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
-
-      const { user: user2 } = await createTestUser(client);
-      const tenantId2 = await createTestTenant(client);
-
-      // Create all entity types in tenant1
-      const location1 = await createTestLocation(
-        serviceClient,
-        tenantId1,
-        'Location 1'
-      );
-      const dept1 = await createTestDepartmentDirect(
-        serviceClient,
-        tenantId1,
-        'Dept 1'
-      );
-      const asset1 = await createTestAsset(serviceClient, tenantId1, 'Asset 1');
-      const wo1 = await createTestWorkOrderDirect(serviceClient, tenantId1, 'Work Order 1');
-
-      // Create all entity types in tenant2
-      const location2 = await createTestLocation(
-        serviceClient,
-        tenantId2,
-        'Location 2'
-      );
-      const dept2 = await createTestDepartmentDirect(
-        serviceClient,
-        tenantId2,
-        'Dept 2'
-      );
-      const asset2 = await createTestAsset(serviceClient, tenantId2, 'Asset 2');
-      const wo2 = await createTestWorkOrderDirect(serviceClient, tenantId2, 'Work Order 2');
-
-      // Sign in as user1
       const client1 = createTestClient();
-      const { error: signInErr } = await client1.auth.signInWithPassword({
-        email: getUserEmail(user1),
-        password: TEST_PASSWORD,
-      });
-      expect(signInErr).toBeNull();
+      await createTestUser(client1);
+      const tenantId1 = await createTestTenant(client1);
       await setTenantContext(client1, tenantId1);
+
+      const client2 = createTestClient();
+      await createTestUser(client2);
+      const tenantId2 = await createTestTenant(client2);
+      await setTenantContext(client2, tenantId2);
+
+      const location1 = await createTestLocation(client1, tenantId1, 'Location 1');
+      const dept1 = await createTestDepartment(client1, tenantId1, 'Dept 1');
+      const asset1 = await createTestAsset(client1, tenantId1, 'Asset 1');
+      const wo1 = await createTestWorkOrder(client1, tenantId1, 'Work Order 1');
+
+      const location2 = await createTestLocation(client2, tenantId2, 'Location 2');
+      const dept2 = await createTestDepartment(client2, tenantId2, 'Dept 2');
+      const asset2 = await createTestAsset(client2, tenantId2, 'Asset 2');
+      const wo2 = await createTestWorkOrder(client2, tenantId2, 'Work Order 2');
 
       // User1 should only see tenant1 entities (use views)
       const { data: locations } = await client1

@@ -70,6 +70,20 @@ as $$
 declare
   v_tenant_id uuid;
 begin
+  -- Primary: Read from JWT claims (works across requests)
+  -- JWT claims are set by custom_access_token_hook based on user metadata
+  begin
+    v_tenant_id := (current_setting('request.jwt.claims', true)::json->>'tenant_id')::uuid;
+    if v_tenant_id is not null then
+      return v_tenant_id;
+    end if;
+  exception
+    when others then
+      null; -- JWT claim not set, try fallback
+  end;
+  
+  -- Fallback: Session variable (for RPC functions within same call)
+  -- This maintains backward compatibility for RPC functions that set context
   begin
     v_tenant_id := pg_catalog.current_setting('app.current_tenant_id', true)::uuid;
     return v_tenant_id;
@@ -80,7 +94,8 @@ begin
 end;
 $$;
 
-comment on function authz.get_current_tenant_id() is 'Gets current tenant ID from session context variable. This is a convenience helper for views and RPC functions to derive tenant context. CRITICAL: This is NOT used for security enforcement - RLS policies must derive tenant access via auth.uid() and membership tables. PostgREST requests are stateless, so tenant context is only reliable within a single RPC call.';
+comment on function authz.get_current_tenant_id() is 'Gets current tenant ID from JWT claims (primary) or session context variable (fallback). JWT claims are set by custom_access_token_hook based on user metadata and persist across PostgREST requests. Session variable fallback maintains backward compatibility for RPC functions. CRITICAL: This is NOT used for security enforcement - RLS policies must derive tenant access via auth.uid() and membership tables.';
 
 revoke all on function authz.get_current_tenant_id() from public;
 grant execute on function authz.get_current_tenant_id() to authenticated;
+grant execute on function authz.get_current_tenant_id() to anon;

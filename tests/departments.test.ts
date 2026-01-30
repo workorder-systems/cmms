@@ -1,22 +1,15 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser, TEST_PASSWORD, getUserEmail } from './helpers/auth';
 import { createTestTenant, addUserToTenant, setTenantContext } from './helpers/tenant';
-import { createTestDepartment, createTestDepartmentDirect, createTestAsset } from './helpers/entities';
+import { createTestDepartment, createTestAsset } from './helpers/entities';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Departments', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
-
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Department Creation', () => {
@@ -33,10 +26,9 @@ describe('Departments', () => {
       expect(departmentId).toBeDefined();
       expect(typeof departmentId).toBe('string');
 
-      // Verify department exists
-      const { data: department, error } = await serviceClient
-        .schema('app')
-        .from('departments')
+      await setTenantContext(client, tenantId);
+      const { data: department, error } = await client
+        .from('v_departments')
         .select('*')
         .eq('id', departmentId)
         .single();
@@ -58,10 +50,9 @@ describe('Departments', () => {
         'MAINT'
       );
 
-      // Verify department with code
-      const { data: department } = await serviceClient
-        .schema('app')
-        .from('departments')
+      await setTenantContext(client, tenantId);
+      const { data: department } = await client
+        .from('v_departments')
         .select('*')
         .eq('id', departmentId)
         .single();
@@ -133,10 +124,6 @@ describe('Departments', () => {
       const { user: user2 } = await createTestUser(client);
       const tenantId2 = await createTestTenant(client);
 
-      // Create departments in both tenants
-      const dept1 = await createTestDepartmentDirect(serviceClient, tenantId1, 'Tenant 1 Dept');
-      const dept2 = await createTestDepartmentDirect(serviceClient, tenantId2, 'Tenant 2 Dept');
-
       // Sign in as user1
       const client1 = createTestClient();
       const { error: signInErr } = await client1.auth.signInWithPassword({
@@ -145,6 +132,19 @@ describe('Departments', () => {
       });
       expect(signInErr).toBeNull();
       await setTenantContext(client1, tenantId1);
+
+      const dept1 = await createTestDepartment(client1, tenantId1, 'Tenant 1 Dept');
+
+      // Sign in as user2
+      const client2 = createTestClient();
+      const { error: signInErr2 } = await client2.auth.signInWithPassword({
+        email: getUserEmail(user2),
+        password: TEST_PASSWORD,
+      });
+      expect(signInErr2).toBeNull();
+      await setTenantContext(client2, tenantId2);
+
+      const dept2 = await createTestDepartment(client2, tenantId2, 'Tenant 2 Dept');
 
       // User1 should only see tenant1 departments (using view)
       const { data: departments, error } = await client1
@@ -178,10 +178,9 @@ describe('Departments', () => {
 
       expect(error).toBeNull();
 
-      // Verify update
-      const { data: department } = await serviceClient
-        .schema('app')
-        .from('departments')
+      await setTenantContext(client, tenantId);
+      const { data: department } = await client
+        .from('v_departments')
         .select('*')
         .eq('id', departmentId)
         .single();
@@ -209,10 +208,9 @@ describe('Departments', () => {
 
       expect(error).toBeNull();
 
-      // Verify code update
-      const { data: department } = await serviceClient
-        .schema('app')
-        .from('departments')
+      await setTenantContext(client, tenantId);
+      const { data: department } = await client
+        .from('v_departments')
         .select('*')
         .eq('id', departmentId)
         .single();
@@ -240,9 +238,9 @@ describe('Departments', () => {
       expect(error).toBeNull();
 
       // Verify deletion
-      const { data: department } = await serviceClient
-        .schema('app')
-        .from('departments')
+      await setTenantContext(client, tenantId);
+      const { data: department } = await client
+        .from('v_departments')
         .select('*')
         .eq('id', departmentId)
         .single();
@@ -254,13 +252,10 @@ describe('Departments', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const departmentId = await createTestDepartment(
-        client,
-        tenantId,
-        'Department'
-      );
+      await setTenantContext(client, tenantId);
+      const departmentId = await createTestDepartment(client, tenantId, 'Department');
       const assetId = await createTestAsset(
-        serviceClient,
+        client,
         tenantId,
         'Asset',
         undefined,
@@ -274,10 +269,10 @@ describe('Departments', () => {
       });
 
       // Verify asset's department_id is set to NULL
-      const { data: asset } = await serviceClient
-        .schema('app')
-        .from('assets')
-        .select('*')
+      await setTenantContext(client, tenantId);
+      const { data: asset } = await client
+        .from('v_assets')
+        .select('department_id')
         .eq('id', assetId)
         .single();
 

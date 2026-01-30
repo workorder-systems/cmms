@@ -8,6 +8,9 @@ If a decision changes, create a new ADR and mark the old one as **Superseded**.
 
 See [INDEX.md](INDEX.md) for the current ADR list and statuses.
 
+For implementation planning of proposed ADRs, see
+[implementation-plan.md](implementation-plan.md).
+
 ## Naming
 
 Use sequential numbering with a short, descriptive slug:

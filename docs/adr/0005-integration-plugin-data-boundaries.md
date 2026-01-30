@@ -1,7 +1,7 @@
 # ADR 0005: Integration and plugin data boundaries
 
 Date: 2026-01-28
-Status: Proposed
+Status: Accepted
 
 ## Context
 

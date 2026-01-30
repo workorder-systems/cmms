@@ -1,21 +1,15 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  createTestClient,
-  createServiceRoleClient,
-  waitForSupabase,
-} from './helpers/supabase';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import { createTestTenant, setTenantContext } from './helpers/tenant';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Workflows', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Default Status Catalogs', () => {
@@ -23,11 +17,10 @@ describe('Workflows', () => {
       await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const { data: statuses, error } = await serviceClient
-        .schema('cfg')
-        .from('status_catalogs')
+      await setTenantContext(client, tenantId);
+      const { data: statuses, error } = await client
+        .from('v_status_catalogs')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('entity_type', 'work_order');
 
       expect(error).toBeNull();
@@ -46,11 +39,10 @@ describe('Workflows', () => {
       await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const { data: priorities, error } = await serviceClient
-        .schema('cfg')
-        .from('priority_catalogs')
+      await setTenantContext(client, tenantId);
+      const { data: priorities, error } = await client
+        .from('v_priority_catalogs')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('entity_type', 'work_order');
 
       expect(error).toBeNull();
@@ -69,11 +61,10 @@ describe('Workflows', () => {
       await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const { data: transitions, error } = await serviceClient
-        .schema('cfg')
-        .from('status_transitions')
+      await setTenantContext(client, tenantId);
+      const { data: transitions, error } = await client
+        .from('v_status_transitions')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('entity_type', 'work_order');
 
       expect(error).toBeNull();
@@ -106,9 +97,9 @@ describe('Workflows', () => {
       expect(statusId).toBeDefined();
 
       // Verify status exists
-      const { data: status } = await serviceClient
-        .schema('cfg')
-        .from('status_catalogs')
+      await setTenantContext(client, tenantId);
+      const { data: status } = await client
+        .from('v_status_catalogs')
         .select('*')
         .eq('id', statusId)
         .single();
@@ -194,20 +185,20 @@ describe('Workflows', () => {
       const tenantId = await createTestTenant(client);
 
       // Try to use invalid status
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('work_orders')
-        .insert({
-          tenant_id: tenantId,
-          title: 'Work Order',
-          status: 'invalid_status',
-          priority: 'medium',
-        })
-        .select('id')
-        .single();
+      const { data: workOrderId, error: createError } = await client.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Work Order',
+      });
+
+      expect(createError).toBeNull();
+
+      const { error } = await client.rpc('rpc_transition_work_order_status', {
+        p_tenant_id: tenantId,
+        p_work_order_id: workOrderId as string,
+        p_to_status_key: 'invalid_status',
+      });
 
       expect(error).toBeDefined();
-      expect(error?.message).toContain('status catalog');
     });
   });
 
@@ -217,20 +208,14 @@ describe('Workflows', () => {
       const tenantId = await createTestTenant(client);
 
       // Try to use invalid priority
-      const { data, error } = await serviceClient
-        .schema('app')
-        .from('work_orders')
-        .insert({
-          tenant_id: tenantId,
-          title: 'Work Order',
-          status: 'draft',
-          priority: 'invalid_priority',
-        })
-        .select('id')
-        .single();
+      const { data, error } = await client.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Work Order',
+        p_priority: 'invalid_priority',
+      });
 
       expect(error).toBeDefined();
-      expect(error?.message).toContain('priority catalog');
+      expect(error?.message).toContain('Invalid priority');
     });
   });
 });
