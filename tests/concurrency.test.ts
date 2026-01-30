@@ -106,27 +106,36 @@ describe('Concurrent Operations', () => {
 
       const results = await Promise.allSettled(promises);
 
-      // At least one should succeed
+      // At least one should succeed (others may fail due to race condition)
       // rpc_complete_work_order returns void, so Supabase client returns { data: null, error: null } on success
       const succeeded = results.filter(r => {
         if (r.status === 'fulfilled') {
           const result = (r as PromiseFulfilledResult<any>).value;
-          // Check if error is null (success) or if result itself indicates success
-          return result && (result.error === null || result.error === undefined);
+          // Check if error is null (success)
+          return result && result.error === null;
         }
         return false;
       });
+      
+      // At least one completion should succeed
       expect(succeeded.length).toBeGreaterThan(0);
-
-      // Verify work order is completed
-      const { data: wo } = await adminClient
+      
+      // Verify work order is completed (only one completion should succeed due to status transition)
+      const { data: wo, error: fetchError } = await adminClient
         .from('v_work_orders')
         .select('status, completed_at')
         .eq('id', woId)
         .single();
+      
+      expect(fetchError).toBeNull();
 
+      // Verify work order is in completed status
       expect(wo?.status).toBe('completed');
       expect(wo?.completed_at).toBeDefined();
+      
+      // Verify only one completion succeeded (others failed due to status already being completed)
+      // This demonstrates that concurrent transitions are handled safely
+      expect(succeeded.length).toBe(1);
     });
 
     it('should handle concurrent role assignments', async () => {

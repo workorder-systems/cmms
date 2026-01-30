@@ -28,25 +28,33 @@ describe('Input Validation & Security', () => {
 
       // Attempt SQL injection in title
       const maliciousTitle = "'; DROP TABLE work_orders; --";
-      const { error } = await client.rpc('rpc_create_work_order', {
+      const { error, data: workOrderId } = await client.rpc('rpc_create_work_order', {
         p_tenant_id: tenantId,
         p_title: maliciousTitle,
         p_priority: 'medium',
       });
 
-      // Should either succeed (with sanitized input) or fail gracefully
-      // The key is that it doesn't execute SQL
-      if (!error) {
-        // If it succeeds, verify the title is stored as-is (not executed)
-        const { data: workOrders } = await client
-          .from('v_work_orders')
-          .select('title')
-          .eq('title', maliciousTitle)
-          .limit(1);
+      // Should succeed (parameterized queries prevent SQL injection)
+      expect(error).toBeNull();
+      expect(workOrderId).toBeDefined();
 
-        // Title should be stored literally, not executed
-        expect(workOrders?.length ?? 0).toBeGreaterThanOrEqual(0);
-      }
+      // Verify the title is stored literally as a string, not executed as SQL
+      const { data: workOrder, error: fetchError } = await client
+        .from('v_work_orders')
+        .select('title')
+        .eq('id', workOrderId)
+        .single();
+
+      expect(fetchError).toBeNull();
+      expect(workOrder).toBeDefined();
+      expect(workOrder?.title).toBe(maliciousTitle); // Stored exactly as provided, not executed
+
+      // Verify the table still exists (SQL wasn't executed)
+      const { data: allWorkOrders } = await client
+        .from('v_work_orders')
+        .select('id')
+        .limit(1);
+      expect(allWorkOrders).toBeDefined(); // Table still exists
     });
 
     it('should prevent SQL injection in description fields', async () => {
@@ -55,23 +63,27 @@ describe('Input Validation & Security', () => {
       await setTenantContext(client, tenantId);
 
       const maliciousDesc = "'; SELECT * FROM auth.users; --";
-      const woId = await createTestWorkOrder(
-        client,
-        tenantId,
-        'Test WO',
-        maliciousDesc
-      );
+      const { error, data: woId } = await client.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Test WO',
+        p_description: maliciousDesc,
+        p_priority: 'medium',
+      });
 
-      // Should succeed - description stored as text, not executed
+      // Should succeed - parameterized queries prevent SQL injection
+      expect(error).toBeNull();
       expect(woId).toBeDefined();
 
-      const { data: wo } = await client
+      // Verify the description is stored literally as a string, not executed as SQL
+      const { data: wo, error: fetchError } = await client
         .from('v_work_orders')
         .select('description')
         .eq('id', woId)
         .single();
 
-      expect(wo?.description).toBe(maliciousDesc);
+      expect(fetchError).toBeNull();
+      expect(wo).toBeDefined();
+      expect(wo?.description).toBe(maliciousDesc); // Stored exactly as provided, not executed
     });
 
     it('should use parameterized queries in RPC functions', async () => {

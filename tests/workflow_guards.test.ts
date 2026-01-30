@@ -149,80 +149,81 @@ describe('Workflow Guard Conditions', () => {
       expect(error?.message).toContain('Invalid status transition');
     });
 
-    it('should support equals guard conditions', async () => {
+    it('should support equals guard conditions on assigned_to field', async () => {
       const adminClient = createTestClient();
       const { user: admin } = await createTestUser(adminClient);
       const tenantId = await createTestTenant(adminClient);
       await setTenantContext(adminClient, tenantId);
 
+      // Create technician user for assignment
+      const technicianClient = createTestClient();
+      const { user: technician } = await createTestUser(technicianClient);
+      await addUserToTenant(adminClient, technician.id, tenantId);
+      await assignRoleToUser(adminClient, technician.id, tenantId, 'technician');
+
       // Create custom status
       await adminClient.rpc('rpc_create_status', {
         p_tenant_id: tenantId,
         p_entity_type: 'work_order',
-        p_key: 'high_priority_only',
-        p_name: 'High Priority Only',
+        p_key: 'assigned_review_required',
+        p_name: 'Assigned Review Required',
         p_category: 'open',
-        p_display_order: 11,
+        p_display_order: 12,
       });
 
-      // Create transition with equals guard condition on status (priority not available in entity_data)
-      // Note: entity_data only includes assigned_to and status, not priority
-      // Guard condition: status must equal 'draft' (using equals condition)
+      // Create transition with equals guard condition on assigned_to
+      // This tests that guard conditions work on fields other than status
+      // Guard condition: assigned_to must equal a specific user ID
       const { error: transitionError } = await adminClient.rpc('rpc_create_status_transition', {
         p_tenant_id: tenantId,
         p_entity_type: 'work_order',
-        p_from_status_key: 'draft',
-        p_to_status_key: 'high_priority_only',
+        p_from_status_key: 'assigned',
+        p_to_status_key: 'assigned_review_required',
         p_required_permission: 'workorder.edit',
-        p_guard_condition: { status: { equals: 'draft' } } as any, // status must equal 'draft'
+        p_guard_condition: { assigned_to: { equals: technician.id } } as any, // Must be assigned to technician
       });
       
       // Verify transition was created successfully
       expect(transitionError).toBeNull();
 
-      // Create work order without assigned_to (starts in 'draft')
-      const woIdHigh = await createTestWorkOrder(
+      // Create work order assigned to technician (starts in 'assigned' status)
+      const woIdAssigned = await createTestWorkOrder(
         adminClient,
         tenantId,
-        'High Priority WO',
-        undefined,
-        'high',
-        undefined // No assigned_to, so starts in 'draft'
-      );
-
-      // Should succeed - work order is in 'draft' status, guard condition checks status equals 'draft'
-      const { error: successError } = await adminClient.rpc('rpc_transition_work_order_status', {
-        p_tenant_id: tenantId,
-        p_work_order_id: woIdHigh,
-        p_to_status_key: 'high_priority_only',
-      });
-
-      // The transition should succeed - work order is in 'draft' status
-      // Guard condition checks status equals 'draft', which should pass
-      expect(successError).toBeNull();
-
-      // Create work order and transition it to 'assigned' first (so status is not 'draft')
-      const woIdMedium = await createTestWorkOrder(
-        adminClient,
-        tenantId,
-        'Medium Priority WO',
+        'Assigned WO',
         undefined,
         'medium',
-        undefined // No assigned_to, starts in 'draft'
+        technician.id // Assigned to technician
       );
-      
-      // Transition to 'assigned' so status is no longer 'draft'
-      await transitionWorkOrderStatus(adminClient, tenantId, woIdMedium, 'assigned');
 
-      // Should fail because status is 'assigned', not 'draft' (guard condition fails)
+      // Should succeed - work order is assigned to technician, guard condition passes
+      const { error: successError } = await adminClient.rpc('rpc_transition_work_order_status', {
+        p_tenant_id: tenantId,
+        p_work_order_id: woIdAssigned,
+        p_to_status_key: 'assigned_review_required',
+      });
+
+      expect(successError).toBeNull();
+
+      // Create work order assigned to a different user (admin)
+      const woIdOther = await createTestWorkOrder(
+        adminClient,
+        tenantId,
+        'Other Assigned WO',
+        undefined,
+        'medium',
+        admin.id // Assigned to admin, not technician
+      );
+
+      // Should fail because assigned_to doesn't match guard condition
       const { error: failError } = await adminClient.rpc('rpc_transition_work_order_status', {
         p_tenant_id: tenantId,
-        p_work_order_id: woIdMedium,
-        p_to_status_key: 'high_priority_only',
+        p_work_order_id: woIdOther,
+        p_to_status_key: 'assigned_review_required',
       });
 
       expect(failError).toBeDefined();
-      // Should fail because guard condition (status equals 'draft') is not met
+      // Should fail because guard condition (assigned_to equals technician.id) is not met
       if (failError?.message) {
         expect(failError.message).toContain('Invalid status transition');
       } else if (failError?.code) {
