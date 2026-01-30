@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { makeTenant } from './faker';
+import { TEST_PASSWORD } from './auth';
 
 /**
  * Create a test tenant using the RPC function.
@@ -98,12 +99,20 @@ export async function getTenantBySlug(
 
 /**
  * Set tenant context for a client
- * Updates user metadata and refreshes token to get new JWT with tenant_id claim
+ * Updates user metadata and forces a new token by signing out/in to trigger JWT hook
+ * This ensures the custom_access_token_hook runs and adds tenant_id to JWT claims
  */
 export async function setTenantContext(
   client: SupabaseClient,
   tenantId: string
 ): Promise<void> {
+  // Get current user email before signing out
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError || !userData?.user?.email) {
+    throw new Error(`Failed to get current user: ${userError?.message ?? 'No user email'}`);
+  }
+  const userEmail = userData.user.email;
+
   // Set tenant context (updates user metadata)
   const { error } = await client.rpc('rpc_set_tenant_context', {
     p_tenant_id: tenantId,
@@ -113,23 +122,24 @@ export async function setTenantContext(
     throw new Error(`Failed to set tenant context: ${error.message}`);
   }
 
-  // Refresh token to get new JWT with tenant_id claim
-  // This ensures tenant context persists across PostgREST requests
-  const { data: session, error: refreshError } = await client.auth.refreshSession();
-  
-  if (refreshError) {
-    // If refresh fails, try getting current session
-    // Token will be refreshed on next sign-in or request
-    const { data: signInData } = await client.auth.getSession();
-    if (signInData?.session) {
-      // Session exists, token will be refreshed automatically on next request
-      return;
-    }
-    throw new Error(`Failed to refresh token after setting tenant context: ${refreshError.message}`);
+  // Sign out to invalidate current token (ignore errors - session might already be invalid)
+  await client.auth.signOut().catch(() => {
+    // Ignore sign out errors - session might already be invalid
+  });
+
+  // Sign back in to force a new token (this triggers custom_access_token_hook)
+  // All test users use TEST_PASSWORD (from faker.makeUser())
+  const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+    email: userEmail,
+    password: TEST_PASSWORD,
+  });
+
+  if (signInError) {
+    throw new Error(`Failed to sign in after setting tenant context: ${signInError.message}. Make sure test user was created with TEST_PASSWORD.`);
   }
-  
-  // Update client with new session containing tenant_id claim
-  if (session?.session) {
-    await client.auth.setSession(session.session);
+
+  // Verify session was created with new token
+  if (!signInData?.session) {
+    throw new Error('Failed to get session after sign in - no session returned');
   }
 }
