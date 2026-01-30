@@ -6,6 +6,7 @@ import {
   makeLocationName,
   makeWorkOrderTitle,
 } from './faker';
+import { setTenantContext } from './tenant';
 
 /**
  * Create a test location via public RPC.
@@ -202,4 +203,150 @@ export async function transitionWorkOrderStatus(
   if (error) {
     throw new Error(`Failed to transition work order: ${error.message}`);
   }
+}
+
+/**
+ * Create a test time entry for a work order.
+ */
+export async function createTestTimeEntry(
+  client: SupabaseClient,
+  tenantId: string,
+  workOrderId: string,
+  minutes: number,
+  entryDate?: Date,
+  userId?: string,
+  description?: string
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_log_work_order_time', {
+    p_tenant_id: tenantId,
+    p_work_order_id: workOrderId,
+    p_minutes: minutes,
+    p_entry_date: entryDate ? entryDate.toISOString().split('T')[0] : null,
+    p_user_id: userId || null,
+    p_description: description || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create time entry: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Get time entry by ID (via public view).
+ */
+export async function getTimeEntry(
+  client: SupabaseClient,
+  timeEntryId: string
+): Promise<any> {
+  const { data, error } = await client
+    .from('v_work_order_time_entries')
+    .select('*')
+    .eq('id', timeEntryId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to get time entry: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Create a test attachment for a work order.
+ */
+export async function createTestAttachment(
+  client: SupabaseClient,
+  tenantId: string,
+  workOrderId: string,
+  fileRef: string,
+  label?: string,
+  kind?: string
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
+    p_tenant_id: tenantId,
+    p_work_order_id: workOrderId,
+    p_file_ref: fileRef,
+    p_label: label || null,
+    p_kind: kind || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create attachment: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Get attachment by ID (via public view).
+ */
+export async function getAttachment(
+  client: SupabaseClient,
+  attachmentId: string
+): Promise<any> {
+  const { data, error } = await client
+    .from('v_work_order_attachments')
+    .select('*')
+    .eq('id', attachmentId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to get attachment: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get maintenance types for a tenant (via public view).
+ */
+export async function getMaintenanceTypes(
+  client: SupabaseClient,
+  tenantId: string
+): Promise<any[]> {
+  await setTenantContext(client, tenantId);
+  
+  const { data, error } = await client
+    .from('v_maintenance_type_catalogs')
+    .select('*')
+    .order('category', { ascending: true })
+    .order('display_order', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to get maintenance types: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Create a custom maintenance type (requires tenant.admin permission).
+ */
+export async function createTestMaintenanceType(
+  client: SupabaseClient,
+  tenantId: string,
+  category: string,
+  key: string,
+  name: string,
+  description?: string,
+  displayOrder?: number
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_create_maintenance_type', {
+    p_tenant_id: tenantId,
+    p_category: category,
+    p_key: key,
+    p_name: name,
+    p_description: description || null,
+    p_display_order: displayOrder || null,
+    p_color: null,
+    p_icon: null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create maintenance type: ${error.message}`);
+  }
+
+  return data as string;
 }

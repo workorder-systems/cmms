@@ -702,7 +702,7 @@ begin
   
   perform authz.set_tenant_context(p_tenant_id);
   
-  return p_tenant_id;
+  return v_user_id;
 end;
 $$;
 

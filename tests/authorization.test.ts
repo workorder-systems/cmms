@@ -18,7 +18,7 @@ describe('Authorization & Roles', () => {
   });
 
   describe('Default Roles', () => {
-    it('should have admin and member roles for new tenant', async () => {
+    it('should have admin, member, technician, and manager roles for new tenant', async () => {
       await createTestUser(client);
       const tenantId = await createTestTenant(client);
       await setTenantContext(client, tenantId);
@@ -26,16 +26,18 @@ describe('Authorization & Roles', () => {
       const { data: roles, error } = await client
         .from('v_tenant_roles')
         .select('*')
-        .in('key', ['admin', 'member']);
+        .in('key', ['admin', 'member', 'technician', 'manager']);
 
       expect(error).toBeNull();
       expect(roles).toBeDefined();
       expect(roles).not.toBeNull();
-      expect(roles!.length).toBe(2);
+      expect(roles!.length).toBe(4);
 
       const roleKeys = roles!.map((r: any) => r.key);
       expect(roleKeys).toContain('admin');
       expect(roleKeys).toContain('member');
+      expect(roleKeys).toContain('technician');
+      expect(roleKeys).toContain('manager');
     });
 
     it('should have admin role with all permissions', async () => {
@@ -228,6 +230,181 @@ describe('Authorization & Roles', () => {
       const { error } = await memberClient.rpc('rpc_assign_role_to_user', {
         p_tenant_id: tenantId,
         p_user_id: anotherUser.id,
+        p_role_key: 'member',
+      });
+
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Permission denied');
+    });
+  });
+
+  describe('Technician Role', () => {
+    it('should have technician role with correct permissions', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data: permissions, error } = await client
+        .from('v_role_permissions')
+        .select('permission_key')
+        .eq('role_key', 'technician');
+
+      expect(error).toBeNull();
+      expect(permissions).toBeDefined();
+      const permissionKeys = permissions!.map((p: any) => p.permission_key);
+      expect(permissionKeys).toContain('workorder.view');
+      expect(permissionKeys).toContain('workorder.complete.assigned');
+      expect(permissionKeys).toContain('asset.view');
+      expect(permissionKeys).toContain('location.view');
+      expect(permissionKeys).not.toContain('workorder.create');
+      expect(permissionKeys).not.toContain('tenant.admin');
+    });
+
+    it('should allow technician to view work orders', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+
+      const technicianClient = createTestClient();
+      const { user: technician } = await createTestUser(technicianClient);
+      await addUserToTenant(adminClient, technician.id, tenantId);
+      await assignRoleToUser(adminClient, technician.id, tenantId, 'technician');
+
+      const { data: workOrderId } = await adminClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Test WO',
+        p_priority: 'medium',
+        p_assigned_to: technician.id,
+      });
+
+      await setTenantContext(technicianClient, tenantId);
+      const { data: workOrders, error } = await technicianClient
+        .from('v_work_orders')
+        .select('*')
+        .eq('id', workOrderId);
+
+      expect(error).toBeNull();
+      expect(workOrders).toBeDefined();
+      expect(workOrders!.length).toBe(1);
+    });
+
+    it('should allow technician to complete assigned work orders', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+
+      const technicianClient = createTestClient();
+      const { user: technician } = await createTestUser(technicianClient);
+      await addUserToTenant(adminClient, technician.id, tenantId);
+      await assignRoleToUser(adminClient, technician.id, tenantId, 'technician');
+
+      const { data: workOrderId } = await adminClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Assigned WO',
+        p_priority: 'medium',
+        p_assigned_to: technician.id,
+      });
+
+      // Transition to in_progress first
+      await technicianClient.rpc('rpc_transition_work_order_status', {
+        p_tenant_id: tenantId,
+        p_work_order_id: workOrderId,
+        p_to_status_key: 'in_progress',
+      });
+
+      // Complete the work order
+      const { error } = await technicianClient.rpc('rpc_complete_work_order', {
+        p_tenant_id: tenantId,
+        p_work_order_id: workOrderId,
+      });
+
+      expect(error).toBeNull();
+    });
+
+    it('should prevent technician from creating work orders', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+
+      const technicianClient = createTestClient();
+      const { user: technician } = await createTestUser(technicianClient);
+      await addUserToTenant(adminClient, technician.id, tenantId);
+      await assignRoleToUser(adminClient, technician.id, tenantId, 'technician');
+
+      const { data, error } = await technicianClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Test WO',
+        p_priority: 'medium',
+      });
+
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Permission denied');
+    });
+  });
+
+  describe('Manager Role', () => {
+    it('should have manager role with correct permissions', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data: permissions, error } = await client
+        .from('v_role_permissions')
+        .select('permission_key')
+        .eq('role_key', 'manager');
+
+      expect(error).toBeNull();
+      expect(permissions).toBeDefined();
+      const permissionKeys = permissions!.map((p: any) => p.permission_key);
+      expect(permissionKeys).toContain('workorder.create');
+      expect(permissionKeys).toContain('workorder.edit');
+      expect(permissionKeys).toContain('workorder.view');
+      expect(permissionKeys).toContain('asset.create');
+      expect(permissionKeys).toContain('asset.edit');
+      expect(permissionKeys).toContain('location.create');
+      expect(permissionKeys).not.toContain('tenant.admin');
+    });
+
+    it('should allow manager to create work orders', async () => {
+      const managerClient = createTestClient();
+      const { user: manager } = await createTestUser(managerClient);
+      const tenantId = await createTestTenant(managerClient);
+      await assignRoleToUser(managerClient, manager.id, tenantId, 'manager');
+
+      const { data: workOrderId, error } = await managerClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Manager Created WO',
+        p_priority: 'medium',
+      });
+
+      expect(error).toBeNull();
+      expect(workOrderId).toBeDefined();
+    });
+
+    it('should allow manager to manage assets', async () => {
+      const managerClient = createTestClient();
+      const { user: manager } = await createTestUser(managerClient);
+      const tenantId = await createTestTenant(managerClient);
+      await assignRoleToUser(managerClient, manager.id, tenantId, 'manager');
+
+      const { data: assetId, error } = await managerClient.rpc('rpc_create_asset', {
+        p_tenant_id: tenantId,
+        p_name: 'Manager Asset',
+      });
+
+      expect(error).toBeNull();
+      expect(assetId).toBeDefined();
+    });
+
+    it('should prevent manager from performing tenant administration', async () => {
+      const managerClient = createTestClient();
+      const { user: manager } = await createTestUser(managerClient);
+      const tenantId = await createTestTenant(managerClient);
+      await assignRoleToUser(managerClient, manager.id, tenantId, 'manager');
+
+      const { data, error } = await managerClient.rpc('rpc_assign_role_to_user', {
+        p_tenant_id: tenantId,
+        p_user_id: manager.id,
         p_role_key: 'member',
       });
 
