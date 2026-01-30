@@ -189,13 +189,18 @@ describe('Assets', () => {
     });
 
     it('should allow same asset_number in different tenants', async () => {
-      await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
-      await createTestUser(client);
-      const tenantId2 = await createTestTenant(client);
+      const client1 = createTestClient();
+      await createTestUser(client1);
+      const tenantId1 = await createTestTenant(client1);
+      await setTenantContext(client1, tenantId1);
+
+      const client2 = createTestClient();
+      await createTestUser(client2);
+      const tenantId2 = await createTestTenant(client2);
+      await setTenantContext(client2, tenantId2);
 
       const asset1 = await createTestAsset(
-        client,
+        client1,
         tenantId1,
         'Asset 1',
         undefined,
@@ -203,7 +208,7 @@ describe('Assets', () => {
         'SHARED-001'
       );
       const asset2 = await createTestAsset(
-        client,
+        client2,
         tenantId2,
         'Asset 2',
         undefined,

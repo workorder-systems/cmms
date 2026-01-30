@@ -111,6 +111,8 @@ describe('Integrations and plugins', () => {
     const { data: installationId, error } = await adminClient.rpc('rpc_install_plugin', {
       p_tenant_id: tenantId,
       p_plugin_key: 'hidden_plugin',
+      p_secret_ref: 'secret-ref-2',
+      p_config: { region: 'us-west-2' },
     });
     expect(error).toBeNull();
     expect(installationId).toBeDefined();
