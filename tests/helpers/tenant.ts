@@ -98,16 +98,38 @@ export async function getTenantBySlug(
 
 /**
  * Set tenant context for a client
+ * Updates user metadata and refreshes token to get new JWT with tenant_id claim
  */
 export async function setTenantContext(
   client: SupabaseClient,
   tenantId: string
 ): Promise<void> {
+  // Set tenant context (updates user metadata)
   const { error } = await client.rpc('rpc_set_tenant_context', {
     p_tenant_id: tenantId,
   });
 
   if (error) {
     throw new Error(`Failed to set tenant context: ${error.message}`);
+  }
+
+  // Refresh token to get new JWT with tenant_id claim
+  // This ensures tenant context persists across PostgREST requests
+  const { data: session, error: refreshError } = await client.auth.refreshSession();
+  
+  if (refreshError) {
+    // If refresh fails, try getting current session
+    // Token will be refreshed on next sign-in or request
+    const { data: signInData } = await client.auth.getSession();
+    if (signInData?.session) {
+      // Session exists, token will be refreshed automatically on next request
+      return;
+    }
+    throw new Error(`Failed to refresh token after setting tenant context: ${refreshError.message}`);
+  }
+  
+  // Update client with new session containing tenant_id claim
+  if (session?.session) {
+    await client.auth.setSession(session.session);
   }
 }

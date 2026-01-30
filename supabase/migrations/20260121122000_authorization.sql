@@ -358,12 +358,21 @@ begin
       errcode = '42501';
   end if;
   
+  -- Update user metadata for JWT hook (primary mechanism)
+  -- This enables tenant context to persist across PostgREST requests via JWT claims
+  update auth.users
+  set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || 
+    jsonb_build_object('current_tenant_id', p_tenant_id::text)
+  where id = v_user_id;
+  
+  -- Also set session variable for RPC functions (fallback)
+  -- Maintains backward compatibility for RPC functions that use context within same call
   perform pg_catalog.set_config('app.current_tenant_id', p_tenant_id::text, true);
 end;
 $$;
 
 comment on function authz.set_tenant_context(uuid) is 
-  'Validates user membership in tenant and sets session context variable. For RPC convenience only - security must not depend on this. Validates membership before setting context. Side effects: Sets app.current_tenant_id session variable. Security implications: Requires user to be authenticated and member of the tenant.';
+  'Validates user membership in tenant and sets tenant context via user metadata (for JWT claims) and session variable (for RPC fallback). Primary mechanism: Updates auth.users.raw_user_meta_data with current_tenant_id, which is then added to JWT claims by custom_access_token_hook. Client must refresh token after calling this to get new JWT with updated tenant_id claim. For RPC convenience only - security must not depend on this. Validates membership before setting context. Side effects: Updates user metadata and sets app.current_tenant_id session variable. Security implications: Requires user to be authenticated and member of the tenant.';
 
 revoke all on function authz.set_tenant_context(uuid) from public;
 grant execute on function authz.set_tenant_context(uuid) to authenticated;

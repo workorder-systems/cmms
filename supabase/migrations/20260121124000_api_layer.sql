@@ -58,7 +58,7 @@ end;
 $$;
 
 comment on function public.rpc_set_tenant_context(uuid) is 
-  'Sets tenant context for subsequent queries in the session. Validates user membership before setting context. Clients should call this before querying tenant-scoped views. No rate limiting as this is a frequent operation. Side effects: Sets app.current_tenant_id session variable. Security implications: Validates user is authenticated and member of the tenant.';
+  'Sets tenant context by updating user metadata (for JWT claims) and session variable (for RPC fallback). Validates user membership before setting context. Clients should call this before querying tenant-scoped views, then refresh their token to get new JWT with tenant_id claim. The tenant_id claim persists across PostgREST requests, enabling stateless tenant context. No rate limiting as this is a frequent operation. Side effects: Updates auth.users.raw_user_meta_data and sets app.current_tenant_id session variable. Security implications: Validates user is authenticated and member of the tenant.';
 
 revoke all on function public.rpc_set_tenant_context(uuid) from public;
 grant execute on function public.rpc_set_tenant_context(uuid) to authenticated;
