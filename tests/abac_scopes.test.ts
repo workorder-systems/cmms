@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createTestClient, waitForSupabase, createServiceRoleClient } from './helpers/supabase';
+import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import {
   createTestTenant,
@@ -17,12 +17,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('ABAC Scopes', () => {
   let client: SupabaseClient;
-  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     await waitForSupabase();
     client = createTestClient();
-    serviceClient = createServiceRoleClient();
   });
 
   describe('Location Scopes', () => {
@@ -39,13 +37,14 @@ describe('ABAC Scopes', () => {
       const location1Id = await createTestLocation(adminClient, tenantId, 'Location 1');
       const location2Id = await createTestLocation(adminClient, tenantId, 'Location 2');
 
-      // Grant location scope to user via service client (admin-only operation)
-      await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId,
-        scope_type: 'location',
-        scope_value: location1Id,
+      // Grant location scope to user via RPC (requires tenant.admin permission)
+      const { error: grantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: location1Id,
       });
+      expect(grantError).toBeNull();
 
       await setTenantContext(scopedUserClient, tenantId);
 
@@ -107,21 +106,22 @@ describe('ABAC Scopes', () => {
       const location2Id = await createTestLocation(adminClient, tenantId, 'Location 2');
       const location3Id = await createTestLocation(adminClient, tenantId, 'Location 3');
 
-      // Grant multiple location scopes
-      await serviceClient.from('app.membership_scopes').insert([
-        {
-          user_id: scopedUser.id,
-          tenant_id: tenantId,
-          scope_type: 'location',
-          scope_value: location1Id,
-        },
-        {
-          user_id: scopedUser.id,
-          tenant_id: tenantId,
-          scope_type: 'location',
-          scope_value: location2Id,
-        },
-      ]);
+      // Grant multiple location scopes via RPC (requires tenant.admin permission)
+      const { error: grant1Error } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: location1Id,
+      });
+      expect(grant1Error).toBeNull();
+
+      const { error: grant2Error } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: location2Id,
+      });
+      expect(grant2Error).toBeNull();
 
       await setTenantContext(scopedUserClient, tenantId);
 
@@ -149,15 +149,14 @@ describe('ABAC Scopes', () => {
 
       const locationId = await createTestLocation(adminClient, tenantId, 'Scoped Location');
 
-      // Grant scope via service client
-      // Note: app.membership_scopes may not be directly accessible via PostgREST (PGRST205)
-      // This is expected - the table is internal and managed through RPC functions
-      const { error: insertError } = await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId,
-        scope_type: 'location',
-        scope_value: locationId,
+      // Grant scope via RPC (requires tenant.admin permission)
+      const { error: grantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: locationId,
       });
+      expect(grantError).toBeNull();
 
       // Test has_location_scope function
       // Note: authz schema functions may not be directly accessible via PostgREST
@@ -173,21 +172,9 @@ describe('ABAC Scopes', () => {
         // authz schema functions are internal helpers, not exposed via public API
         // Error codes: PGRST202 (function not found) or PGRST205 (relation not accessible)
         expect(['PGRST202', 'PGRST205']).toContain(rpcError.code);
-        
-        // If insert also failed (PGRST205), that's expected - table is not exposed via PostgREST
-        // The test verifies that scope management functions exist and are protected
-        if (insertError?.code === 'PGRST205') {
-          // Table not accessible via PostgREST - this is expected security behavior
-          expect(insertError.code).toBe('PGRST205');
-        } else {
-          // Insert succeeded - scope was granted
-          expect(insertError).toBeNull();
-        }
       } else {
         // RPC is accessible - verify it returns true (scope was granted)
         expect(hasScope).toBe(true);
-        // If RPC works, insert should have succeeded
-        expect(insertError).toBeNull();
       }
 
       // Test without scope
@@ -218,13 +205,14 @@ describe('ABAC Scopes', () => {
       const dept1Id = await createTestDepartment(adminClient, tenantId, 'Department 1');
       const dept2Id = await createTestDepartment(adminClient, tenantId, 'Department 2');
 
-      // Grant department scope
-      await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId,
-        scope_type: 'department',
-        scope_value: dept1Id,
+      // Grant department scope via RPC (requires tenant.admin permission)
+      const { error: grantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'department',
+        p_scope_value: dept1Id,
       });
+      expect(grantError).toBeNull();
 
       await setTenantContext(scopedUserClient, tenantId);
 
@@ -251,15 +239,14 @@ describe('ABAC Scopes', () => {
 
       const deptId = await createTestDepartment(adminClient, tenantId, 'Scoped Department');
 
-      // Grant scope via service client
-      // Note: app.membership_scopes may not be directly accessible via PostgREST (PGRST205)
-      // This is expected - the table is internal and managed through RPC functions
-      const { error: insertError } = await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId,
-        scope_type: 'department',
-        scope_value: deptId,
+      // Grant scope via RPC (requires tenant.admin permission)
+      const { error: grantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'department',
+        p_scope_value: deptId,
       });
+      expect(grantError).toBeNull();
 
       // Test has_department_scope function
       // Note: authz schema functions may not be directly accessible via PostgREST
@@ -275,21 +262,9 @@ describe('ABAC Scopes', () => {
         // authz schema functions are internal helpers, not exposed via public API
         // Error codes: PGRST202 (function not found) or PGRST205 (relation not accessible)
         expect(['PGRST202', 'PGRST205']).toContain(rpcError.code);
-        
-        // If insert also failed (PGRST205), that's expected - table is not exposed via PostgREST
-        // The test verifies that scope management functions exist and are protected
-        if (insertError?.code === 'PGRST205') {
-          // Table not accessible via PostgREST - this is expected security behavior
-          expect(insertError.code).toBe('PGRST205');
-        } else {
-          // Insert succeeded - scope was granted
-          expect(insertError).toBeNull();
-        }
       } else {
         // RPC is accessible - verify it returns true (scope was granted)
         expect(hasScope).toBe(true);
-        // If RPC works, insert should have succeeded
-        expect(insertError).toBeNull();
       }
 
       // Test without scope
@@ -307,6 +282,49 @@ describe('ABAC Scopes', () => {
   });
 
   describe('Scope Management', () => {
+    it('should require tenant.admin permission to grant scopes', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      // Create a non-admin user (member role)
+      const memberClient = createTestClient();
+      const { user: member } = await createTestUser(memberClient);
+      await addUserToTenant(adminClient, member.id, tenantId);
+      await setTenantContext(memberClient, tenantId);
+
+      const scopedUserClient = createTestClient();
+      const { user: scopedUser } = await createTestUser(scopedUserClient);
+      await addUserToTenant(adminClient, scopedUser.id, tenantId);
+
+      const locationId = await createTestLocation(adminClient, tenantId, 'Test Location');
+
+      // Member tries to grant scope (should fail - requires tenant.admin)
+      const { error: grantError } = await memberClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: locationId,
+      });
+
+      expect(grantError).toBeDefined();
+      if (grantError?.message) {
+        expect(grantError.message).toMatch(/Permission denied.*tenant\.admin/i);
+      } else if (grantError?.code) {
+        expect(grantError.code).toBe('42501');
+      }
+
+      // Admin can grant scope successfully
+      const { error: adminGrantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: locationId,
+      });
+      expect(adminGrantError).toBeNull();
+    });
+
     it('should validate location belongs to tenant when granting scope', async () => {
       const admin1Client = createTestClient();
       const { user: admin1 } = await createTestUser(admin1Client);
@@ -322,15 +340,22 @@ describe('ABAC Scopes', () => {
 
       const location2Id = await createTestLocation(admin2Client, tenantId2, 'Tenant2 Location');
 
+      await setTenantContext(admin1Client, tenantId1);
+
       // Should not be able to grant scope for Tenant2's location to Tenant1's user
-      // This would be enforced by foreign key or application logic
-      // For now, test that the scope doesn't grant access
-      await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId1, // User's tenant
-        scope_type: 'location',
-        scope_value: location2Id, // Other tenant's location
+      // RPC should validate that location belongs to tenant and reject the request
+      const { error: grantError } = await admin1Client.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId1, // User's tenant
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: location2Id, // Other tenant's location
       });
+
+      // Should fail because location belongs to different tenant
+      expect(grantError).toBeDefined();
+      if (grantError?.message) {
+        expect(grantError.message).toMatch(/not found or does not belong to tenant/i);
+      }
 
       await setTenantContext(scopedUserClient, tenantId1);
 
@@ -358,13 +383,22 @@ describe('ABAC Scopes', () => {
 
       const dept2Id = await createTestDepartment(admin2Client, tenantId2, 'Tenant2 Department');
 
-      // Should not grant access to other tenant's department
-      await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId1,
-        scope_type: 'department',
-        scope_value: dept2Id,
+      await setTenantContext(admin1Client, tenantId1);
+
+      // Should not be able to grant scope for Tenant2's department to Tenant1's user
+      // RPC should validate that department belongs to tenant and reject the request
+      const { error: grantError } = await admin1Client.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId1,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'department',
+        p_scope_value: dept2Id, // Other tenant's department
       });
+
+      // Should fail because department belongs to different tenant
+      expect(grantError).toBeDefined();
+      if (grantError?.message) {
+        expect(grantError.message).toMatch(/not found or does not belong to tenant/i);
+      }
 
       await setTenantContext(scopedUserClient, tenantId1);
 
@@ -390,13 +424,14 @@ describe('ABAC Scopes', () => {
 
       const locationId = await createTestLocation(adminClient, tenantId, 'Scoped Location');
 
-      // Grant both role and scope
-      await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId,
-        scope_type: 'location',
-        scope_value: locationId,
+      // Grant scope via RPC (requires tenant.admin permission)
+      const { error: grantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: locationId,
       });
+      expect(grantError).toBeNull();
 
       await setTenantContext(scopedUserClient, tenantId);
 
@@ -443,13 +478,14 @@ describe('ABAC Scopes', () => {
       const asset1Id = await createTestAsset(adminClient, tenantId, 'Asset 1', location1Id);
       const asset2Id = await createTestAsset(adminClient, tenantId, 'Asset 2', location2Id);
 
-      // Grant scope to location1 only
-      await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId,
-        scope_type: 'location',
-        scope_value: location1Id,
+      // Grant scope to location1 only via RPC (requires tenant.admin permission)
+      const { error: grantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'location',
+        p_scope_value: location1Id,
       });
+      expect(grantError).toBeNull();
 
       await setTenantContext(scopedUserClient, tenantId);
 
@@ -480,13 +516,14 @@ describe('ABAC Scopes', () => {
       const asset1Id = await createTestAsset(adminClient, tenantId, 'Asset 1', undefined, dept1Id);
       const asset2Id = await createTestAsset(adminClient, tenantId, 'Asset 2', undefined, dept2Id);
 
-      // Grant scope to dept1 only
-      await serviceClient.from('app.membership_scopes').insert({
-        user_id: scopedUser.id,
-        tenant_id: tenantId,
-        scope_type: 'department',
-        scope_value: dept1Id,
+      // Grant scope to dept1 only via RPC (requires tenant.admin permission)
+      const { error: grantError } = await adminClient.rpc('rpc_grant_scope', {
+        p_tenant_id: tenantId,
+        p_user_id: scopedUser.id,
+        p_scope_type: 'department',
+        p_scope_value: dept1Id,
       });
+      expect(grantError).toBeNull();
 
       await setTenantContext(scopedUserClient, tenantId);
 

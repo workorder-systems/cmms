@@ -177,6 +177,138 @@ comment on function public.rpc_assign_role_to_user(uuid, uuid, text) is
 revoke all on function public.rpc_assign_role_to_user(uuid, uuid, text) from public;
 grant execute on function public.rpc_assign_role_to_user(uuid, uuid, text) to authenticated;
 
+create or replace function public.rpc_grant_scope(
+  p_tenant_id uuid,
+  p_user_id uuid,
+  p_scope_type text,
+  p_scope_value uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_granted_by uuid;
+begin
+  perform util.check_rate_limit('scope_grant', null, 10, 1, auth.uid(), p_tenant_id);
+  
+  v_granted_by := authz.validate_authenticated();
+
+  -- Validate scope_type format matches table constraint
+  if not (p_scope_type ~ '^[a-z0-9_]+$' and length(p_scope_type) >= 1 and length(p_scope_type) <= 50) then
+    raise exception using
+      message = format('Invalid scope_type format: must match ^[a-z0-9_]+$ and be 1-50 characters, got: %s', p_scope_type),
+      errcode = '23514';
+  end if;
+
+  -- Validate scope_value belongs to tenant for known scope types
+  if p_scope_type = 'location' then
+    if p_scope_value is null then
+      raise exception using
+        message = 'scope_value is required for location scope_type',
+        errcode = '23503';
+    end if;
+    
+    if not exists (
+      select 1 from app.locations 
+      where id = p_scope_value and tenant_id = p_tenant_id
+    ) then
+      raise exception using
+        message = format('Location %s not found or does not belong to tenant', p_scope_value),
+        errcode = '23503';
+    end if;
+  elsif p_scope_type = 'department' then
+    if p_scope_value is null then
+      raise exception using
+        message = 'scope_value is required for department scope_type',
+        errcode = '23503';
+    end if;
+    
+    if not exists (
+      select 1 from app.departments 
+      where id = p_scope_value and tenant_id = p_tenant_id
+    ) then
+      raise exception using
+        message = format('Department %s not found or does not belong to tenant', p_scope_value),
+        errcode = '23503';
+    end if;
+  end if;
+
+  perform authz.validate_permission(v_granted_by, p_tenant_id, 'tenant.admin');
+  perform authz.set_tenant_context(p_tenant_id);
+
+  -- Ensure user is tenant member (create membership if needed)
+  insert into app.tenant_memberships (user_id, tenant_id)
+  values (p_user_id, p_tenant_id)
+  on conflict (user_id, tenant_id) do nothing;
+
+  -- Grant scope (idempotent)
+  insert into app.membership_scopes (user_id, tenant_id, scope_type, scope_value)
+  values (p_user_id, p_tenant_id, p_scope_type, p_scope_value)
+  on conflict (user_id, tenant_id, scope_type, scope_value) do nothing;
+end;
+$$;
+
+comment on function public.rpc_grant_scope(uuid, uuid, text, uuid) is 
+  'Grants an ABAC scope to a user in a tenant. Requires tenant.admin permission. Validates scope_type format and that scope_value (for location/department scopes) belongs to the tenant. Rate limited to 10 grants per minute per user. Side effects: Creates tenant membership if needed and grants scope. Security implications: Requires tenant.admin permission. Scope grants are idempotent.';
+
+revoke all on function public.rpc_grant_scope(uuid, uuid, text, uuid) from public;
+grant execute on function public.rpc_grant_scope(uuid, uuid, text, uuid) to authenticated;
+
+create or replace function public.rpc_revoke_scope(
+  p_tenant_id uuid,
+  p_user_id uuid,
+  p_scope_type text,
+  p_scope_value uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_revoked_by uuid;
+begin
+  perform util.check_rate_limit('scope_revoke', null, 10, 1, auth.uid(), p_tenant_id);
+  
+  v_revoked_by := authz.validate_authenticated();
+
+  -- Validate scope_type format matches table constraint
+  if not (p_scope_type ~ '^[a-z0-9_]+$' and length(p_scope_type) >= 1 and length(p_scope_type) <= 50) then
+    raise exception using
+      message = format('Invalid scope_type format: must match ^[a-z0-9_]+$ and be 1-50 characters, got: %s', p_scope_type),
+      errcode = '23514';
+  end if;
+
+  -- Validate user is tenant member
+  if not authz.is_tenant_member(p_user_id, p_tenant_id) then
+    raise exception using
+      message = format('User %s is not a member of tenant %s', p_user_id, p_tenant_id),
+      errcode = '42501';
+  end if;
+
+  perform authz.validate_permission(v_revoked_by, p_tenant_id, 'tenant.admin');
+  perform authz.set_tenant_context(p_tenant_id);
+
+  -- Revoke scope (idempotent - no error if scope doesn't exist)
+  delete from app.membership_scopes
+  where user_id = p_user_id
+    and tenant_id = p_tenant_id
+    and scope_type = p_scope_type
+    and (
+      (p_scope_value is null and scope_value is null)
+      or scope_value = p_scope_value
+    );
+end;
+$$;
+
+comment on function public.rpc_revoke_scope(uuid, uuid, text, uuid) is 
+  'Revokes an ABAC scope from a user in a tenant. Requires tenant.admin permission. Validates scope_type format and user membership. Rate limited to 10 revocations per minute per user. Side effects: Removes scope grant. Security implications: Requires tenant.admin permission. Scope revocation is idempotent (no error if scope does not exist).';
+
+revoke all on function public.rpc_revoke_scope(uuid, uuid, text, uuid) from public;
+grant execute on function public.rpc_revoke_scope(uuid, uuid, text, uuid) to authenticated;
+
 create or replace function public.rpc_has_permission(
   p_tenant_id uuid,
   p_permission_key text
