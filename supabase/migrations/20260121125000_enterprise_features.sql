@@ -1136,7 +1136,14 @@ select
   pi.updated_at
 from int.plugin_installations pi
 join int.plugins p on p.id = pi.plugin_id
-where pi.tenant_id = authz.get_current_tenant_id();
+where pi.tenant_id = authz.get_current_tenant_id()
+  -- Additional permission check: only show if user has tenant.admin permission
+  -- This works together with RLS policies to ensure admin-only access
+  -- Handle NULL user_id gracefully (returns false, hiding installations)
+  and (
+    (select auth.uid()) is not null
+    and authz.has_permission((select auth.uid()), pi.tenant_id, 'tenant.admin')
+  );
 
 comment on view public.v_plugin_installations is
   'Tenant-scoped plugin installation status for the current tenant context. Admin-only view; includes plugin metadata and configuration references.';
