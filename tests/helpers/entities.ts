@@ -194,6 +194,20 @@ export async function transitionWorkOrderStatus(
   workOrderId: string,
   toStatus: string
 ): Promise<void> {
+  // Check current status first to avoid unnecessary transitions
+  // Set tenant context to query the view (idempotent if already set)
+  await setTenantContext(client, tenantId);
+  const { data: wo, error: queryError } = await client
+    .from('v_work_orders')
+    .select('status')
+    .eq('id', workOrderId)
+    .single();
+
+  // Skip if already in target status (only if query succeeded)
+  if (!queryError && wo?.status === toStatus) {
+    return;
+  }
+
   const { error } = await client.rpc('rpc_transition_work_order_status', {
     p_tenant_id: tenantId,
     p_work_order_id: workOrderId,
@@ -201,7 +215,7 @@ export async function transitionWorkOrderStatus(
   });
 
   if (error) {
-    throw new Error(`Failed to transition work order: ${error.message}`);
+    throw new Error(`Failed to transition work order: ${error.message || JSON.stringify(error)}`);
   }
 }
 

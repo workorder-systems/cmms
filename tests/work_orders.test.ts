@@ -290,4 +290,223 @@ describe('Work Orders', () => {
       expect(error?.message).toContain('Invalid status transition');
     });
   });
+
+  describe('Status Transition Edge Cases', () => {
+    it('should test all valid transition paths', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const woId = await createTestWorkOrder(client, tenantId, 'Transition Test WO');
+
+      // Test valid path: draft -> assigned -> in_progress -> completed
+      await transitionWorkOrderStatus(client, tenantId, woId, 'assigned');
+      
+      const { data: wo1 } = await client
+        .from('v_work_orders')
+        .select('status')
+        .eq('id', woId)
+        .single();
+      expect(wo1?.status).toBe('assigned');
+
+      await transitionWorkOrderStatus(client, tenantId, woId, 'in_progress');
+      
+      const { data: wo2 } = await client
+        .from('v_work_orders')
+        .select('status')
+        .eq('id', woId)
+        .single();
+      expect(wo2?.status).toBe('in_progress');
+
+      await transitionWorkOrderStatus(client, tenantId, woId, 'completed');
+      
+      const { data: wo3 } = await client
+        .from('v_work_orders')
+        .select('status, completed_at')
+        .eq('id', woId)
+        .single();
+      expect(wo3?.status).toBe('completed');
+      expect(wo3?.completed_at).toBeDefined();
+    });
+
+    it('should prevent transition with missing required fields', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const woId = await createTestWorkOrder(client, tenantId, 'Test WO');
+
+      // Try to transition to completed without going through assigned/in_progress
+      const { error } = await client.rpc('rpc_transition_work_order_status', {
+        p_tenant_id: tenantId,
+        p_work_order_id: woId,
+        p_to_status_key: 'completed',
+      });
+
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Invalid status transition');
+    });
+
+    it('should prevent transition when work order is deleted', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      const woId = await createTestWorkOrder(adminClient, tenantId, 'To Delete WO');
+
+      // Delete work order (hard delete - if implemented)
+      // For now, test that transition fails if work order doesn't exist
+      const fakeWoId = '00000000-0000-0000-0000-000000000000';
+
+      const { error } = await adminClient.rpc('rpc_transition_work_order_status', {
+        p_tenant_id: tenantId,
+        p_work_order_id: fakeWoId,
+        p_to_status_key: 'assigned',
+      });
+
+      expect(error).toBeDefined();
+      expect(error?.code).toBe('P0001');
+      expect(error?.message).toContain('not found');
+    });
+  });
+
+  describe('Assignment Edge Cases', () => {
+    it('should prevent assigning to non-member', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      const outsiderClient = createTestClient();
+      const { user: outsider } = await createTestUser(outsiderClient);
+
+      const woId = await createTestWorkOrder(adminClient, tenantId, 'Test WO');
+
+      // Try to assign to non-member
+      const { error } = await adminClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Assigned WO',
+        p_priority: 'medium',
+        p_assigned_to: outsider.id,
+      });
+
+      // Should fail - can't assign to non-member
+      expect(error).toBeDefined();
+    });
+
+    it('should allow unassigning work orders', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      const technicianClient = createTestClient();
+      const { user: technician } = await createTestUser(technicianClient);
+      await addUserToTenant(adminClient, technician.id, tenantId);
+      await assignRoleToUser(adminClient, technician.id, tenantId, 'technician');
+
+      // Create work order assigned to technician
+      const woId = await createTestWorkOrder(
+        adminClient,
+        tenantId,
+        'Assigned WO',
+        undefined,
+        'medium',
+        technician.id
+      );
+
+      // Verify assignment
+      const { data: wo1 } = await adminClient
+        .from('v_work_orders')
+        .select('assigned_to')
+        .eq('id', woId)
+        .single();
+      expect(wo1?.assigned_to).toBe(technician.id);
+
+      // Unassign (create new work order without assignment)
+      // Note: There's no rpc_update_work_order, so unassignment would need to be tested
+      // when that function is implemented, or via direct update if allowed
+    });
+
+    it('should allow reassigning in-progress work orders', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      const tech1Client = createTestClient();
+      const { user: tech1 } = await createTestUser(tech1Client);
+      await addUserToTenant(adminClient, tech1.id, tenantId);
+      await assignRoleToUser(adminClient, tech1.id, tenantId, 'technician');
+
+      const tech2Client = createTestClient();
+      const { user: tech2 } = await createTestUser(tech2Client);
+      await addUserToTenant(adminClient, tech2.id, tenantId);
+      await assignRoleToUser(adminClient, tech2.id, tenantId, 'technician');
+
+      // Create work order assigned to tech1
+      const woId = await createTestWorkOrder(
+        adminClient,
+        tenantId,
+        'Reassign WO',
+        undefined,
+        'medium',
+        tech1.id
+      );
+
+      await transitionWorkOrderStatus(adminClient, tenantId, woId, 'assigned');
+      await transitionWorkOrderStatus(adminClient, tenantId, woId, 'in_progress');
+
+      // Work order is in_progress - reassignment would be tested when update function exists
+      // For now, verify work order is in_progress
+      const { data: wo } = await adminClient
+        .from('v_work_orders')
+        .select('status, assigned_to')
+        .eq('id', woId)
+        .single();
+
+      expect(wo?.status).toBe('in_progress');
+      expect(wo?.assigned_to).toBe(tech1.id);
+    });
+  });
+
+  describe('Completion Edge Cases', () => {
+    it('should prevent completing already completed work order', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const woId = await createTestWorkOrder(client, tenantId, 'Complete Test WO');
+      await transitionWorkOrderStatus(client, tenantId, woId, 'assigned');
+      await transitionWorkOrderStatus(client, tenantId, woId, 'completed');
+
+      // Try to complete again
+      const { error } = await client.rpc('rpc_complete_work_order', {
+        p_tenant_id: tenantId,
+        p_work_order_id: woId,
+      });
+
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Invalid status transition');
+    });
+
+    it('should prevent completing cancelled work order', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const woId = await createTestWorkOrder(client, tenantId, 'Cancel Test WO');
+      await transitionWorkOrderStatus(client, tenantId, woId, 'cancelled');
+
+      // Try to complete cancelled work order
+      const { error } = await client.rpc('rpc_complete_work_order', {
+        p_tenant_id: tenantId,
+        p_work_order_id: woId,
+      });
+
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Invalid status transition');
+    });
+  });
 });

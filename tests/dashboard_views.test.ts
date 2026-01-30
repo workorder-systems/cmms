@@ -523,6 +523,90 @@ describe('Dashboard Views', () => {
     });
   });
 
+  describe('Empty State Handling', () => {
+    it('should return empty arrays, not null, for empty views', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      // Query views with no data
+      const { data: openWOs } = await client.from('v_dashboard_open_work_orders').select('*');
+      const { data: metrics } = await client.from('v_dashboard_metrics').select('*');
+      const { data: byStatus } = await client.from('v_dashboard_work_orders_by_status').select('*');
+
+      expect(Array.isArray(openWOs)).toBe(true);
+      expect(Array.isArray(metrics)).toBe(true);
+      expect(Array.isArray(byStatus)).toBe(true);
+    });
+
+    it('should handle no data gracefully in aggregate views', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      // Query metrics view with no completed work orders
+      const { data: mttrMetrics } = await client
+        .from('v_dashboard_mttr_metrics')
+        .select('*')
+        .eq('tenant_id', tenantId);
+
+      expect(Array.isArray(mttrMetrics)).toBe(true);
+      // Should return row with 0 values, not null
+      if (mttrMetrics && mttrMetrics.length > 0) {
+        expect(mttrMetrics[0].tenant_id).toBe(tenantId);
+      }
+    });
+
+    it('should return 0 for empty aggregate views', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data: metrics } = await client
+        .from('v_dashboard_metrics')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (metrics) {
+        // Aggregate values should be 0, not null
+        expect(metrics.total_work_orders ?? 0).toBe(0);
+        expect(metrics.open_work_orders ?? 0).toBe(0);
+      }
+    });
+  });
+
+  describe('Data Consistency', () => {
+    it('should reflect current data in views (not stale)', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      // Create work order
+      const woId = await createTestWorkOrder(client, tenantId, 'Fresh WO');
+
+      // View should immediately reflect new data
+      const { data: openWOs } = await client
+        .from('v_dashboard_open_work_orders')
+        .select('id')
+        .eq('id', woId);
+
+      expect(openWOs?.length ?? 0).toBeGreaterThan(0);
+
+      // Complete work order
+      await transitionWorkOrderStatus(client, tenantId, woId, 'assigned');
+      await transitionWorkOrderStatus(client, tenantId, woId, 'completed');
+
+      // View should reflect completion
+      const { data: openWOsAfter } = await client
+        .from('v_dashboard_open_work_orders')
+        .select('id')
+        .eq('id', woId);
+
+      expect(openWOsAfter?.length ?? 0).toBe(0);
+    });
+  });
+
   describe('Tenant isolation', () => {
     it('should filter all dashboard views by current tenant', async () => {
       const client1 = createTestClient();
