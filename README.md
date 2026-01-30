@@ -3,7 +3,7 @@
 [![CI](https://github.com/workorder-systems/db/actions/workflows/test.yml/badge.svg)](https://github.com/workorder-systems/db/actions/workflows/test.yml)
 [![License](https://img.shields.io/github/license/workorder-systems/db)](LICENSE)
 
-A production-ready, multi-tenant Supabase/Postgres schema for work order and
+A multi-tenant Supabase/Postgres schema for work order and
 maintenance management systems (CMMS).
 
 ## What this is
