@@ -98,3 +98,4 @@ comment on function authz.get_current_tenant_id() is 'Gets current tenant ID fro
 
 revoke all on function authz.get_current_tenant_id() from public;
 grant execute on function authz.get_current_tenant_id() to authenticated;
+grant execute on function authz.get_current_tenant_id() to anon;

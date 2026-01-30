@@ -1145,8 +1145,18 @@ where pi.tenant_id = authz.get_current_tenant_id()
     and authz.has_permission((select auth.uid()), pi.tenant_id, 'tenant.admin')
   );
 
+-- Keep security_invoker = true (default) so view runs with invoker's privileges
+-- This ensures RLS policies on underlying table are enforced
+-- The view should NOT have security_invoker = false because we want RLS to be enforced
+
+-- Grant SELECT to authenticated users (RLS policies will filter based on permissions)
+grant select on public.v_plugin_installations to authenticated;
+
+-- Revoke from anon (admin-only view)
+revoke all on public.v_plugin_installations from anon;
+
 comment on view public.v_plugin_installations is
-  'Tenant-scoped plugin installation status for the current tenant context. Admin-only view; includes plugin metadata and configuration references.';
+  'Tenant-scoped plugin installation status for the current tenant context. Admin-only view; requires tenant.admin permission. Includes plugin metadata and configuration references. RLS policies on underlying table provide additional security.';
 
 create or replace function public.rpc_install_plugin(
   p_tenant_id uuid,

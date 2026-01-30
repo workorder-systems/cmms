@@ -1240,7 +1240,9 @@ from app.work_orders wo
 where wo.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_work_orders is 
-  'Work orders view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display work orders.';
+  'Work orders view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display work orders. Anonymous users can query but will receive empty results.';
+
+grant select on public.v_work_orders to anon;
 
 create or replace view public.v_assets as
 select 
@@ -1258,7 +1260,9 @@ from app.assets a
 where a.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_assets is 
-  'Assets view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display assets.';
+  'Assets view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display assets. Anonymous users can query but will receive empty results.';
+
+grant select on public.v_assets to anon;
 
 create or replace view public.v_locations as
 select 
@@ -1273,7 +1277,9 @@ from app.locations l
 where l.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_locations is 
-  'Locations view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display locations.';
+  'Locations view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies. Used by frontend to list and display locations. Anonymous users can query but will receive empty results.';
+
+grant select on public.v_locations to anon;
 
 create or replace view public.v_tenants as
 select
@@ -1290,7 +1296,9 @@ where exists (
 );
 
 comment on view public.v_tenants is 
-  'Tenants the current user belongs to (via tenant_memberships). Used for tenant selection in UI. RLS on underlying tables ensures users only see tenants they are members of.';
+  'Tenants the current user belongs to (via tenant_memberships). Used for tenant selection in UI. RLS on underlying tables ensures users only see tenants they are members of. Anonymous users can query but will receive empty results.';
+
+grant select on public.v_tenants to anon;
 
 create or replace view public.v_tenant_roles as
 select
@@ -1306,7 +1314,10 @@ from cfg.tenant_roles
 where tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_tenant_roles is 
-  'Tenant roles view scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context. RLS on underlying table enforces tenant isolation. Used by frontend to display and manage roles.';
+  'Tenant roles scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context.';
+
+revoke all on public.v_tenant_roles from anon;
+grant select on public.v_tenant_roles to authenticated;
 
 create or replace view public.v_user_tenant_roles as
 select
@@ -1338,6 +1349,9 @@ from cfg.permissions;
 comment on view public.v_permissions is 
   'Global permission catalog (no tenant filter needed as permissions are global). All authenticated users can see all permissions. Used by frontend to display available permissions when managing roles.';
 
+revoke all on public.v_permissions from anon;
+grant select on public.v_permissions to authenticated;
+
 create or replace view public.v_role_permissions as
 select
   trp.id,
@@ -1356,7 +1370,10 @@ join cfg.permissions p on trp.permission_id = p.id
 where tr.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_role_permissions is 
-  'Role-permission mappings view. Clients must set tenant context via rpc_set_tenant_context. Join of tenant_roles, tenant_role_permissions, and permissions tables. RLS on underlying tables enforces tenant isolation. Used by frontend to display and manage role permissions.';
+  'Role-permission mappings scoped to the current tenant context. Clients must set tenant context via rpc_set_tenant_context.';
+
+revoke all on public.v_role_permissions from anon;
+grant select on public.v_role_permissions to authenticated;
 
 create or replace view public.v_departments as
 select 
