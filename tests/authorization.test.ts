@@ -305,14 +305,28 @@ describe('Authorization & Roles', () => {
         p_assigned_to: technician.id,
       });
 
-      // Transition to in_progress first
-      await technicianClient.rpc('rpc_transition_work_order_status', {
+      // Transition to assigned first (draft -> assigned)
+      await adminClient.rpc('rpc_transition_work_order_status', {
+        p_tenant_id: tenantId,
+        p_work_order_id: workOrderId,
+        p_to_status_key: 'assigned',
+      });
+
+      // Set tenant context for technician
+      await setTenantContext(technicianClient, tenantId);
+
+      // Technicians can't transition to in_progress (requires workorder.edit which they don't have)
+      // But they can complete directly from assigned if they have workorder.complete.any
+      // However, technicians only have workorder.complete.assigned, so they need to be able to
+      // transition to in_progress first. Since they can't, we need to have an admin transition
+      // to in_progress, then technician can complete.
+      await adminClient.rpc('rpc_transition_work_order_status', {
         p_tenant_id: tenantId,
         p_work_order_id: workOrderId,
         p_to_status_key: 'in_progress',
       });
 
-      // Complete the work order
+      // Complete the work order (technician has workorder.complete.assigned permission)
       const { error } = await technicianClient.rpc('rpc_complete_work_order', {
         p_tenant_id: tenantId,
         p_work_order_id: workOrderId,
@@ -366,10 +380,14 @@ describe('Authorization & Roles', () => {
     });
 
     it('should allow manager to create work orders', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+
       const managerClient = createTestClient();
       const { user: manager } = await createTestUser(managerClient);
-      const tenantId = await createTestTenant(managerClient);
-      await assignRoleToUser(managerClient, manager.id, tenantId, 'manager');
+      await addUserToTenant(adminClient, manager.id, tenantId);
+      await assignRoleToUser(adminClient, manager.id, tenantId, 'manager');
 
       const { data: workOrderId, error } = await managerClient.rpc('rpc_create_work_order', {
         p_tenant_id: tenantId,
@@ -382,10 +400,14 @@ describe('Authorization & Roles', () => {
     });
 
     it('should allow manager to manage assets', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+
       const managerClient = createTestClient();
       const { user: manager } = await createTestUser(managerClient);
-      const tenantId = await createTestTenant(managerClient);
-      await assignRoleToUser(managerClient, manager.id, tenantId, 'manager');
+      await addUserToTenant(adminClient, manager.id, tenantId);
+      await assignRoleToUser(adminClient, manager.id, tenantId, 'manager');
 
       const { data: assetId, error } = await managerClient.rpc('rpc_create_asset', {
         p_tenant_id: tenantId,
@@ -397,14 +419,23 @@ describe('Authorization & Roles', () => {
     });
 
     it('should prevent manager from performing tenant administration', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+
       const managerClient = createTestClient();
       const { user: manager } = await createTestUser(managerClient);
-      const tenantId = await createTestTenant(managerClient);
-      await assignRoleToUser(managerClient, manager.id, tenantId, 'manager');
+      await addUserToTenant(adminClient, manager.id, tenantId);
+      await assignRoleToUser(adminClient, manager.id, tenantId, 'manager');
 
+      const memberClient = createTestClient();
+      const { user: member } = await createTestUser(memberClient);
+      await addUserToTenant(adminClient, member.id, tenantId);
+
+      // Manager should not be able to assign roles (requires tenant.admin)
       const { data, error } = await managerClient.rpc('rpc_assign_role_to_user', {
         p_tenant_id: tenantId,
-        p_user_id: manager.id,
+        p_user_id: member.id,
         p_role_key: 'member',
       });
 

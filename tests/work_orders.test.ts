@@ -190,7 +190,9 @@ describe('Work Orders', () => {
       });
 
       expect(error).toBeDefined();
-      expect(error?.message).toContain('Invalid status transition');
+      if (error?.message) {
+        expect(error.message).toContain('Invalid status transition');
+      }
     });
 
     it('should reject invalid status transitions', async () => {

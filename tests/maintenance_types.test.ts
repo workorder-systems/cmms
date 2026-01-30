@@ -3,6 +3,7 @@ import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import {
   createTestTenant,
+  addUserToTenant,
   assignRoleToUser,
   setTenantContext,
 } from './helpers/tenant';
@@ -184,8 +185,7 @@ describe('Maintenance Types', () => {
       const tenantId1 = await createTestTenant(client);
       const tenantId2 = await createTestTenant(client);
 
-      // Create custom type in tenant1
-      await assignRoleToUser(client, user.id, tenantId1, 'admin');
+      // Create custom type in tenant1 (user already has admin role from tenant creation)
       await setTenantContext(client, tenantId1);
       await createTestMaintenanceType(
         client,
@@ -255,7 +255,7 @@ describe('Maintenance Types', () => {
     it('should create custom maintenance type via rpc_create_maintenance_type', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      await assignRoleToUser(client, user.id, tenantId, 'admin');
+      // User already has admin role from tenant creation
 
       const typeId = await createTestMaintenanceType(
         client,
@@ -285,7 +285,7 @@ describe('Maintenance Types', () => {
     it('should auto-calculate display_order if not provided', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      await assignRoleToUser(client, user.id, tenantId, 'admin');
+      // User already has admin role from tenant creation
 
       const typeId = await createTestMaintenanceType(
         client,
@@ -308,10 +308,14 @@ describe('Maintenance Types', () => {
     });
 
     it('should require tenant.admin permission', async () => {
+      const adminClient = createTestClient();
+      const { user: admin } = await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+
       const memberClient = createTestClient();
       const { user: member } = await createTestUser(memberClient);
-      const tenantId = await createTestTenant(memberClient);
-      await assignRoleToUser(memberClient, member.id, tenantId, 'member');
+      await addUserToTenant(adminClient, member.id, tenantId);
+      await assignRoleToUser(adminClient, member.id, tenantId, 'member');
 
       const { data, error } = await memberClient.rpc('rpc_create_maintenance_type', {
         p_tenant_id: tenantId,
@@ -327,7 +331,7 @@ describe('Maintenance Types', () => {
     it('should reject invalid category', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      await assignRoleToUser(client, user.id, tenantId, 'admin');
+      // User already has admin role from tenant creation
 
       const { data, error } = await client.rpc('rpc_create_maintenance_type', {
         p_tenant_id: tenantId,
@@ -343,7 +347,7 @@ describe('Maintenance Types', () => {
     it('should validate key format', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      await assignRoleToUser(client, user.id, tenantId, 'admin');
+      // User already has admin role from tenant creation
 
       const { data, error } = await client.rpc('rpc_create_maintenance_type', {
         p_tenant_id: tenantId,
@@ -392,15 +396,14 @@ describe('Maintenance Types', () => {
   describe('Tenant isolation', () => {
     it('should only show maintenance types from current tenant', async () => {
       const client1 = createTestClient();
-      await createTestUser(client1);
+      const { user: user1 } = await createTestUser(client1);
       const tenantId1 = await createTestTenant(client1);
-      await assignRoleToUser(client1, (await createTestUser(client1)).user.id, tenantId1, 'admin');
+      // user1 already has admin role from tenant creation
 
       const client2 = createTestClient();
-      await createTestUser(client2);
-      const tenantId2 = await createTestTenant(client2);
       const { user: user2 } = await createTestUser(client2);
-      await assignRoleToUser(client2, user2.id, tenantId2, 'admin');
+      const tenantId2 = await createTestTenant(client2);
+      // user2 already has admin role from tenant creation
 
       await setTenantContext(client1, tenantId1);
       await createTestMaintenanceType(

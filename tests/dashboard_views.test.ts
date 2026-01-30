@@ -32,9 +32,10 @@ describe('Dashboard Views', () => {
       const completedWoId = await createTestWorkOrder(client, tenantId, 'Completed WO');
       const cancelledWoId = await createTestWorkOrder(client, tenantId, 'Cancelled WO');
 
-      // Transition to completed
+      // Transition to assigned first, then completed (draft -> assigned -> completed)
+      await transitionWorkOrderStatus(client, tenantId, completedWoId, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, completedWoId, 'completed');
-      // Transition to cancelled
+      // Transition to cancelled (draft -> cancelled)
       await transitionWorkOrderStatus(client, tenantId, cancelledWoId, 'cancelled');
 
       await setTenantContext(client, tenantId);
@@ -246,8 +247,10 @@ describe('Dashboard Views', () => {
       const workOrderId1 = await createTestWorkOrder(client, tenantId, 'WO 1');
       const workOrderId2 = await createTestWorkOrder(client, tenantId, 'WO 2');
 
-      // Complete both work orders
+      // Complete both work orders (draft -> assigned -> completed)
+      await transitionWorkOrderStatus(client, tenantId, workOrderId1, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, workOrderId1, 'completed');
+      await transitionWorkOrderStatus(client, tenantId, workOrderId2, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, workOrderId2, 'completed');
 
       await setTenantContext(client, tenantId);
@@ -274,6 +277,8 @@ describe('Dashboard Views', () => {
       await createTestTimeEntry(client, tenantId, workOrderId, 60);
       await createTestTimeEntry(client, tenantId, workOrderId, 90);
 
+      // Transition to completed (draft -> assigned -> completed)
+      await transitionWorkOrderStatus(client, tenantId, workOrderId, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, workOrderId, 'completed');
 
       await setTenantContext(client, tenantId);
@@ -290,6 +295,11 @@ describe('Dashboard Views', () => {
     it('should return one row per tenant', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
+
+      // Create and complete a work order so metrics view has data
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      await transitionWorkOrderStatus(client, tenantId, workOrderId, 'assigned');
+      await transitionWorkOrderStatus(client, tenantId, workOrderId, 'completed');
 
       await setTenantContext(client, tenantId);
       const { data: metrics, error } = await client
@@ -336,6 +346,8 @@ describe('Dashboard Views', () => {
       await createTestWorkOrder(client, tenantId, 'Open WO 1');
       await createTestWorkOrder(client, tenantId, 'Open WO 2');
       const completedWoId = await createTestWorkOrder(client, tenantId, 'Completed WO');
+      // Transition to completed (draft -> assigned -> completed)
+      await transitionWorkOrderStatus(client, tenantId, completedWoId, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, completedWoId, 'completed');
 
       await setTenantContext(client, tenantId);
@@ -393,6 +405,8 @@ describe('Dashboard Views', () => {
         user.id
       );
       const completedWoId = await createTestWorkOrder(client, tenantId, 'Completed WO');
+      // Transition to completed (draft -> assigned -> completed)
+      await transitionWorkOrderStatus(client, tenantId, completedWoId, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, completedWoId, 'completed');
 
       await setTenantContext(client, tenantId);
@@ -489,6 +503,8 @@ describe('Dashboard Views', () => {
       expect(createError).toBeNull();
 
       await createTestTimeEntry(client, tenantId, workOrderId, 120);
+      // Transition to completed (draft -> assigned -> completed)
+      await transitionWorkOrderStatus(client, tenantId, workOrderId, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, workOrderId, 'completed');
 
       await setTenantContext(client, tenantId);

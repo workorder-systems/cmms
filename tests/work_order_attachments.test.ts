@@ -83,7 +83,7 @@ describe('Work Order Attachments', () => {
       });
 
       expect(error).toBeDefined();
-      expect(error?.message).toContain('between 1 and 500');
+      expect(error?.message).toContain('work_order_attachments_file_ref_length_check');
     });
 
     it('should reject if file_ref length > 500', async () => {
@@ -100,7 +100,7 @@ describe('Work Order Attachments', () => {
       });
 
       expect(error).toBeDefined();
-      expect(error?.message).toContain('between 1 and 500');
+      expect(error?.message).toContain('work_order_attachments_file_ref_length_check');
     });
 
     it('should reject if work_order does not belong to tenant', async () => {
@@ -315,7 +315,7 @@ describe('Work Order Attachments', () => {
       const adminClient = createTestClient();
       const { user: admin } = await createTestUser(adminClient);
       const tenantId = await createTestTenant(adminClient);
-      await assignRoleToUser(adminClient, admin.id, tenantId, 'admin');
+      // admin already has admin role from tenant creation
 
       const userClient = createTestClient();
       const { user: regularUser } = await createTestUser(userClient);
