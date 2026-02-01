@@ -919,6 +919,7 @@ declare
   v_wo_description text;
   v_wo_priority text;
   v_wo_estimated_hours numeric;
+  v_new_next_due_date timestamptz;
 begin
   perform util.check_rate_limit('pm_schedule_update', null, 20, 1, auth.uid(), p_tenant_id);
   
@@ -974,6 +975,11 @@ begin
     end if;
   end if;
 
+  -- Get current PM schedule for recalculation
+  select * into v_pm_schedule
+  from app.pm_schedules
+  where id = p_pm_schedule_id;
+
   -- Update PM schedule
   update app.pm_schedules
   set
@@ -990,17 +996,23 @@ begin
   where id = p_pm_schedule_id;
 
   -- Recalculate next_due_date if trigger_config changed
+  -- IMPORTANT: Always recalculate if trigger_config was provided, even if it's the same
+  -- This ensures next_due_date is properly set based on the current trigger_config
   if p_trigger_config is not null then
+    -- Get updated schedule
     select * into v_pm_schedule
     from app.pm_schedules
     where id = p_pm_schedule_id;
 
+    -- Recalculate next_due_date using the updated trigger_config
+    v_new_next_due_date := pm.calculate_next_due_date(
+      v_pm_schedule,
+      v_pm_schedule.last_completed_at
+    );
+
     update app.pm_schedules
     set
-      next_due_date = pm.calculate_next_due_date(
-        v_pm_schedule,
-        v_pm_schedule.last_completed_at
-      ),
+      next_due_date = v_new_next_due_date,
       updated_at = pg_catalog.now()
     where id = p_pm_schedule_id;
   end if;
@@ -1008,7 +1020,7 @@ end;
 $$;
 
 comment on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, numeric, text, text, text, numeric) is 
-  'Updates PM schedule. Recalculates next_due_date if trigger_config changes. Accepts structured wo_* parameters and p_estimated_hours for backward compatibility. Requires workorder.create permission. Rate limited to 20 requests per minute per user.';
+  'Updates PM schedule. Recalculates next_due_date if trigger_config is provided (even if unchanged). Accepts structured wo_* parameters and p_estimated_hours for backward compatibility. Requires workorder.create permission. Rate limited to 20 requests per minute per user.';
 
 revoke all on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, numeric, text, text, text, numeric) from public;
 grant execute on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, numeric, text, text, text, numeric) to authenticated;
@@ -1311,9 +1323,9 @@ declare
   v_description text;
   v_priority text;
   v_maintenance_type text;
-  v_assigned_to uuid := null;
-  v_location_id uuid := null;
-  v_due_date timestamptz := null;
+  v_assigned_to uuid;
+  v_location_id uuid;
+  v_due_date timestamptz;
 begin
   -- Get PM schedule
   select * into v_pm_schedule
@@ -1371,24 +1383,24 @@ begin
     v_maintenance_type := 'preventive_time';
   end if;
 
-  -- Ensure variables are explicitly typed (not null::unknown) for function signature inference
-  v_assigned_to := coalesce(v_assigned_to, null::uuid);
-  v_location_id := coalesce(v_location_id, null::uuid);
-  v_due_date := coalesce(v_due_date, null::timestamptz);
+  -- Explicitly initialize and type all variables to avoid "unknown" type inference
+  v_assigned_to := null::uuid;
+  v_location_id := null::uuid;
+  v_due_date := null::timestamptz;
 
-  -- Create work order via RPC
-  -- Variables are now explicitly typed, so PostgreSQL can infer function signature
+  -- Create work order via RPC with explicit type casting for all parameters
+  -- This ensures PostgreSQL can match the function signature correctly
   v_work_order_id := public.rpc_create_work_order(
-    v_pm_schedule.tenant_id,
-    v_title,
-    v_description,
-    v_priority,
-    v_maintenance_type::text,
-    v_assigned_to,
-    v_location_id,
-    v_pm_schedule.asset_id,
-    v_due_date,
-    p_pm_schedule_id
+    v_pm_schedule.tenant_id::uuid,
+    v_title::text,
+    coalesce(v_description, null)::text,
+    v_priority::text,
+    coalesce(v_maintenance_type, null)::text,
+    v_assigned_to::uuid,
+    v_location_id::uuid,
+    v_pm_schedule.asset_id::uuid,
+    v_due_date::timestamptz,
+    p_pm_schedule_id::uuid
   );
 
   -- Update PM schedule
@@ -1415,7 +1427,7 @@ end;
 $$;
 
 comment on function pm.generate_pm_work_order(uuid) is 
-  'Generates work order from PM schedule using RPC function. Uses structured wo_* columns, sets maintenance_type to preventive_time or preventive_usage, links to PM schedule, updates next_due_date. Checks dependencies before generating.';
+  'Generates work order from PM schedule using RPC function. Uses structured wo_* columns, sets maintenance_type to preventive_time or preventive_usage, links to PM schedule, updates next_due_date. Checks dependencies before generating. Fixed to explicitly cast all parameters for proper function signature matching.';
 
 -- ============================================================================
 -- Extend rpc_create_work_order to accept p_pm_schedule_id
@@ -1552,3 +1564,33 @@ comment on function public.rpc_create_work_order(uuid, text, text, text, text, u
 
 revoke all on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) from public;
 grant execute on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) to authenticated;
+
+-- ============================================================================
+-- Public View for PM Template Checklist Items
+-- ============================================================================
+
+-- Create public view for PM template checklist items
+-- Follows ADR 0001: public views for reads, ADR 0010: v_<resource> naming
+create or replace view public.v_pm_template_checklist_items as
+select
+  ci.id,
+  ci.template_id,
+  pt.tenant_id,
+  ci.description,
+  ci.required,
+  ci.display_order,
+  ci.created_at
+from cfg.pm_template_checklist_items ci
+join cfg.pm_templates pt on ci.template_id = pt.id
+where pt.tenant_id = authz.get_current_tenant_id()
+order by ci.display_order asc;
+
+comment on view public.v_pm_template_checklist_items is
+  'PM template checklist items for current tenant. Read-only view following ADR 0001 (public views for reads). Clients must set tenant context via rpc_set_tenant_context. Items are ordered by display_order.';
+
+grant select on public.v_pm_template_checklist_items to authenticated;
+grant select on public.v_pm_template_checklist_items to anon;
+
+-- Set security_invoker = false for performance (view runs with owner privileges)
+-- This is safe because the WHERE clause filters by tenant_id from authz.get_current_tenant_id()
+alter view public.v_pm_template_checklist_items set (security_invoker = false);

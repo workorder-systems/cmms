@@ -1025,7 +1025,7 @@ end;
 $$;
 
 comment on function public.rpc_register_plugin(text, text, text, boolean, boolean) is
-  'Registers or updates a plugin catalog entry. Intended for internal or service_role usage only.';
+  'Registers or updates a plugin catalog entry in int.plugins. This is an internal-only function for service_role usage (not part of public client API). Follows ADR pattern: public RPC wrapper that accesses internal int schema.';
 
 revoke all on function public.rpc_register_plugin(text, text, text, boolean, boolean) from public;
 grant execute on function public.rpc_register_plugin(text, text, text, boolean, boolean) to service_role;
@@ -1175,18 +1175,14 @@ declare
   v_plugin_id uuid;
   v_installation_id uuid;
 begin
-  -- rpc_setup returns tenant_id, not user_id, so we need to get user_id separately
+  -- Rate limiting and permission check (follows ADR pattern)
+  perform util.check_rate_limit('plugin_install', null, 10, 1, auth.uid(), p_tenant_id);
+  
+  -- Permission validation (tenant.admin required per ADR)
   perform authz.rpc_setup(p_tenant_id, 'tenant.admin');
   v_user_id := authz.validate_authenticated();
 
-  perform util.check_rate_limit('plugin_install', null, 10, 1, v_user_id, p_tenant_id);
-
-  if p_secret_ref is not null and length(pg_catalog.btrim(p_secret_ref)) = 0 then
-    raise exception using
-      message = 'Secret reference must be non-empty when provided',
-      errcode = '23514';
-  end if;
-
+  -- Validate plugin exists and is active (accesses int.plugins internally)
   select id into v_plugin_id
   from int.plugins
   where key = p_plugin_key
@@ -1194,10 +1190,19 @@ begin
 
   if v_plugin_id is null then
     raise exception using
-      message = format('Plugin %s not found or inactive', p_plugin_key),
+      message = format('Plugin %s not found or not active', p_plugin_key),
       errcode = 'P0001';
   end if;
 
+  -- Validate secret_ref if provided
+  if p_secret_ref is not null and length(pg_catalog.btrim(p_secret_ref)) = 0 then
+    raise exception using
+      message = 'Secret reference must be non-empty when provided',
+      errcode = '23514';
+  end if;
+
+  -- Create or update installation (accesses int.plugin_installations internally)
+  -- Uses ON CONFLICT to handle re-installation gracefully
   insert into int.plugin_installations (
     tenant_id,
     plugin_id,
@@ -1228,7 +1233,7 @@ end;
 $$;
 
 comment on function public.rpc_install_plugin(uuid, text, text, jsonb) is
-  'Installs or re-installs a plugin for a tenant. Requires tenant.admin permission. Stores only secret_ref (opaque reference) and non-secret config. Returns installation id.';
+  'Installs a plugin for a tenant. Public API wrapper that accesses int.plugin_installations internally. Requires tenant.admin permission. Follows ADR 0001 (public RPC for writes) and ADR 0010 (rpc_<verb>_<resource> naming). Rate limited to 10 requests per minute per user.';
 
 revoke all on function public.rpc_install_plugin(uuid, text, text, jsonb) from public;
 grant execute on function public.rpc_install_plugin(uuid, text, text, jsonb) to authenticated;
@@ -1310,33 +1315,39 @@ declare
   v_user_id uuid;
   v_installation_tenant_id uuid;
 begin
-  v_user_id := authz.rpc_setup(p_tenant_id, 'tenant.admin');
+  -- Rate limiting and permission check
+  perform util.check_rate_limit('plugin_uninstall', null, 10, 1, auth.uid(), p_tenant_id);
+  
+  -- Permission validation
+  perform authz.rpc_setup(p_tenant_id, 'tenant.admin');
+  v_user_id := authz.validate_authenticated();
 
-  perform util.check_rate_limit('plugin_uninstall', null, 10, 1, v_user_id, p_tenant_id);
-
+  -- Validate installation belongs to tenant (accesses int.plugin_installations)
   select tenant_id into v_installation_tenant_id
   from int.plugin_installations
   where id = p_installation_id;
 
-  if v_installation_tenant_id is null then
+  if not found then
     raise exception using
-      message = 'Plugin installation not found',
+      message = format('Plugin installation %s not found', p_installation_id),
       errcode = 'P0001';
   end if;
 
   if v_installation_tenant_id != p_tenant_id then
     raise exception using
-      message = 'Unauthorized: Plugin installation does not belong to this tenant',
+      message = 'Unauthorized: Installation does not belong to this tenant',
       errcode = '42501';
   end if;
 
+  -- Hard delete (accesses int.plugin_installations)
+  -- Audit trigger will log the deletion
   delete from int.plugin_installations
   where id = p_installation_id;
 end;
 $$;
 
 comment on function public.rpc_uninstall_plugin(uuid, uuid) is
-  'Uninstalls a plugin for a tenant by deleting the installation record. Requires tenant.admin permission. Deletions are audited in audit.entity_changes.';
+  'Uninstalls a plugin for a tenant. Public API wrapper that accesses int.plugin_installations internally. Requires tenant.admin permission. Follows ADR 0001 (public RPC for writes) and ADR 0010 (rpc_<verb>_<resource> naming). Rate limited to 10 requests per minute per user.';
 
 revoke all on function public.rpc_uninstall_plugin(uuid, uuid) from public;
 grant execute on function public.rpc_uninstall_plugin(uuid, uuid) to authenticated;
