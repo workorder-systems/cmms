@@ -12,7 +12,7 @@
 -- - Rate limiting: util.check_rate_limit() for abuse prevention
 -- - Permissions: authz.rpc_setup() for permission validation
 -- - Tenant isolation: validates tenant_id on all operations
--- - Backward compatibility: supports both structured and JSONB parameters
+-- - Structured parameters for work order templates and checklist items
 
 -- ============================================================================
 -- Meter RPC Functions
@@ -320,14 +320,16 @@ begin
   where id = p_meter_id;
 
   -- Check usage-based PM schedules
+  -- Note: JSONB extraction in WHERE clause - consider GIN index on trigger_config if this becomes a bottleneck
+  -- Uses pm_schedules_trigger_type_idx for trigger_type filter
   for v_pm_schedule in
-    select *
-    from app.pm_schedules
-    where tenant_id = p_tenant_id
-      and trigger_type = 'usage'
-      and is_active = true
-      and auto_generate = true
-      and (trigger_config->>'meter_id')::uuid = p_meter_id
+    select ps.*
+    from app.pm_schedules ps
+    where ps.tenant_id = p_tenant_id
+      and ps.trigger_type = 'usage'
+      and ps.is_active = true
+      and ps.auto_generate = true
+      and (ps.trigger_config->>'meter_id')::uuid = p_meter_id
   loop
     v_threshold := (v_pm_schedule.trigger_config->>'threshold')::numeric;
     
@@ -422,10 +424,7 @@ create or replace function public.rpc_create_pm_template(
   p_trigger_type text,
   p_trigger_config jsonb,
   p_description text default null,
-  p_work_order_template jsonb default null,
-  p_checklist jsonb default null,
   p_estimated_hours numeric default null,
-  -- New structured parameters
   p_wo_title text default null,
   p_wo_description text default null,
   p_wo_priority text default null,
@@ -468,24 +467,11 @@ begin
   -- Validate trigger_config
   perform pm.validate_trigger_config(p_trigger_type, p_trigger_config);
 
-  -- Extract structured values: prefer new parameters, fallback to JSONB for backward compatibility
-  v_wo_title := coalesce(
-    p_wo_title,
-    p_work_order_template->>'title'
-  );
-  v_wo_description := coalesce(
-    p_wo_description,
-    p_work_order_template->>'description'
-  );
-  v_wo_priority := coalesce(
-    p_wo_priority,
-    p_work_order_template->>'priority'
-  );
-  v_wo_estimated_hours := coalesce(
-    p_wo_estimated_hours,
-    (p_work_order_template->>'estimated_hours')::numeric,
-    p_estimated_hours
-  );
+  -- Use structured parameters
+  v_wo_title := p_wo_title;
+  v_wo_description := p_wo_description;
+  v_wo_priority := p_wo_priority;
+  v_wo_estimated_hours := coalesce(p_wo_estimated_hours, p_estimated_hours);
 
   -- Validate wo_priority if provided
   if v_wo_priority is not null then
@@ -509,8 +495,6 @@ begin
     description,
     trigger_type,
     trigger_config,
-    work_order_template,
-    checklist,
     estimated_hours,
     wo_title,
     wo_description,
@@ -523,8 +507,6 @@ begin
     p_description,
     p_trigger_type,
     p_trigger_config,
-    p_work_order_template, -- Keep JSONB for backward compatibility
-    p_checklist, -- Keep JSONB for backward compatibility
     p_estimated_hours,
     v_wo_title,
     v_wo_description,
@@ -533,34 +515,11 @@ begin
   )
   returning id into v_template_id;
 
-  -- Insert checklist items: prefer new p_checklist_items, fallback to p_checklist JSONB
+  -- Insert checklist items
   if p_checklist_items is not null and jsonb_typeof(p_checklist_items) = 'array' then
-    -- Insert from new structured parameter
     for v_checklist_item, v_item_ordinality in 
       select value, ordinality
       from jsonb_array_elements(p_checklist_items) with ordinality as t(value, ordinality)
-    loop
-      if v_checklist_item->>'description' is not null 
-         and length((v_checklist_item->>'description')::text) >= 1 then
-        insert into cfg.pm_template_checklist_items (
-          template_id,
-          description,
-          required,
-          display_order
-        )
-        values (
-          v_template_id,
-          (v_checklist_item->>'description')::text,
-          coalesce((v_checklist_item->>'required')::boolean, false),
-          v_item_ordinality - 1
-        );
-      end if;
-    end loop;
-  elsif p_checklist is not null and jsonb_typeof(p_checklist) = 'array' then
-    -- Fallback to old JSONB parameter for backward compatibility
-    for v_checklist_item, v_item_ordinality in 
-      select value, ordinality
-      from jsonb_array_elements(p_checklist) with ordinality as t(value, ordinality)
     loop
       if v_checklist_item->>'description' is not null 
          and length((v_checklist_item->>'description')::text) >= 1 then
@@ -584,11 +543,11 @@ begin
 end;
 $$;
 
-comment on function public.rpc_create_pm_template(uuid, text, text, jsonb, text, jsonb, jsonb, numeric, text, text, text, numeric, jsonb) is 
-  'Creates reusable PM template. Validates trigger_config. Accepts structured wo_* parameters (preferred) or work_order_template JSONB (backward compatible). Accepts checklist_items JSONB array (preferred) or checklist JSONB (backward compatible). Requires tenant.admin permission. Rate limited to 20 requests per minute per user. Returns the UUID of the created template.';
+comment on function public.rpc_create_pm_template(uuid, text, text, jsonb, text, numeric, text, text, text, numeric, jsonb) is 
+  'Creates reusable PM template. Validates trigger_config. Accepts structured wo_* parameters and checklist_items JSONB array. Requires tenant.admin permission. Rate limited to 20 requests per minute per user. Returns the UUID of the created template.';
 
-revoke all on function public.rpc_create_pm_template(uuid, text, text, jsonb, text, jsonb, jsonb, numeric, text, text, text, numeric, jsonb) from public;
-grant execute on function public.rpc_create_pm_template(uuid, text, text, jsonb, text, jsonb, jsonb, numeric, text, text, text, numeric, jsonb) to authenticated;
+revoke all on function public.rpc_create_pm_template(uuid, text, text, jsonb, text, numeric, text, text, text, numeric, jsonb) from public;
+grant execute on function public.rpc_create_pm_template(uuid, text, text, jsonb, text, numeric, text, text, text, numeric, jsonb) to authenticated;
 
 create or replace function public.rpc_update_pm_template(
   p_tenant_id uuid,
@@ -596,10 +555,7 @@ create or replace function public.rpc_update_pm_template(
   p_name text default null,
   p_description text default null,
   p_trigger_config jsonb default null,
-  p_work_order_template jsonb default null,
-  p_checklist jsonb default null,
   p_estimated_hours numeric default null,
-  -- New structured parameters
   p_wo_title text default null,
   p_wo_description text default null,
   p_wo_priority text default null,
@@ -655,25 +611,11 @@ begin
     perform pm.validate_trigger_config(v_trigger_type, p_trigger_config);
   end if;
 
-  -- Extract structured values: prefer new parameters, fallback to JSONB for backward compatibility
-  if p_wo_title is not null or p_wo_description is not null or p_wo_priority is not null or p_wo_estimated_hours is not null or p_work_order_template is not null then
-    v_wo_title := coalesce(
-      p_wo_title,
-      p_work_order_template->>'title'
-    );
-    v_wo_description := coalesce(
-      p_wo_description,
-      p_work_order_template->>'description'
-    );
-    v_wo_priority := coalesce(
-      p_wo_priority,
-      p_work_order_template->>'priority'
-    );
-    v_wo_estimated_hours := coalesce(
-      p_wo_estimated_hours,
-      (p_work_order_template->>'estimated_hours')::numeric
-    );
-  end if;
+  -- Use structured parameters
+  v_wo_title := p_wo_title;
+  v_wo_description := p_wo_description;
+  v_wo_priority := p_wo_priority;
+  v_wo_estimated_hours := p_wo_estimated_hours;
 
   -- Validate wo_priority if provided
   if v_wo_priority is not null then
@@ -696,8 +638,6 @@ begin
     name = coalesce(p_name, name),
     description = coalesce(p_description, description),
     trigger_config = coalesce(p_trigger_config, trigger_config),
-    work_order_template = coalesce(p_work_order_template, work_order_template), -- Keep JSONB for backward compatibility
-    checklist = coalesce(p_checklist, checklist), -- Keep JSONB for backward compatibility
     estimated_hours = coalesce(p_estimated_hours, estimated_hours),
     wo_title = coalesce(v_wo_title, wo_title),
     wo_description = coalesce(v_wo_description, wo_description),
@@ -707,38 +647,16 @@ begin
   where id = p_template_id;
 
   -- Update checklist items if provided
-  if p_checklist_items is not null or p_checklist is not null then
+  if p_checklist_items is not null then
     -- Delete existing checklist items
     delete from cfg.pm_template_checklist_items
     where template_id = p_template_id;
 
-    -- Insert new checklist items: prefer new p_checklist_items, fallback to p_checklist JSONB
-    if p_checklist_items is not null and jsonb_typeof(p_checklist_items) = 'array' then
+    -- Insert new checklist items
+    if jsonb_typeof(p_checklist_items) = 'array' then
       for v_checklist_item, v_item_ordinality in 
         select value, ordinality
         from jsonb_array_elements(p_checklist_items) with ordinality as t(value, ordinality)
-      loop
-        if v_checklist_item->>'description' is not null 
-           and length((v_checklist_item->>'description')::text) >= 1 then
-          insert into cfg.pm_template_checklist_items (
-            template_id,
-            description,
-            required,
-            display_order
-          )
-          values (
-            p_template_id,
-            (v_checklist_item->>'description')::text,
-            coalesce((v_checklist_item->>'required')::boolean, false),
-            v_item_ordinality - 1
-          );
-        end if;
-      end loop;
-    elsif p_checklist is not null and jsonb_typeof(p_checklist) = 'array' then
-      -- Fallback to old JSONB parameter for backward compatibility
-      for v_checklist_item, v_item_ordinality in 
-        select value, ordinality
-        from jsonb_array_elements(p_checklist) with ordinality as t(value, ordinality)
       loop
         if v_checklist_item->>'description' is not null 
            and length((v_checklist_item->>'description')::text) >= 1 then
@@ -761,11 +679,11 @@ begin
 end;
 $$;
 
-comment on function public.rpc_update_pm_template(uuid, uuid, text, text, jsonb, jsonb, jsonb, numeric, text, text, text, numeric, jsonb) is 
-  'Updates PM template. Validates trigger_config. Accepts structured wo_* parameters (preferred) or work_order_template JSONB (backward compatible). Accepts checklist_items JSONB array (preferred) or checklist JSONB (backward compatible). Updates checklist items by deleting existing and inserting new. Requires tenant.admin permission. Rate limited to 20 requests per minute per user.';
+comment on function public.rpc_update_pm_template(uuid, uuid, text, text, jsonb, numeric, text, text, text, numeric, jsonb) is 
+  'Updates PM template. Validates trigger_config. Accepts structured wo_* parameters and checklist_items JSONB array. Updates checklist items by deleting existing and inserting new. Requires tenant.admin permission. Rate limited to 20 requests per minute per user.';
 
-revoke all on function public.rpc_update_pm_template(uuid, uuid, text, text, jsonb, jsonb, jsonb, numeric, text, text, text, numeric, jsonb) from public;
-grant execute on function public.rpc_update_pm_template(uuid, uuid, text, text, jsonb, jsonb, jsonb, numeric, text, text, text, numeric, jsonb) to authenticated;
+revoke all on function public.rpc_update_pm_template(uuid, uuid, text, text, jsonb, numeric, text, text, text, numeric, jsonb) from public;
+grant execute on function public.rpc_update_pm_template(uuid, uuid, text, text, jsonb, numeric, text, text, text, numeric, jsonb) to authenticated;
 
 -- ============================================================================
 -- PM Schedule RPC Functions
@@ -779,9 +697,7 @@ create or replace function public.rpc_create_pm_schedule(
   p_trigger_config jsonb,
   p_description text default null,
   p_template_id uuid default null,
-  p_work_order_template jsonb default null,
   p_auto_generate boolean default true,
-  -- New structured parameters
   p_wo_title text default null,
   p_wo_description text default null,
   p_wo_priority text default null,
@@ -885,23 +801,11 @@ begin
       errcode = '23514';
   end if;
 
-  -- Extract structured values: prefer new parameters, fallback to JSONB for backward compatibility
-  v_wo_title := coalesce(
-    p_wo_title,
-    p_work_order_template->>'title'
-  );
-  v_wo_description := coalesce(
-    p_wo_description,
-    p_work_order_template->>'description'
-  );
-  v_wo_priority := coalesce(
-    p_wo_priority,
-    p_work_order_template->>'priority'
-  );
-  v_wo_estimated_hours := coalesce(
-    p_wo_estimated_hours,
-    (p_work_order_template->>'estimated_hours')::numeric
-  );
+  -- Use structured parameters
+  v_wo_title := p_wo_title;
+  v_wo_description := p_wo_description;
+  v_wo_priority := p_wo_priority;
+  v_wo_estimated_hours := p_wo_estimated_hours;
 
   -- Validate wo_priority if provided
   if v_wo_priority is not null then
@@ -927,7 +831,6 @@ begin
     description,
     trigger_type,
     trigger_config,
-    work_order_template,
     wo_title,
     wo_description,
     wo_priority,
@@ -942,7 +845,6 @@ begin
     p_description,
     p_trigger_type,
     p_trigger_config,
-    p_work_order_template, -- Keep JSONB for backward compatibility
     v_wo_title,
     v_wo_description,
     v_wo_priority,
@@ -970,11 +872,11 @@ begin
 end;
 $$;
 
-comment on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, jsonb, boolean, text, text, text, numeric) is 
-  'Creates PM schedule for asset. Validates trigger_config, calculates initial next_due_date, validates meter exists for usage triggers. Accepts structured wo_* parameters (preferred) or work_order_template JSONB (backward compatible). Requires workorder.create permission. Rate limited to 20 requests per minute per user. Returns the UUID of the created PM schedule.';
+comment on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, text, text, text, numeric) is 
+  'Creates PM schedule for asset. Validates trigger_config, calculates initial next_due_date, validates meter exists for usage triggers. Accepts structured wo_* parameters. Requires workorder.create permission. Rate limited to 20 requests per minute per user. Returns the UUID of the created PM schedule.';
 
-revoke all on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, jsonb, boolean, text, text, text, numeric) from public;
-grant execute on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, jsonb, boolean, text, text, text, numeric) to authenticated;
+revoke all on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, text, text, text, numeric) from public;
+grant execute on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, text, text, text, numeric) to authenticated;
 
 create or replace function public.rpc_update_pm_schedule(
   p_tenant_id uuid,
@@ -982,10 +884,8 @@ create or replace function public.rpc_update_pm_schedule(
   p_title text default null,
   p_description text default null,
   p_trigger_config jsonb default null,
-  p_work_order_template jsonb default null,
   p_auto_generate boolean default null,
   p_is_active boolean default null,
-  -- New structured parameters
   p_wo_title text default null,
   p_wo_description text default null,
   p_wo_priority text default null,
@@ -1039,25 +939,11 @@ begin
     perform pm.validate_trigger_config(v_trigger_type, p_trigger_config);
   end if;
 
-  -- Extract structured values: prefer new parameters, fallback to JSONB for backward compatibility
-  if p_wo_title is not null or p_wo_description is not null or p_wo_priority is not null or p_wo_estimated_hours is not null or p_work_order_template is not null then
-    v_wo_title := coalesce(
-      p_wo_title,
-      p_work_order_template->>'title'
-    );
-    v_wo_description := coalesce(
-      p_wo_description,
-      p_work_order_template->>'description'
-    );
-    v_wo_priority := coalesce(
-      p_wo_priority,
-      p_work_order_template->>'priority'
-    );
-    v_wo_estimated_hours := coalesce(
-      p_wo_estimated_hours,
-      (p_work_order_template->>'estimated_hours')::numeric
-    );
-  end if;
+  -- Use structured parameters
+  v_wo_title := p_wo_title;
+  v_wo_description := p_wo_description;
+  v_wo_priority := p_wo_priority;
+  v_wo_estimated_hours := p_wo_estimated_hours;
 
   -- Validate wo_priority if provided
   if v_wo_priority is not null then
@@ -1080,7 +966,6 @@ begin
     title = coalesce(p_title, title),
     description = coalesce(p_description, description),
     trigger_config = coalesce(p_trigger_config, trigger_config),
-    work_order_template = coalesce(p_work_order_template, work_order_template), -- Keep JSONB for backward compatibility
     wo_title = coalesce(v_wo_title, wo_title),
     wo_description = coalesce(v_wo_description, wo_description),
     wo_priority = coalesce(v_wo_priority, wo_priority),
@@ -1108,11 +993,11 @@ begin
 end;
 $$;
 
-comment on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, jsonb, boolean, boolean, text, text, text, numeric) is 
-  'Updates PM schedule. Recalculates next_due_date if trigger_config changes. Accepts structured wo_* parameters (preferred) or work_order_template JSONB (backward compatible). Requires workorder.create permission. Rate limited to 20 requests per minute per user.';
+comment on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, text, text, text, numeric) is 
+  'Updates PM schedule. Recalculates next_due_date if trigger_config changes. Accepts structured wo_* parameters. Requires workorder.create permission. Rate limited to 20 requests per minute per user.';
 
-revoke all on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, jsonb, boolean, boolean, text, text, text, numeric) from public;
-grant execute on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, jsonb, boolean, boolean, text, text, text, numeric) to authenticated;
+revoke all on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, text, text, text, numeric) from public;
+grant execute on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, text, text, text, numeric) to authenticated;
 
 create or replace function public.rpc_delete_pm_schedule(
   p_tenant_id uuid,
@@ -1194,15 +1079,17 @@ begin
   v_user_id := authz.rpc_setup(p_tenant_id, 'workorder.create');
 
   -- Find due PMs and generate work orders
+  -- Uses pm_schedules_due_idx for optimal performance
   for v_pm_schedule in
-    select *
-    from app.pm_schedules
-    where tenant_id = p_tenant_id
-      and is_active = true
-      and auto_generate = true
-      and next_due_date is not null
-      and next_due_date <= pg_catalog.now()
-      and pm.is_pm_due(pm_schedules)
+    select ps.*
+    from app.pm_schedules ps
+    where ps.tenant_id = p_tenant_id
+      and ps.is_active = true
+      and ps.auto_generate = true
+      and ps.next_due_date is not null
+      and ps.next_due_date <= pg_catalog.now()
+      and pm.is_pm_due(ps)
+    order by ps.next_due_date asc
     limit p_limit
   loop
     -- Check dependencies
@@ -1394,7 +1281,6 @@ as $$
 declare
   v_pm_schedule app.pm_schedules%rowtype;
   v_work_order_id uuid;
-  v_wo_template jsonb;
   v_title text;
   v_description text;
   v_priority text;
@@ -1418,28 +1304,32 @@ begin
       errcode = '23503';
   end if;
 
-  -- Get work order template (from schedule or template)
-  v_wo_template := coalesce(
-    v_pm_schedule.work_order_template,
+  -- Get work order template values (from schedule or template)
+  v_title := coalesce(
+    v_pm_schedule.wo_title,
     (
-      select work_order_template
+      select wo_title
       from cfg.pm_templates
       where id = v_pm_schedule.template_id
     ),
-    '{}'::jsonb
-  );
-
-  -- Extract template values
-  v_title := coalesce(
-    v_wo_template->>'title',
     v_pm_schedule.title
   );
   v_description := coalesce(
-    v_wo_template->>'description',
+    v_pm_schedule.wo_description,
+    (
+      select wo_description
+      from cfg.pm_templates
+      where id = v_pm_schedule.template_id
+    ),
     v_pm_schedule.description
   );
   v_priority := coalesce(
-    v_wo_template->>'priority',
+    v_pm_schedule.wo_priority,
+    (
+      select wo_priority
+      from cfg.pm_templates
+      where id = v_pm_schedule.template_id
+    ),
     'medium'
   );
 
@@ -1495,7 +1385,7 @@ end;
 $$;
 
 comment on function pm.generate_pm_work_order(uuid) is 
-  'Generates work order from PM schedule using RPC function. Uses work_order_template, sets maintenance_type to preventive_time or preventive_usage, links to PM schedule, updates next_due_date. Checks dependencies before generating.';
+  'Generates work order from PM schedule using RPC function. Uses structured wo_* columns, sets maintenance_type to preventive_time or preventive_usage, links to PM schedule, updates next_due_date. Checks dependencies before generating.';
 
 -- ============================================================================
 -- Extend rpc_create_work_order to accept p_pm_schedule_id

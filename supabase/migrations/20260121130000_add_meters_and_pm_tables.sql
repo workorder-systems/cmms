@@ -96,6 +96,7 @@ create index if not exists asset_meters_tenant_asset_idx
 -- Partial index for active meters only (smaller, faster for common queries)
 -- Optimized for: WHERE tenant_id = X AND asset_id = Y AND is_active = true
 -- Note: Partial index is more efficient than full index when most queries filter active meters
+-- is_active not in key columns since it's already filtered in WHERE clause
 create index if not exists asset_meters_active_idx 
   on app.asset_meters (tenant_id, asset_id) 
   where is_active = true;
@@ -155,9 +156,10 @@ create index if not exists meter_readings_tenant_date_idx
 
 -- Covering index for meter reading lookups (index-only scans)
 -- Includes frequently selected columns to avoid table heap access
+-- Includes reading_date in key columns for better range query performance
 create index if not exists meter_readings_meter_covering_idx 
   on app.meter_readings (meter_id, reading_date desc) 
-  include (reading_value, reading_type);
+  include (reading_value, reading_type, notes);
 
 alter table app.meter_readings enable row level security;
 
@@ -172,9 +174,6 @@ create table if not exists cfg.pm_templates (
   description text,
   trigger_type text not null,
   trigger_config jsonb not null,
-  work_order_template jsonb,
-  checklist jsonb,
-  estimated_hours numeric,
   wo_title text,
   wo_description text,
   wo_priority text,
@@ -203,26 +202,20 @@ comment on column cfg.pm_templates.trigger_type is
 comment on column cfg.pm_templates.trigger_config is 
   'JSONB configuration for the trigger type. Structure validated per trigger_type. See plan documentation for schema details.';
 
-comment on column cfg.pm_templates.work_order_template is 
-  'JSONB template for work orders generated from this PM. Includes default title, description, priority, estimated_hours, checklist.';
-
-comment on column cfg.pm_templates.checklist is 
-  'JSONB array of step objects with description and required flag. Used for PM procedure checklists. DEPRECATED: Use cfg.pm_template_checklist_items table instead.';
-
 comment on column cfg.pm_templates.wo_title is 
-  'Work order title template. Structured replacement for work_order_template->>title. Used when generating work orders from this PM template.';
+  'Work order title template. Used when generating work orders from this PM template.';
 
 comment on column cfg.pm_templates.wo_description is 
-  'Work order description template. Structured replacement for work_order_template->>description. Used when generating work orders from this PM template.';
+  'Work order description template. Used when generating work orders from this PM template.';
 
 comment on column cfg.pm_templates.wo_priority is 
-  'Work order priority template. Structured replacement for work_order_template->>priority. Must reference cfg.priority_catalogs(tenant_id, entity_type, key) where entity_type matches wo_priority_entity_type.';
+  'Work order priority template. Must reference cfg.priority_catalogs(tenant_id, entity_type, key) where entity_type matches wo_priority_entity_type.';
 
 comment on column cfg.pm_templates.wo_priority_entity_type is 
   'Entity type for wo_priority foreign key reference. Defaults to work_order. Used in composite foreign key to cfg.priority_catalogs.';
 
 comment on column cfg.pm_templates.wo_estimated_hours is 
-  'Work order estimated hours template. Structured replacement for work_order_template->>estimated_hours. Must be >= 0 if provided.';
+  'Work order estimated hours template. Must be >= 0 if provided.';
 
 -- Composite index for tenant template queries (RLS and filtering)
 -- Optimized for: WHERE tenant_id = X AND is_system = Y
@@ -255,7 +248,6 @@ create table if not exists app.pm_schedules (
   description text,
   trigger_type text not null,
   trigger_config jsonb not null,
-  work_order_template jsonb,
   wo_title text,
   wo_description text,
   wo_priority text,
@@ -297,23 +289,20 @@ comment on column app.pm_schedules.trigger_type is
 comment on column app.pm_schedules.trigger_config is 
   'JSONB configuration for the trigger type. Structure validated per trigger_type. See plan documentation for schema details.';
 
-comment on column app.pm_schedules.work_order_template is 
-  'JSONB template for work orders generated from this PM. Overrides template if template_id is set. DEPRECATED: Use wo_title, wo_description, wo_priority, wo_estimated_hours columns instead.';
-
 comment on column app.pm_schedules.wo_title is 
-  'Work order title template. Structured replacement for work_order_template->>title. Overrides template wo_title if template_id is set. Used when generating work orders from this PM schedule.';
+  'Work order title template. Overrides template wo_title if template_id is set. Used when generating work orders from this PM schedule.';
 
 comment on column app.pm_schedules.wo_description is 
-  'Work order description template. Structured replacement for work_order_template->>description. Overrides template wo_description if template_id is set. Used when generating work orders from this PM schedule.';
+  'Work order description template. Overrides template wo_description if template_id is set. Used when generating work orders from this PM schedule.';
 
 comment on column app.pm_schedules.wo_priority is 
-  'Work order priority template. Structured replacement for work_order_template->>priority. Overrides template wo_priority if template_id is set. Must reference cfg.priority_catalogs(tenant_id, entity_type, key) where entity_type matches wo_priority_entity_type.';
+  'Work order priority template. Overrides template wo_priority if template_id is set. Must reference cfg.priority_catalogs(tenant_id, entity_type, key) where entity_type matches wo_priority_entity_type.';
 
 comment on column app.pm_schedules.wo_priority_entity_type is 
   'Entity type for wo_priority foreign key reference. Defaults to work_order. Used in composite foreign key to cfg.priority_catalogs.';
 
 comment on column app.pm_schedules.wo_estimated_hours is 
-  'Work order estimated hours template. Structured replacement for work_order_template->>estimated_hours. Overrides template wo_estimated_hours if template_id is set. Must be >= 0 if provided.';
+  'Work order estimated hours template. Overrides template wo_estimated_hours if template_id is set. Must be >= 0 if provided.';
 
 comment on column app.pm_schedules.auto_generate is 
   'If true, work orders are automatically generated when PM becomes due. If false, PM must be manually triggered.';
@@ -339,12 +328,21 @@ create index if not exists pm_schedules_tenant_asset_idx
 -- Partial composite index for due PM queries (most critical performance path)
 -- Optimized for: WHERE tenant_id = X AND next_due_date <= NOW() AND is_active = true AND auto_generate = true
 -- Column order: tenant_id (equality) first, then next_due_date (range) for optimal query plans
+-- Note: is_active removed from key columns since it's already in WHERE clause
 create index if not exists pm_schedules_due_idx 
-  on app.pm_schedules (tenant_id, next_due_date, is_active) 
+  on app.pm_schedules (tenant_id, next_due_date) 
   where is_active = true and auto_generate = true;
 
--- Index for trigger type filtering (less common but useful for reporting)
--- Optimized for: WHERE trigger_type = X
+-- Partial composite index for usage-based PM lookups (optimized for meter reading triggers)
+-- Optimized for: WHERE trigger_type = 'usage' AND is_active = true AND auto_generate = true
+-- Used by rpc_record_meter_reading to find usage-based PMs for a meter
+-- Note: JSONB meter_id extraction still requires table scan, but this narrows the search space
+create index if not exists pm_schedules_usage_trigger_idx 
+  on app.pm_schedules (tenant_id, trigger_type) 
+  where trigger_type = 'usage' and is_active = true and auto_generate = true;
+
+-- General index for trigger type filtering (for other query patterns)
+-- Optimized for: WHERE trigger_type = X (reporting and general queries)
 create index if not exists pm_schedules_trigger_type_idx 
   on app.pm_schedules (trigger_type);
 
@@ -444,10 +442,11 @@ comment on table app.pm_dependencies is
 comment on column app.pm_dependencies.dependency_type is 
   'Type of dependency: after (PM must run after dependency), before (PM must run before dependency), same_day (PM must run on same day as dependency).';
 
--- Index for PM dependency lookups (forward dependencies)
+-- Composite index for PM dependency lookups (forward dependencies)
 -- Optimized for: WHERE pm_schedule_id = X (checking if PM has dependencies)
+-- Also optimized for JOIN in pm.check_pm_dependencies() function: JOIN on depends_on_pm_id
 create index if not exists pm_dependencies_pm_idx 
-  on app.pm_dependencies (pm_schedule_id);
+  on app.pm_dependencies (pm_schedule_id, depends_on_pm_id);
 
 -- Index for reverse dependency lookups (backward dependencies)
 -- Optimized for: WHERE depends_on_pm_id = X (checking what depends on this PM)
@@ -474,7 +473,7 @@ create table if not exists cfg.pm_template_checklist_items (
 );
 
 comment on table cfg.pm_template_checklist_items is 
-  'Checklist items for PM templates. Structured replacement for cfg.pm_templates.checklist JSONB column. Each item represents a step in the PM procedure checklist with description, required flag, and display order.';
+  'Checklist items for PM templates. Each item represents a step in the PM procedure checklist with description, required flag, and display order.';
 
 comment on column cfg.pm_template_checklist_items.template_id is 
   'PM template this checklist item belongs to. Cascade delete when template is deleted.';
@@ -505,51 +504,6 @@ alter table cfg.pm_template_checklist_items enable row level security;
 -- Data Migration: JSONB to Structured Columns
 -- ============================================================================
 -- 
--- Migrates existing JSONB data to structured columns for improved type safety,
--- foreign key constraints, and query performance. This is a one-time migration
--- that runs during schema creation (no existing data in new tables).
--- 
--- Note: JSONB columns are kept temporarily for backward compatibility during
--- transition period. They can be dropped in a future migration after verification.
-
--- Migrate work_order_template JSONB to structured columns in cfg.pm_templates
--- Only processes valid JSONB objects to avoid errors
-update cfg.pm_templates
-set
-  wo_title = work_order_template->>'title',
-  wo_description = work_order_template->>'description',
-  wo_priority = work_order_template->>'priority',
-  wo_estimated_hours = (work_order_template->>'estimated_hours')::numeric
-where work_order_template is not null
-  and jsonb_typeof(work_order_template) = 'object';
-
--- Migrate work_order_template JSONB to structured columns in app.pm_schedules
--- Only processes valid JSONB objects to avoid errors
-update app.pm_schedules
-set
-  wo_title = work_order_template->>'title',
-  wo_description = work_order_template->>'description',
-  wo_priority = work_order_template->>'priority',
-  wo_estimated_hours = (work_order_template->>'estimated_hours')::numeric
-where work_order_template is not null
-  and jsonb_typeof(work_order_template) = 'object';
-
--- Migrate checklist JSONB array to cfg.pm_template_checklist_items table
--- Validates each checklist item has a description before inserting
--- Preserves display order via ordinality
-insert into cfg.pm_template_checklist_items (template_id, description, required, display_order)
-select
-  id as template_id,
-  (value->>'description')::text as description,
-  coalesce((value->>'required')::boolean, false) as required,
-  ordinality - 1 as display_order
-from cfg.pm_templates,
-  lateral jsonb_array_elements(checklist) with ordinality as t(value, ordinality)
-where checklist is not null
-  and jsonb_typeof(checklist) = 'array'
-  and value->>'description' is not null
-  and length((value->>'description')::text) >= 1;
-
 -- ============================================================================
 -- Add Foreign Key Constraints
 -- ============================================================================
@@ -1081,6 +1035,7 @@ declare
   v_all_dependencies_met boolean := true;
   v_dependency record;
 begin
+  -- Optimized query using composite index pm_dependencies_pm_idx
   for v_dependency in
     select
       pd.depends_on_pm_id,
@@ -1156,22 +1111,12 @@ begin
   end if;
 
   -- Get work order template values (from schedule or template)
-  -- Prefer structured columns, fallback to JSONB for backward compatibility
   v_title := coalesce(
     v_pm_schedule.wo_title,
     (
       select wo_title
       from cfg.pm_templates
       where id = v_pm_schedule.template_id
-    ),
-    -- Fallback to JSONB if structured columns are null
-    coalesce(
-      v_pm_schedule.work_order_template->>'title',
-      (
-        select work_order_template->>'title'
-        from cfg.pm_templates
-        where id = v_pm_schedule.template_id
-      )
     ),
     v_pm_schedule.title
   );
@@ -1182,15 +1127,6 @@ begin
       from cfg.pm_templates
       where id = v_pm_schedule.template_id
     ),
-    -- Fallback to JSONB if structured columns are null
-    coalesce(
-      v_pm_schedule.work_order_template->>'description',
-      (
-        select work_order_template->>'description'
-        from cfg.pm_templates
-        where id = v_pm_schedule.template_id
-      )
-    ),
     v_pm_schedule.description
   );
   v_priority := coalesce(
@@ -1199,15 +1135,6 @@ begin
       select wo_priority
       from cfg.pm_templates
       where id = v_pm_schedule.template_id
-    ),
-    -- Fallback to JSONB if structured columns are null
-    coalesce(
-      v_pm_schedule.work_order_template->>'priority',
-      (
-        select work_order_template->>'priority'
-        from cfg.pm_templates
-        where id = v_pm_schedule.template_id
-      )
     ),
     'medium'
   );
@@ -1267,7 +1194,7 @@ end;
 $$;
 
 comment on function pm.generate_pm_work_order(uuid) is 
-  'Generates work order from PM schedule. Uses structured wo_* columns (with JSONB fallback for backward compatibility), sets maintenance_type to preventive_time or preventive_usage, links to PM schedule, updates next_due_date. Checks dependencies before generating.';
+  'Generates work order from PM schedule. Uses structured wo_* columns, sets maintenance_type to preventive_time or preventive_usage, links to PM schedule, updates next_due_date. Checks dependencies before generating.';
 
 revoke all on function pm.generate_pm_work_order(uuid) from public;
 grant execute on function pm.generate_pm_work_order(uuid) to postgres;
@@ -1524,7 +1451,10 @@ select
   ps.description,
   ps.trigger_type,
   ps.trigger_config,
-  ps.work_order_template,
+  ps.wo_title,
+  ps.wo_description,
+  ps.wo_priority,
+  ps.wo_estimated_hours,
   ps.auto_generate,
   ps.next_due_date,
   ps.last_completed_at,
@@ -1555,9 +1485,10 @@ select
   pt.description,
   pt.trigger_type,
   pt.trigger_config,
-  pt.work_order_template,
-  pt.checklist,
-  pt.estimated_hours,
+  pt.wo_title,
+  pt.wo_description,
+  pt.wo_priority,
+  pt.wo_estimated_hours,
   pt.is_system,
   pt.created_at,
   pt.updated_at
