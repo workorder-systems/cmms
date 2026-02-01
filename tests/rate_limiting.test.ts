@@ -9,6 +9,10 @@ import {
 import {
   createTestWorkOrder,
   transitionWorkOrderStatus,
+  createTestAsset,
+  createTestMeter,
+  createTestPmTemplate,
+  createTestPmSchedule,
 } from './helpers/entities';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -382,6 +386,226 @@ describe('Rate Limiting', () => {
       // Cleanup should not affect current window
       // Rate limit should still be enforced
       // This test verifies cleanup doesn't interfere with active tracking
+    });
+  });
+
+  describe('Meter RPC Rate Limiting', () => {
+    it('should enforce 20 requests/minute limit for rpc_create_meter', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const assetId = await createTestAsset(client, tenantId, 'Test Asset');
+
+      // Create 20 meters (should succeed)
+      const meterIds: string[] = [];
+      for (let i = 0; i < 20; i++) {
+        const meterId = await createTestMeter(
+          client,
+          tenantId,
+          assetId,
+          'runtime_hours',
+          `Meter ${i}`
+        );
+        meterIds.push(meterId);
+      }
+
+      // 21st request should fail
+      const { error } = await client.rpc('rpc_create_meter', {
+        p_tenant_id: tenantId,
+        p_asset_id: assetId,
+        p_meter_type: 'runtime_hours',
+        p_name: 'Rate Limited Meter',
+        p_unit: 'hours',
+      });
+
+      expect(error).toBeDefined();
+      if (error?.message) {
+        expect(error.message).toContain('Rate limit exceeded');
+      } else if (error?.code) {
+        expect(['54000', 'P0001']).toContain(error.code);
+      }
+    });
+
+    it('should enforce 50 requests/minute limit for rpc_record_meter_reading', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const assetId = await createTestAsset(client, tenantId, 'Test Asset');
+      const meterId = await createTestMeter(client, tenantId, assetId);
+
+      // Record 50 readings (should succeed)
+      for (let i = 0; i < 50; i++) {
+        await client.rpc('rpc_record_meter_reading', {
+          p_tenant_id: tenantId,
+          p_meter_id: meterId,
+          p_reading_value: 100 + i,
+        });
+      }
+
+      // 51st request should fail
+      const { error } = await client.rpc('rpc_record_meter_reading', {
+        p_tenant_id: tenantId,
+        p_meter_id: meterId,
+        p_reading_value: 150,
+      });
+
+      expect(error).toBeDefined();
+      if (error?.message) {
+        expect(error.message).toContain('Rate limit exceeded');
+      } else if (error?.code) {
+        expect(['54000', 'P0001']).toContain(error.code);
+      }
+    });
+
+    it('should enforce 10 requests/minute limit for rpc_delete_meter', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const assetId = await createTestAsset(client, tenantId, 'Test Asset');
+
+      // Create and delete 10 meters (should succeed)
+      for (let i = 0; i < 10; i++) {
+        const meterId = await createTestMeter(
+          client,
+          tenantId,
+          assetId,
+          'runtime_hours',
+          `Meter ${i}`
+        );
+        await client.rpc('rpc_delete_meter', {
+          p_tenant_id: tenantId,
+          p_meter_id: meterId,
+        });
+      }
+
+      // Create one more meter to delete
+      const meterId = await createTestMeter(
+        client,
+        tenantId,
+        assetId,
+        'runtime_hours',
+        'Last Meter'
+      );
+
+      // 11th delete should fail
+      const { error } = await client.rpc('rpc_delete_meter', {
+        p_tenant_id: tenantId,
+        p_meter_id: meterId,
+      });
+
+      expect(error).toBeDefined();
+      if (error?.message) {
+        expect(error.message).toContain('Rate limit exceeded');
+      } else if (error?.code) {
+        expect(['54000', 'P0001']).toContain(error.code);
+      }
+    });
+  });
+
+  describe('PM RPC Rate Limiting', () => {
+    it('should enforce 20 requests/minute limit for rpc_create_pm_template', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+
+      // Create 20 templates (should succeed)
+      const templateIds: string[] = [];
+      for (let i = 0; i < 20; i++) {
+        const templateId = await createTestPmTemplate(
+          client,
+          tenantId,
+          `Template ${i}`,
+          'time',
+          { interval_days: 30 }
+        );
+        templateIds.push(templateId);
+      }
+
+      // 21st request should fail
+      const { error } = await client.rpc('rpc_create_pm_template', {
+        p_tenant_id: tenantId,
+        p_name: 'Rate Limited Template',
+        p_trigger_type: 'time',
+        p_trigger_config: { interval_days: 30 },
+      });
+
+      expect(error).toBeDefined();
+      if (error?.message) {
+        expect(error.message).toContain('Rate limit exceeded');
+      } else if (error?.code) {
+        expect(['54000', 'P0001']).toContain(error.code);
+      }
+    });
+
+    it('should enforce 20 requests/minute limit for rpc_create_pm_schedule', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const assetId = await createTestAsset(client, tenantId, 'Test Asset');
+
+      // Create 20 PM schedules (should succeed)
+      const pmScheduleIds: string[] = [];
+      for (let i = 0; i < 20; i++) {
+        const pmScheduleId = await createTestPmSchedule(
+          client,
+          tenantId,
+          assetId,
+          `PM ${i}`,
+          'time',
+          { interval_days: 30 }
+        );
+        pmScheduleIds.push(pmScheduleId);
+      }
+
+      // 21st request should fail
+      const { error } = await client.rpc('rpc_create_pm_schedule', {
+        p_tenant_id: tenantId,
+        p_asset_id: assetId,
+        p_title: 'Rate Limited PM',
+        p_trigger_type: 'time',
+        p_trigger_config: { interval_days: 30 },
+      });
+
+      expect(error).toBeDefined();
+      if (error?.message) {
+        expect(error.message).toContain('Rate limit exceeded');
+      } else if (error?.code) {
+        expect(['54000', 'P0001']).toContain(error.code);
+      }
+    });
+
+    it('should enforce 10 requests/minute limit for rpc_generate_due_pms', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const assetId = await createTestAsset(client, tenantId, 'Test Asset');
+
+      // Create PM schedules
+      for (let i = 0; i < 5; i++) {
+        await createTestPmSchedule(
+          client,
+          tenantId,
+          assetId,
+          `PM ${i}`,
+          'time',
+          { interval_days: 30 }
+        );
+      }
+
+      // Call generate_due_pms 10 times (should succeed)
+      for (let i = 0; i < 10; i++) {
+        await client.rpc('rpc_generate_due_pms', {
+          p_tenant_id: tenantId,
+          p_limit: 100,
+        });
+      }
+
+      // 11th request should fail
+      const { error } = await client.rpc('rpc_generate_due_pms', {
+        p_tenant_id: tenantId,
+        p_limit: 100,
+      });
+
+      expect(error).toBeDefined();
+      if (error?.message) {
+        expect(error.message).toContain('Rate limit exceeded');
+      } else if (error?.code) {
+        expect(['54000', 'P0001']).toContain(error.code);
+      }
     });
   });
 });
