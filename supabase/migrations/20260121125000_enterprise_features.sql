@@ -1525,5 +1525,3 @@ where tenant_id = authz.get_current_tenant_id()
 
 comment on view public.v_tenants_overview is 
   'Tenant overview for current tenant. Only accessible to tenant members. Filters materialized view by tenant and membership.';
-
-select public.refresh_analytics_views();
