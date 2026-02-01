@@ -980,6 +980,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = ''
+volatile
 as $$
 declare
   v_plugin_id uuid;
