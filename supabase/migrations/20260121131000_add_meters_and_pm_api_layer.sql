@@ -89,7 +89,7 @@ begin
   end if;
 
   -- Validate decimal_places
-  if p_decimal_places < 0 or p_decimal_places > 6 then
+  if p_decimal_places is not null and (p_decimal_places < 0 or p_decimal_places > 6) then
     raise exception using
       message = 'decimal_places must be between 0 and 6',
       errcode = '23514';
@@ -291,6 +291,21 @@ begin
   -- Use provided reading_date or default to now
   if p_reading_date is null then
     p_reading_date := pg_catalog.now();
+  end if;
+
+  -- Validate reading_date range (allow up to 7 days in future, 90 days in past)
+  if p_reading_date is not null then
+    if p_reading_date > pg_catalog.now() + interval '7 days' then
+      raise exception using
+        message = 'Reading date cannot be more than 7 days in the future',
+        errcode = '23514';
+    end if;
+
+    if p_reading_date < pg_catalog.now() - interval '90 days' then
+      raise exception using
+        message = 'Reading date cannot be more than 90 days in the past',
+        errcode = '23514';
+    end if;
   end if;
 
   -- Insert reading (trigger will validate and update meter)
@@ -695,6 +710,7 @@ create or replace function public.rpc_create_pm_schedule(
   p_description text default null,
   p_template_id uuid default null,
   p_auto_generate boolean default true,
+  p_estimated_hours numeric default null,
   p_wo_title text default null,
   p_wo_description text default null,
   p_wo_priority text default null,
@@ -869,11 +885,11 @@ begin
 end;
 $$;
 
-comment on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, text, text, text, numeric) is 
-  'Creates PM schedule for asset. Validates trigger_config, calculates initial next_due_date, validates meter exists for usage triggers. Accepts structured wo_* parameters. Requires workorder.create permission. Rate limited to 20 requests per minute per user. Returns the UUID of the created PM schedule.';
+comment on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, numeric, text, text, text, numeric) is 
+  'Creates PM schedule for asset. Validates trigger_config, calculates initial next_due_date, validates meter exists for usage triggers. Accepts structured wo_* parameters and p_estimated_hours for backward compatibility. Requires workorder.create permission. Rate limited to 20 requests per minute per user. Returns the UUID of the created PM schedule.';
 
-revoke all on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, text, text, text, numeric) from public;
-grant execute on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, text, text, text, numeric) to authenticated;
+revoke all on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, numeric, text, text, text, numeric) from public;
+grant execute on function public.rpc_create_pm_schedule(uuid, uuid, text, text, jsonb, text, uuid, boolean, numeric, text, text, text, numeric) to authenticated;
 
 create or replace function public.rpc_update_pm_schedule(
   p_tenant_id uuid,
@@ -883,6 +899,7 @@ create or replace function public.rpc_update_pm_schedule(
   p_trigger_config jsonb default null,
   p_auto_generate boolean default null,
   p_is_active boolean default null,
+  p_estimated_hours numeric default null,
   p_wo_title text default null,
   p_wo_description text default null,
   p_wo_priority text default null,
@@ -990,11 +1007,11 @@ begin
 end;
 $$;
 
-comment on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, text, text, text, numeric) is 
-  'Updates PM schedule. Recalculates next_due_date if trigger_config changes. Accepts structured wo_* parameters. Requires workorder.create permission. Rate limited to 20 requests per minute per user.';
+comment on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, numeric, text, text, text, numeric) is 
+  'Updates PM schedule. Recalculates next_due_date if trigger_config changes. Accepts structured wo_* parameters and p_estimated_hours for backward compatibility. Requires workorder.create permission. Rate limited to 20 requests per minute per user.';
 
-revoke all on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, text, text, text, numeric) from public;
-grant execute on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, text, text, text, numeric) to authenticated;
+revoke all on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, numeric, text, text, text, numeric) from public;
+grant execute on function public.rpc_update_pm_schedule(uuid, uuid, text, text, jsonb, boolean, boolean, numeric, text, text, text, numeric) to authenticated;
 
 create or replace function public.rpc_delete_pm_schedule(
   p_tenant_id uuid,
