@@ -121,21 +121,23 @@ Trigger function ensuring meter belongs to same tenant as asset.
 
 ### RPC Functions
 
+**Note:** All RPC functions are created in the API layer migration (`YYYYMMDDHHmmss_add_meters_and_pm_api_layer.sql`), not in the tables migration.
+
 #### `public.rpc_create_meter(p_tenant_id, p_asset_id, p_meter_type, p_name, p_unit, p_current_reading, p_reading_direction, p_decimal_places, p_description)`
 
-Creates new meter for asset. Validates asset belongs to tenant, meter_type is valid, name is unique per asset.
+Creates new meter for asset. Validates asset belongs to tenant, meter_type is valid, name is unique per asset. Requires `asset.edit` permission.
 
 #### `public.rpc_update_meter(p_tenant_id, p_meter_id, p_name, p_unit, p_reading_direction, p_decimal_places, p_description, p_is_active)`
 
-Updates meter configuration. Cannot change meter_type or current_reading (use record_reading for that).
+Updates meter configuration. Cannot change meter_type or current_reading (use record_reading for that). Requires `asset.edit` permission.
 
 #### `public.rpc_record_meter_reading(p_tenant_id, p_meter_id, p_reading_value, p_reading_date, p_reading_type, p_notes)`
 
-Records new meter reading. Validates reading, updates meter current_reading, creates reading history record, triggers PM usage-based checks.
+Records new meter reading. Validates reading, updates meter current_reading, creates reading history record, triggers PM usage-based checks. Requires `asset.edit` permission.
 
 #### `public.rpc_delete_meter(p_tenant_id, p_meter_id)`
 
-Soft deletes meter (sets is_active = false). Validates no active PM schedules reference this meter.
+Soft deletes meter (sets is_active = false). Validates no active PM schedules reference this meter. Requires `asset.edit` permission.
 
 ### Views
 
@@ -376,37 +378,39 @@ Trigger function preventing circular PM dependencies. Uses recursive CTE to dete
 
 ### RPC Functions
 
+**Note:** All RPC functions are created in the API layer migration (`YYYYMMDDHHmmss_add_meters_and_pm_api_layer.sql`), not in the tables migration.
+
 #### `public.rpc_create_pm_template(p_tenant_id, p_name, p_description, p_trigger_type, p_trigger_config, p_work_order_template, p_checklist, p_estimated_hours)`
 
-Creates reusable PM template. Validates trigger_config.
+Creates reusable PM template. Validates trigger_config. Requires `tenant.admin` permission.
 
 #### `public.rpc_update_pm_template(p_tenant_id, p_template_id, p_name, p_description, p_trigger_config, p_work_order_template, p_checklist, p_estimated_hours)`
 
-Updates PM template. Validates trigger_config.
+Updates PM template. Validates trigger_config. Requires `tenant.admin` permission.
 
 #### `public.rpc_create_pm_schedule(p_tenant_id, p_asset_id, p_title, p_description, p_trigger_type, p_trigger_config, p_template_id, p_work_order_template, p_auto_generate)`
 
-Creates PM schedule for asset. Validates trigger_config, calculates initial next_due_date, validates meter exists for usage triggers.
+Creates PM schedule for asset. Validates trigger_config, calculates initial next_due_date, validates meter exists for usage triggers. Requires `workorder.create` permission.
 
 #### `public.rpc_update_pm_schedule(p_tenant_id, p_pm_schedule_id, p_title, p_description, p_trigger_config, p_work_order_template, p_auto_generate, p_is_active)`
 
-Updates PM schedule. Recalculates next_due_date if trigger_config changes.
+Updates PM schedule. Recalculates next_due_date if trigger_config changes. Requires `workorder.create` permission.
 
 #### `public.rpc_delete_pm_schedule(p_tenant_id, p_pm_schedule_id)`
 
-Soft deletes PM schedule (sets is_active = false). Validates no active dependencies.
+Soft deletes PM schedule (sets is_active = false). Validates no active dependencies. Requires `workorder.create` permission.
 
 #### `public.rpc_generate_due_pms(p_tenant_id, p_limit)`
 
-Batch function to generate work orders for due PMs. Finds PMs where next_due_date <= now() and is_due() = true, checks dependencies, generates WOs, updates next_due_date. Returns count of generated WOs.
+Batch function to generate work orders for due PMs. Finds PMs where next_due_date <= now() and is_due() = true, checks dependencies, generates WOs, updates next_due_date. Returns count of generated WOs. Requires `workorder.create` permission.
 
 #### `public.rpc_trigger_manual_pm(p_tenant_id, p_pm_schedule_id)`
 
-Manually triggers a manual-type PM schedule. Generates work order immediately.
+Manually triggers a manual-type PM schedule. Generates work order immediately. Requires `workorder.create` permission.
 
 #### `public.rpc_create_pm_dependency(p_tenant_id, p_pm_schedule_id, p_depends_on_pm_id, p_dependency_type)`
 
-Creates PM dependency. Validates no circular dependencies.
+Creates PM dependency. Validates no circular dependencies. Requires `workorder.create` permission.
 
 ### Views
 
@@ -461,8 +465,15 @@ When PM work order is completed:
 
 Add to `app.work_orders`:
 
-- `pm_schedule_id` uuid (references `app.pm_schedules`, nullable)
+- `pm_schedule_id` uuid (references `app.pm_schedules`, nullable, on delete set null)
 - Index: `work_orders_pm_schedule_idx` on (pm_schedule_id) where pm_schedule_id is not null
+
+**API Layer Integration:**
+
+- The `pm.generate_pm_work_order()` function will call `public.rpc_create_work_order()` with the `p_pm_schedule_id` parameter
+- The updated `rpc_create_work_order` function (in the API layer migration) will accept `p_pm_schedule_id` as an optional parameter
+- When a work order is created from a PM schedule, the `pm_schedule_id` is automatically set
+- The work order completion trigger will call `pm.update_pm_on_completion()` to update PM schedule state
 
 ## Part 4: Error Handling & Edge Cases
 
@@ -489,38 +500,127 @@ Add to `app.work_orders`:
 
 ## Part 5: Migration Strategy
 
-### Migration File: `YYYYMMDDHHmmss_add_meters_and_pm.sql`
+### Migration Structure
+
+The implementation will be split into multiple migration files to respect the existing migration structure and ensure proper ordering:
+
+**Existing Migration Order:**
+
+- `20260121120000_foundation.sql`
+- `20260121121000_core_tables.sql`
+- `20260121122000_authorization.sql`
+- `20260121123000_workflows.sql`
+- `20260121124000_api_layer.sql` (existing API layer - DO NOT MODIFY)
+- `20260121125000_enterprise_features.sql`
+- `20260121126000_security_hardening.sql`
+- `20260121127000_add_technician_roles_labor_attachments.sql`
+- `20260121128000_add_dashboard_views.sql`
+- `20260121129000_add_maintenance_types.sql`
+
+**New Migrations to Create:**
+
+#### Migration 1: `YYYYMMDDHHmmss_add_meters_and_pm_tables.sql`
+
+This migration creates all tables, functions, triggers, and core logic. Must be created after `20260121129000_add_maintenance_types.sql`.
 
 **Order of operations:**
 
 1. Create meter tables (app.asset_meters, app.meter_readings)
 2. Create PM tables (cfg.pm_templates, app.pm_schedules, app.pm_history, app.pm_dependencies)
-3. Add pm_schedule_id to app.work_orders
-4. Create validation functions
-5. Create core PM functions (calculate_next_due_date, validate_trigger_config, etc.)
+3. Add pm_schedule_id column to app.work_orders (with foreign key constraint)
+4. Create validation functions (util.validate_meter_reading, util.validate_asset_meter_tenant, util.validate_pm_trigger_config, util.validate_pm_meter_tenant, util.validate_pm_dependency_cycle)
+5. Create core PM functions in `pm` schema (calculate_next_due_date, validate_trigger_config, is_pm_due, generate_pm_work_order, check_pm_dependencies, update_pm_on_completion)
 6. Create trigger functions
 7. Create triggers
-8. Create RPC functions
-9. Create views
-10. Enable RLS policies
-11. Grant permissions
+8. Create views (v_asset_meters, v_meter_readings, v_pm_schedules, v_pm_templates, v_due_pms, v_overdue_pms, v_upcoming_pms, v_pm_history)
+9. Enable RLS policies
+10. Grant permissions
+
+#### Migration 2: `YYYYMMDDHHmmss_add_meters_and_pm_api_layer.sql`
+
+This migration creates all RPC functions for meters and PM system. Must be created after the tables migration.
+
+**Order of operations:**
+
+1. Create meter RPC functions:
+
+   - `public.rpc_create_meter`
+   - `public.rpc_update_meter`
+   - `public.rpc_record_meter_reading`
+   - `public.rpc_delete_meter`
+
+2. Create PM template RPC functions:
+
+   - `public.rpc_create_pm_template`
+   - `public.rpc_update_pm_template`
+
+3. Create PM schedule RPC functions:
+
+   - `public.rpc_create_pm_schedule`
+   - `public.rpc_update_pm_schedule`
+   - `public.rpc_delete_pm_schedule`
+   - `public.rpc_generate_due_pms`
+   - `public.rpc_trigger_manual_pm`
+   - `public.rpc_create_pm_dependency`
+
+4. Update existing work order RPC:
+
+   - Extend `public.rpc_create_work_order` to accept `p_pm_schedule_id` parameter (using `create or replace function`)
+   - New signature: `public.rpc_create_work_order(p_tenant_id, p_title, p_description, p_priority, p_assigned_to, p_location_id, p_asset_id, p_due_date, p_pm_schedule_id default null)`
+   - Validates that `p_pm_schedule_id` belongs to the tenant and is active (if provided)
+   - Sets `pm_schedule_id` on the work order when provided
+   - Maintains backward compatibility: existing calls without `p_pm_schedule_id` continue to work
+   - This extends the existing function signature without breaking backward compatibility
+
+**Important Notes:**
+
+- **DO NOT modify existing migration files** (`20260121124000_api_layer.sql`). Instead, use `create or replace function` in the new API layer migration to extend `rpc_create_work_order`.
+- The new `rpc_create_work_order` signature will be backward compatible (p_pm_schedule_id will be optional with default null).
+- All RPC functions follow the same security pattern as existing API layer functions (security definer, set search_path = '', rate limiting, permission checks).
 
 **Backward compatibility:**
 
-- All new tables, no changes to existing tables (except adding pm_schedule_id column)
-- Existing work orders continue to work
+- All new tables, no changes to existing tables (except adding pm_schedule_id column to work_orders)
+- Existing work orders continue to work (pm_schedule_id is nullable)
+- Existing `rpc_create_work_order` calls continue to work (new parameter is optional)
 - Existing assets continue to work
 
-## Files to Create/Modify
+## Files to Create
 
-### New Migration File
+### New Migration Files
 
-- `supabase/migrations/YYYYMMDDHHmmss_add_meters_and_pm.sql` - Complete implementation
+1. `supabase/migrations/YYYYMMDDHHmmss_add_meters_and_pm_tables.sql` - Tables, functions, triggers, views, RLS
+2. `supabase/migrations/YYYYMMDDHHmmss_add_meters_and_pm_api_layer.sql` - All RPC functions for meters and PM
 
-### Files to Modify
+### Migration Naming Convention
 
-- `supabase/migrations/20260121124000_api_layer.sql` - Update `rpc_create_work_order` to accept `p_pm_schedule_id` parameter
-- `supabase/migrations/20260121128000_add_dashboard_views.sql` - Add PM-related dashboard views if needed
+Use UTC timestamp format: `YYYYMMDDHHmmss_short_description.sql`
+
+Example:
+
+- `20260121130000_add_meters_and_pm_tables.sql`
+- `20260121131000_add_meters_and_pm_api_layer.sql`
+
+**Note:** Ensure the timestamp is after `20260121129000_add_maintenance_types.sql` to maintain proper migration order.
+
+### Migration Dependencies
+
+**Critical Dependencies:**
+
+- Tables migration requires: `app.work_orders` table (from core_tables), `app.assets` table (from core_tables), `app.tenants` table (from foundation), `cfg` schema (from foundation)
+- API layer migration requires: All tables from tables migration, `authz` schema functions (from authorization), `util` schema functions (from foundation), `cfg` schema functions (from workflows)
+
+**API Layer Considerations:**
+
+- The existing `rpc_create_work_order` function in `20260121124000_api_layer.sql` cannot be modified
+- Instead, the new API layer migration will use `create or replace function` to extend the existing function signature
+- The extended function will maintain backward compatibility by making `p_pm_schedule_id` optional (default null)
+- All new RPC functions follow the same patterns as existing API layer functions:
+  - `security definer` with `set search_path = ''`
+  - Rate limiting via `util.check_rate_limit()`
+  - Permission validation via `authz.rpc_setup()` or `authz.validate_permission()`
+  - Tenant context validation
+  - Comprehensive error handling
 
 ## Testing Considerations
 
