@@ -495,7 +495,6 @@ begin
     description,
     trigger_type,
     trigger_config,
-    estimated_hours,
     wo_title,
     wo_description,
     wo_priority,
@@ -507,7 +506,6 @@ begin
     p_description,
     p_trigger_type,
     p_trigger_config,
-    p_estimated_hours,
     v_wo_title,
     v_wo_description,
     v_wo_priority,
@@ -615,7 +613,7 @@ begin
   v_wo_title := p_wo_title;
   v_wo_description := p_wo_description;
   v_wo_priority := p_wo_priority;
-  v_wo_estimated_hours := p_wo_estimated_hours;
+  v_wo_estimated_hours := coalesce(p_wo_estimated_hours, p_estimated_hours);
 
   -- Validate wo_priority if provided
   if v_wo_priority is not null then
@@ -638,7 +636,6 @@ begin
     name = coalesce(p_name, name),
     description = coalesce(p_description, description),
     trigger_config = coalesce(p_trigger_config, trigger_config),
-    estimated_hours = coalesce(p_estimated_hours, estimated_hours),
     wo_title = coalesce(v_wo_title, wo_title),
     wo_description = coalesce(v_wo_description, wo_description),
     wo_priority = coalesce(v_wo_priority, wo_priority),
@@ -805,7 +802,7 @@ begin
   v_wo_title := p_wo_title;
   v_wo_description := p_wo_description;
   v_wo_priority := p_wo_priority;
-  v_wo_estimated_hours := p_wo_estimated_hours;
+  v_wo_estimated_hours := coalesce(p_wo_estimated_hours, p_estimated_hours);
 
   -- Validate wo_priority if provided
   if v_wo_priority is not null then
@@ -943,7 +940,7 @@ begin
   v_wo_title := p_wo_title;
   v_wo_description := p_wo_description;
   v_wo_priority := p_wo_priority;
-  v_wo_estimated_hours := p_wo_estimated_hours;
+  v_wo_estimated_hours := coalesce(p_wo_estimated_hours, p_estimated_hours);
 
   -- Validate wo_priority if provided
   if v_wo_priority is not null then
@@ -1241,6 +1238,18 @@ begin
       errcode = '23503';
   end if;
 
+  -- Check if dependency already exists
+  if exists (
+    select 1
+    from app.pm_dependencies
+    where pm_schedule_id = p_pm_schedule_id
+      and depends_on_pm_id = p_depends_on_pm_id
+  ) then
+    raise exception using
+      message = 'PM dependency already exists',
+      errcode = '23505';
+  end if;
+
   -- Insert dependency (trigger will validate for cycles)
   insert into app.pm_dependencies (
     tenant_id,
@@ -1391,11 +1400,15 @@ comment on function pm.generate_pm_work_order(uuid) is
 -- Extend rpc_create_work_order to accept p_pm_schedule_id
 -- ============================================================================
 
+-- Drop previous function signature to avoid conflicts
+drop function if exists public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz);
+
 create or replace function public.rpc_create_work_order(
   p_tenant_id uuid,
   p_title text,
   p_description text default null,
   p_priority text default 'medium',
+  p_maintenance_type text default null,
   p_assigned_to uuid default null,
   p_location_id uuid default null,
   p_asset_id uuid default null,
@@ -1417,6 +1430,34 @@ begin
   perform util.check_rate_limit('work_order_create', null, 10, 1, auth.uid(), p_tenant_id);
   
   v_user_id := authz.rpc_setup(p_tenant_id, 'workorder.create');
+
+  -- Validate priority exists (uses index on priority_catalogs)
+  if not exists (
+    select 1
+    from cfg.priority_catalogs
+    where tenant_id = p_tenant_id
+      and entity_type = 'work_order'
+      and key = p_priority
+  ) then
+    raise exception using
+      message = format('Invalid priority: %s', p_priority),
+      errcode = '23503';
+  end if;
+
+  -- Validate maintenance type exists (uses index on maintenance_type_catalogs_tenant_entity_key_idx)
+  if p_maintenance_type is not null then
+    if not exists (
+      select 1
+      from cfg.maintenance_type_catalogs
+      where tenant_id = p_tenant_id
+        and entity_type = 'work_order'
+        and key = p_maintenance_type
+    ) then
+      raise exception using
+        message = format('Invalid maintenance type: %s', p_maintenance_type),
+        errcode = '23503';
+    end if;
+  end if;
 
   -- Validate PM schedule if provided
   if p_pm_schedule_id is not null then
@@ -1443,18 +1484,6 @@ begin
     end if;
   end if;
 
-  if not exists (
-    select 1
-    from cfg.priority_catalogs
-    where tenant_id = p_tenant_id
-      and entity_type = 'work_order'
-      and key = p_priority
-  ) then
-    raise exception using
-      message = format('Invalid priority: %s', p_priority),
-      errcode = '23503';
-  end if;
-
   v_initial_status := cfg.get_default_status(
     p_tenant_id,
     'work_order',
@@ -1466,6 +1495,7 @@ begin
     title,
     description,
     priority,
+    maintenance_type,
     assigned_to,
     location_id,
     asset_id,
@@ -1478,6 +1508,7 @@ begin
     p_title,
     p_description,
     p_priority,
+    p_maintenance_type,
     p_assigned_to,
     p_location_id,
     p_asset_id,
@@ -1491,8 +1522,8 @@ begin
 end;
 $$;
 
-comment on function public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid, timestamptz, uuid) is 
-  'Creates a new work order for the current tenant context. Requires workorder.create permission. Validates priority exists in catalog, automatically assigns default status from workflow catalogs based on context (e.g., assigned status if assigned_to is provided). Validates that referenced assets, locations, and PM schedules belong to the same tenant. Rate limited to 10 work orders per minute per user. Returns the UUID of the created work order. Side effects: Creates work order record. Security implications: Requires workorder.create permission and tenant membership. Extended to support PM schedule linkage via p_pm_schedule_id parameter.';
+comment on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) is 
+  'Creates a new work order for the current tenant context. Requires workorder.create permission. Validates priority and optional maintenance_type exist in catalogs, automatically assigns default status from workflow catalogs based on context (e.g., assigned status if assigned_to is provided). Validates that referenced assets, locations, and PM schedules belong to the same tenant. Rate limited to 10 work orders per minute per user. Returns the UUID of the created work order. Side effects: Creates work order record. Security implications: Requires workorder.create permission and tenant membership. Extended to support maintenance_type and PM schedule linkage via p_pm_schedule_id parameter.';
 
-revoke all on function public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid, timestamptz, uuid) from public;
-grant execute on function public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid, timestamptz, uuid) to authenticated;
+revoke all on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) from public;
+grant execute on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) to authenticated;

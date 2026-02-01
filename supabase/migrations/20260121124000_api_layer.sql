@@ -673,10 +673,7 @@ end;
 $$;
 
 comment on function public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid, timestamptz) is 
-  'Creates a new work order for the current tenant context. Requires workorder.create permission. Validates priority exists in catalog, automatically assigns default status from workflow catalogs based on context (e.g., assigned status if assigned_to is provided). Validates that referenced assets and locations belong to the same tenant. Rate limited to 10 work orders per minute per user. Returns the UUID of the created work order. Side effects: Creates work order record. Security implications: Requires workorder.create permission and tenant membership.';
-
-revoke all on function public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid, timestamptz) from public;
-grant execute on function public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid, timestamptz) to authenticated;
+  'Creates a new work order for the current tenant context. Requires workorder.create permission. Validates priority exists in catalog, automatically assigns default status from workflow catalogs based on context (e.g., assigned status if assigned_to is provided). Validates that referenced assets and locations belong to the same tenant. Rate limited to 10 work orders per minute per user. Returns the UUID of the created work order. Side effects: Creates work order record. Security implications: Requires workorder.create permission and tenant membership. NOTE: This function is extended in later migrations (20260121129000_add_maintenance_types.sql and 20260121131000_add_meters_and_pm_api_layer.sql) to support maintenance_type and pm_schedule_id parameters. Permission statements are handled in the final migration.';
 
 create or replace function public.rpc_transition_work_order_status(
   p_tenant_id uuid,

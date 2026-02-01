@@ -579,10 +579,7 @@ end;
 $$;
 
 comment on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz) is 
-  'Creates a new work order for the current tenant context. Requires workorder.create permission. Validates priority and optional maintenance_type exist in catalogs, automatically assigns default status from workflow catalogs based on context. Validates that referenced assets and locations belong to the same tenant. Rate limited to 10 work orders per minute per user. Returns the UUID of the created work order.';
-
-revoke all on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz) from public;
-grant execute on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz) to authenticated;
+  'Creates a new work order for the current tenant context. Requires workorder.create permission. Validates priority and optional maintenance_type exist in catalogs, automatically assigns default status from workflow catalogs based on context. Validates that referenced assets and locations belong to the same tenant. Rate limited to 10 work orders per minute per user. Returns the UUID of the created work order. NOTE: This function is further extended in 20260121131000_add_meters_and_pm_api_layer.sql to support pm_schedule_id parameter. Permission statements are handled in the final migration.';
 
 -- Add RPC to create custom maintenance type
 create or replace function public.rpc_create_maintenance_type(

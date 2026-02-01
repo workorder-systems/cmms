@@ -540,6 +540,40 @@ create index if not exists work_orders_pm_schedule_idx
   on app.work_orders (pm_schedule_id) 
   where pm_schedule_id is not null;
 
+-- Update v_work_orders view to include pm_schedule_id
+create or replace view public.v_work_orders as
+select 
+  wo.id, 
+  wo.tenant_id, 
+  wo.title, 
+  wo.description, 
+  wo.status, 
+  wo.priority,
+  wo.assigned_to, 
+  wo.location_id, 
+  wo.asset_id,
+  wo.due_date, 
+  wo.completed_at, 
+  wo.completed_by,
+  wo.created_at, 
+  wo.updated_at,
+  coalesce(te_agg.total_minutes, 0) as total_labor_minutes,
+  wo.maintenance_type,
+  wo.pm_schedule_id
+from app.work_orders wo
+left join lateral (
+  select sum(minutes) as total_minutes
+  from app.work_order_time_entries
+  where work_order_id = wo.id
+) te_agg on true
+where wo.tenant_id = authz.get_current_tenant_id();
+
+comment on view public.v_work_orders is 
+  'Work orders view scoped to the current tenant context. Includes total_labor_minutes aggregated from time entries, maintenance_type, and pm_schedule_id. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies.';
+
+grant select on public.v_work_orders to authenticated;
+grant select on public.v_work_orders to anon;
+
 -- ============================================================================
 -- Create PM Schema
 -- ============================================================================
@@ -600,7 +634,7 @@ begin
       v_decrease_percentage := ((v_meter.current_reading - new.reading_value) / nullif(v_meter.current_reading, 0)) * 100;
       if v_decrease_percentage > 10 then
         raise exception using
-          message = format('Reading decreased by %.2f%%. For increasing meters, new reading must be >= current reading (allowing up to 10%% tolerance for user error)', v_decrease_percentage),
+          message = format('Reading decreased by %s%%. For increasing meters, new reading must be >= current reading (allowing up to 10%% tolerance for user error)', to_char(v_decrease_percentage, 'FM999999990.00')),
           errcode = '23514';
       end if;
     end if;
@@ -708,11 +742,11 @@ begin
           errcode = '23503';
       end if;
 
-      perform util.validate_tenant_match(
-        new.tenant_id,
-        v_meter_tenant_id,
-        'Meter'
-      );
+      if v_meter_tenant_id != new.tenant_id then
+        raise exception using
+          message = 'Unauthorized: Meter does not belong to this tenant',
+          errcode = '42501';
+      end if;
     end if;
   end if;
 
@@ -1148,27 +1182,19 @@ begin
     v_maintenance_type := 'preventive_time';
   end if;
 
-  -- Create work order via RPC (will be available in API layer migration)
-  -- For now, insert directly (API layer will handle this properly)
-  insert into app.work_orders (
-    tenant_id,
-    title,
-    description,
-    priority,
-    asset_id,
-    pm_schedule_id,
-    maintenance_type
-  )
-  values (
+  -- Create work order via RPC
+  v_work_order_id := public.rpc_create_work_order(
     v_pm_schedule.tenant_id,
     v_title,
     v_description,
     v_priority,
+    v_maintenance_type,
+    null, -- assigned_to
+    null, -- location_id
     v_pm_schedule.asset_id,
-    p_pm_schedule_id,
-    v_maintenance_type
-  )
-  returning id into v_work_order_id;
+    null, -- due_date
+    p_pm_schedule_id
+  );
 
   -- Update PM schedule
   update app.pm_schedules
@@ -1463,7 +1489,7 @@ select
   ps.created_at,
   ps.updated_at,
   case
-    when ps.next_due_date is not null and ps.next_due_date < pg_catalog.now() - interval '1 day' then true
+    when ps.next_due_date is not null and ps.next_due_date < pg_catalog.now() then true
     else false
   end as is_overdue
 from app.pm_schedules ps
