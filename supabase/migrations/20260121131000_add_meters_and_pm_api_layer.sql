@@ -1311,6 +1311,9 @@ declare
   v_description text;
   v_priority text;
   v_maintenance_type text;
+  v_assigned_to uuid := null;
+  v_location_id uuid := null;
+  v_due_date timestamptz := null;
 begin
   -- Get PM schedule
   select * into v_pm_schedule
@@ -1368,24 +1371,25 @@ begin
     v_maintenance_type := 'preventive_time';
   end if;
 
+  -- Ensure variables are explicitly typed (not null::unknown) for function signature inference
+  v_assigned_to := coalesce(v_assigned_to, null::uuid);
+  v_location_id := coalesce(v_location_id, null::uuid);
+  v_due_date := coalesce(v_due_date, null::timestamptz);
+
   -- Create work order via RPC
+  -- Variables are now explicitly typed, so PostgreSQL can infer function signature
   v_work_order_id := public.rpc_create_work_order(
     v_pm_schedule.tenant_id,
     v_title,
     v_description,
     v_priority,
-    null, -- assigned_to
-    null, -- location_id (can be extracted from template if needed)
+    v_maintenance_type::text,
+    v_assigned_to,
+    v_location_id,
     v_pm_schedule.asset_id,
-    null, -- due_date
+    v_due_date,
     p_pm_schedule_id
   );
-
-  -- Update work order with maintenance_type (RPC doesn't set it, so we update directly)
-  update app.work_orders
-  set
-    maintenance_type = v_maintenance_type
-  where id = v_work_order_id;
 
   -- Update PM schedule
   update app.pm_schedules
@@ -1417,8 +1421,12 @@ comment on function pm.generate_pm_work_order(uuid) is
 -- Extend rpc_create_work_order to accept p_pm_schedule_id
 -- ============================================================================
 
--- Drop previous function signature to avoid conflicts
+-- Drop all existing overloads to avoid conflicts
+-- This ensures we replace the function regardless of which signature was created first
 drop function if exists public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz);
+drop function if exists public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid);
+drop function if exists public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid, timestamptz);
+drop function if exists public.rpc_create_work_order(uuid, text, text, text, uuid, uuid, uuid);
 
 create or replace function public.rpc_create_work_order(
   p_tenant_id uuid,
