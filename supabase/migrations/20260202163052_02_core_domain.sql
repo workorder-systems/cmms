@@ -55,6 +55,181 @@ create index tenant_memberships_joined_at_brin_idx
 
 alter table app.tenant_memberships enable row level security;
 
+-- ============================================================================
+-- Profiles Table
+-- ============================================================================
+
+-- Helper function to build full name from first and last name
+create function util.build_full_name(
+  p_first_name text,
+  p_last_name text
+)
+returns text
+language sql
+immutable
+as $$
+  select case
+    when p_first_name is null and p_last_name is null then null
+    when p_first_name is null then trim(p_last_name)
+    when p_last_name is null then trim(p_first_name)
+    else trim(p_first_name) || ' ' || trim(p_last_name)
+  end;
+$$;
+
+comment on function util.build_full_name(text, text) is
+  'Intelligently concatenates first_name and last_name into full_name. Handles nulls gracefully: returns single name if one is null, null if both are null, or properly formatted "First Last" if both exist. Trims whitespace.';
+
+create table app.profiles (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  tenant_id uuid not null references app.tenants(id) on delete cascade,
+  first_name text,
+  last_name text,
+  display_name_override text,
+  is_name_overridden boolean not null default false,
+  full_name text generated always as (
+    case
+      when display_name_override is not null then display_name_override
+      else util.build_full_name(first_name, last_name)
+    end
+  ) stored,
+  avatar_url text,
+  synced_at timestamptz,
+  is_active boolean not null default true,
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now(),
+  constraint profiles_user_tenant_unique unique (user_id, tenant_id),
+  constraint profiles_name_length_check check (
+    (first_name is null or length(first_name) <= 100)
+    and (last_name is null or length(last_name) <= 100)
+    and (display_name_override is null or length(display_name_override) <= 200)
+  )
+);
+
+comment on table app.profiles is 'User profiles with display information, scoped to a tenant. One profile per user per tenant. Preserves historical user names even if user leaves tenant. Automatically created via trigger on tenant_memberships insert. Contains user metadata that is accessible via RLS policies.';
+comment on column app.profiles.user_id is 'References auth.users(id) - the user this profile belongs to.';
+comment on column app.profiles.tenant_id is 'References app.tenants(id) - the tenant this profile is scoped to.';
+comment on column app.profiles.first_name is 'User first name from auth.users.raw_user_meta_data. Synced automatically on tenant membership.';
+comment on column app.profiles.last_name is 'User last name from auth.users.raw_user_meta_data. Synced automatically on tenant membership.';
+comment on column app.profiles.display_name_override is 'Optional manual override for display name (e.g., "John (Contractor)"). If set, takes precedence over computed full_name.';
+comment on column app.profiles.is_name_overridden is 'True if display_name_override is set, preventing automatic sync from overwriting custom names.';
+comment on column app.profiles.full_name is 'Computed full name: uses display_name_override if set, otherwise combines first_name and last_name. Stored generated column for performance.';
+comment on column app.profiles.avatar_url is 'Optional avatar URL for user profile picture. Synced from auth.users.raw_user_meta_data.';
+comment on column app.profiles.synced_at is 'Timestamp when profile was last synced from auth.users. Used to track sync freshness.';
+comment on column app.profiles.is_active is 'True if user is currently a member of this tenant. Set to false when membership is removed, but profile is preserved for historical data.';
+
+create index profiles_user_tenant_idx on app.profiles (user_id, tenant_id);
+create index profiles_tenant_user_idx on app.profiles (tenant_id, user_id);
+
+create trigger profiles_set_updated_at
+  before update on app.profiles
+  for each row
+  execute function util.set_updated_at();
+
+alter table app.profiles enable row level security;
+
+-- Profile sync function
+create function util.sync_profile_from_auth_user(
+  p_user_id uuid,
+  p_tenant_id uuid,
+  p_force boolean default false
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_meta jsonb;
+  v_first_name text;
+  v_last_name text;
+  v_avatar_url text;
+  v_profile_exists boolean;
+  v_is_overridden boolean;
+begin
+  -- Get user metadata
+  select raw_user_meta_data
+  into v_user_meta
+  from auth.users
+  where id = p_user_id;
+  
+  if v_user_meta is null then
+    return; -- User doesn't exist
+  end if;
+  
+  -- Extract names (try multiple formats: snake_case and camelCase)
+  v_first_name := coalesce(
+    v_user_meta->>'first_name',
+    v_user_meta->>'firstName'
+  );
+  v_last_name := coalesce(
+    v_user_meta->>'last_name',
+    v_user_meta->>'lastName'
+  );
+  v_avatar_url := coalesce(
+    v_user_meta->>'avatar_url',
+    v_user_meta->>'avatarUrl'
+  );
+  
+  -- Check if profile exists and if name is overridden
+  select exists(select 1 from app.profiles where user_id = p_user_id and tenant_id = p_tenant_id),
+         coalesce((select is_name_overridden from app.profiles where user_id = p_user_id and tenant_id = p_tenant_id), false)
+  into v_profile_exists, v_is_overridden;
+  
+  -- Only update names if not overridden (unless forced)
+  if v_is_overridden and not p_force then
+    v_first_name := null;
+    v_last_name := null;
+  end if;
+  
+  -- Upsert profile
+  insert into app.profiles (user_id, tenant_id, first_name, last_name, avatar_url, synced_at, is_active)
+  values (p_user_id, p_tenant_id, v_first_name, v_last_name, v_avatar_url, pg_catalog.now(), true)
+  on conflict (user_id, tenant_id) do update
+  set
+    first_name = coalesce(excluded.first_name, app.profiles.first_name),
+    last_name = coalesce(excluded.last_name, app.profiles.last_name),
+    avatar_url = coalesce(excluded.avatar_url, app.profiles.avatar_url),
+    synced_at = pg_catalog.now(),
+    is_active = true,
+    updated_at = pg_catalog.now();
+end;
+$$;
+
+comment on function util.sync_profile_from_auth_user(uuid, uuid, boolean) is
+  'Syncs profile data from auth.users.raw_user_meta_data. Reads first_name, last_name, and avatar_url (handles both snake_case and camelCase). Only updates names if is_name_overridden is false (unless p_force = true). Sets synced_at and is_active = true. Uses SECURITY DEFINER to access auth.users.';
+
+revoke all on function util.sync_profile_from_auth_user(uuid, uuid, boolean) from public;
+grant execute on function util.sync_profile_from_auth_user(uuid, uuid, boolean) to postgres;
+
+-- Trigger function to auto-create profile on tenant membership
+create function util.handle_new_tenant_member_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform util.sync_profile_from_auth_user(new.user_id, new.tenant_id);
+  return new;
+end;
+$$;
+
+comment on function util.handle_new_tenant_member_profile() is
+  'Trigger function that automatically creates or updates a tenant-scoped profile when a new user joins a tenant. Calls sync_profile_from_auth_user to sync data from auth.users.';
+
+revoke all on function util.handle_new_tenant_member_profile() from public;
+grant execute on function util.handle_new_tenant_member_profile() to postgres;
+
+-- Auto-create profile on tenant membership
+create trigger on_tenant_membership_created
+  after insert on app.tenant_memberships
+  for each row
+  execute function util.handle_new_tenant_member_profile();
+
+comment on trigger on_tenant_membership_created on app.tenant_memberships is
+  'Automatically creates or updates a tenant-scoped profile when a new user joins a tenant. Syncs first_name, last_name, and avatar_url from auth.users.raw_user_meta_data.';
+
 create table app.locations (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
@@ -632,6 +807,25 @@ create policy tenant_memberships_select_anon
 comment on policy tenant_memberships_select_anon on app.tenant_memberships is 
   'Prevents anonymous users from seeing any tenant memberships.';
 
+-- Profiles: Users can see profiles in tenants they belong to
+create policy profiles_select_tenant
+  on app.profiles
+  for select
+  to authenticated
+  using (authz.is_current_user_tenant_member(tenant_id));
+
+comment on policy profiles_select_tenant on app.profiles is
+  'Allows authenticated users to see profiles in tenants they currently belong to. Historical profiles (is_active = false) are still accessible for historical records.';
+
+create policy profiles_select_anon
+  on app.profiles
+  for select
+  to anon
+  using (false);
+
+comment on policy profiles_select_anon on app.profiles is
+  'Prevents anonymous users from seeing any profiles. Returns empty result set.';
+
 -- Locations: Users can access locations in tenants they belong to
 create policy locations_select_tenant 
   on app.locations 
@@ -785,6 +979,9 @@ grant select on app.tenants to anon;
 grant select on app.tenant_memberships to authenticated;
 grant select on app.tenant_memberships to anon;
 
+grant select on app.profiles to authenticated;
+grant select on app.profiles to anon;
+
 grant select on app.locations to authenticated;
 grant select on app.locations to anon;
 
@@ -815,6 +1012,7 @@ grant delete on app.work_orders to authenticated;
 
 alter table app.tenants force row level security;
 alter table app.tenant_memberships force row level security;
+alter table app.profiles force row level security;
 alter table app.locations force row level security;
 alter table app.departments force row level security;
 alter table app.assets force row level security;

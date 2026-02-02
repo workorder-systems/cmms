@@ -81,7 +81,15 @@ describe('Public API naming conventions', () => {
 
   it('public RPCs use rpc_<verb>_<resource> and tenant ordering', () => {
     const functions = extractPublicFunctions();
-    const allowedNonRpc = new Set(['refresh_analytics_views', 'refresh_tenant_analytics']);
+    const allowedNonRpc = new Set([
+      'refresh_analytics_views',
+      'refresh_tenant_analytics',
+      // Internal trigger functions for updatable views (not public RPCs)
+      'handle_v_work_order_time_entries_update',
+      'handle_v_work_order_time_entries_delete',
+      'handle_v_work_order_attachments_update',
+      'handle_v_work_order_attachments_delete',
+    ]);
     const rpcPattern = /^rpc_[a-z0-9]+_[a-z0-9_]+(?:_v\d+)?$/;
 
     for (const fn of functions) {

@@ -2985,13 +2985,15 @@ select
   wo.status, 
   wo.priority, 
   wo.maintenance_type,
-  wo.assigned_to, 
+  wo.assigned_to,
+  p_assigned.full_name as assigned_to_name,
   wo.location_id, 
   wo.asset_id,
   wo.pm_schedule_id,
   wo.due_date, 
   wo.completed_at, 
-  wo.completed_by, 
+  wo.completed_by,
+  p_completed.full_name as completed_by_name,
   wo.created_at, 
   wo.updated_at,
   coalesce(
@@ -3004,6 +3006,8 @@ select
     0
   ) as total_labor_minutes
 from app.work_orders wo
+left join app.profiles p_assigned on p_assigned.user_id = wo.assigned_to and p_assigned.tenant_id = wo.tenant_id
+left join app.profiles p_completed on p_completed.user_id = wo.completed_by and p_completed.tenant_id = wo.tenant_id
 where wo.tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_work_orders is 
@@ -3073,6 +3077,27 @@ comment on view public.v_tenants is
 grant select on public.v_tenants to authenticated;
 grant select on public.v_tenants to anon;
 
+create or replace view public.v_profiles
+with (security_invoker = true)
+as
+select
+  p.user_id as id,
+  p.tenant_id,
+  p.first_name,
+  p.last_name,
+  p.full_name,
+  p.avatar_url,
+  p.created_at,
+  p.updated_at
+from app.profiles p
+where p.tenant_id = authz.get_current_tenant_id();
+
+comment on view public.v_profiles is
+  'Tenant-scoped user profiles view. Shows profiles of users within the current tenant. Includes first_name, last_name, and computed full_name. Uses SECURITY INVOKER to enforce RLS policies correctly. RLS on underlying table ensures users only see relevant profiles.';
+
+grant select on public.v_profiles to authenticated;
+grant select on public.v_profiles to anon;
+
 create or replace view public.v_departments
 with (security_invoker = true)
 as
@@ -3101,14 +3126,18 @@ select
   tote.tenant_id,
   tote.work_order_id,
   tote.user_id,
+  p_user.full_name as user_name,
   tote.entry_date,
   tote.minutes,
   tote.description,
   tote.logged_at,
   tote.created_by,
+  p_created_by.full_name as created_by_name,
   tote.created_at,
   tote.updated_at
 from app.work_order_time_entries tote
+left join app.profiles p_user on p_user.user_id = tote.user_id and p_user.tenant_id = tote.tenant_id
+left join app.profiles p_created_by on p_created_by.user_id = tote.created_by and p_created_by.tenant_id = tote.tenant_id
 where tote.tenant_id = authz.get_current_tenant_id()
 order by tote.entry_date desc, tote.logged_at desc;
 
@@ -3131,9 +3160,11 @@ select
   woa.label,
   woa.kind,
   woa.created_by,
+  p_created_by.full_name as created_by_name,
   woa.created_at,
   woa.updated_at
 from app.work_order_attachments woa
+left join app.profiles p_created_by on p_created_by.user_id = woa.created_by and p_created_by.tenant_id = woa.tenant_id
 where woa.tenant_id = authz.get_current_tenant_id()
 order by woa.created_at desc;
 
@@ -3144,6 +3175,138 @@ grant select on public.v_work_order_attachments to authenticated;
 grant select on public.v_work_order_attachments to anon;
 grant update on public.v_work_order_attachments to authenticated;
 grant delete on public.v_work_order_attachments to authenticated;
+
+-- ============================================================================
+-- INSTEAD OF Triggers for Updatable Views with JOINs
+-- ============================================================================
+-- These triggers make views with JOINs updatable by routing UPDATE/DELETE
+-- operations to the underlying tables, ignoring the joined name columns.
+
+-- Trigger function for v_work_order_time_entries updates
+create function public.handle_v_work_order_time_entries_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Update only the underlying table columns (ignore user_name, created_by_name from JOIN)
+  -- NEW already contains correct values for all columns (unchanged columns keep old values)
+  update app.work_order_time_entries
+  set
+    work_order_id = new.work_order_id,
+    user_id = new.user_id,
+    entry_date = new.entry_date,
+    minutes = new.minutes,
+    description = new.description,
+    logged_at = new.logged_at,
+    created_by = new.created_by,
+    updated_at = pg_catalog.now()
+  where id = old.id;
+  
+  return new;
+end;
+$$;
+
+comment on function public.handle_v_work_order_time_entries_update() is
+  'INSTEAD OF trigger function for v_work_order_time_entries UPDATE. Routes updates to underlying app.work_order_time_entries table, ignoring joined name columns from profiles.';
+
+revoke all on function public.handle_v_work_order_time_entries_update() from public;
+grant execute on function public.handle_v_work_order_time_entries_update() to authenticated;
+
+-- Trigger function for v_work_order_time_entries deletes
+create function public.handle_v_work_order_time_entries_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  delete from app.work_order_time_entries
+  where id = old.id;
+  
+  return old;
+end;
+$$;
+
+comment on function public.handle_v_work_order_time_entries_delete() is
+  'INSTEAD OF trigger function for v_work_order_time_entries DELETE. Routes deletes to underlying app.work_order_time_entries table.';
+
+revoke all on function public.handle_v_work_order_time_entries_delete() from public;
+grant execute on function public.handle_v_work_order_time_entries_delete() to authenticated;
+
+-- Create INSTEAD OF triggers
+create trigger v_work_order_time_entries_instead_of_update
+  instead of update on public.v_work_order_time_entries
+  for each row
+  execute function public.handle_v_work_order_time_entries_update();
+
+create trigger v_work_order_time_entries_instead_of_delete
+  instead of delete on public.v_work_order_time_entries
+  for each row
+  execute function public.handle_v_work_order_time_entries_delete();
+
+-- Trigger function for v_work_order_attachments updates
+create function public.handle_v_work_order_attachments_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Update only the underlying table columns (ignore created_by_name from JOIN)
+  -- NEW already contains correct values for all columns (unchanged columns keep old values)
+  update app.work_order_attachments
+  set
+    work_order_id = new.work_order_id,
+    file_ref = new.file_ref,
+    label = new.label,
+    kind = new.kind,
+    created_by = new.created_by,
+    updated_at = pg_catalog.now()
+  where id = old.id;
+  
+  return new;
+end;
+$$;
+
+comment on function public.handle_v_work_order_attachments_update() is
+  'INSTEAD OF trigger function for v_work_order_attachments UPDATE. Routes updates to underlying app.work_order_attachments table, ignoring joined name columns from profiles.';
+
+revoke all on function public.handle_v_work_order_attachments_update() from public;
+grant execute on function public.handle_v_work_order_attachments_update() to authenticated;
+
+-- Trigger function for v_work_order_attachments deletes
+create function public.handle_v_work_order_attachments_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  delete from app.work_order_attachments
+  where id = old.id;
+  
+  return old;
+end;
+$$;
+
+comment on function public.handle_v_work_order_attachments_delete() is
+  'INSTEAD OF trigger function for v_work_order_attachments DELETE. Routes deletes to underlying app.work_order_attachments table.';
+
+revoke all on function public.handle_v_work_order_attachments_delete() from public;
+grant execute on function public.handle_v_work_order_attachments_delete() to authenticated;
+
+-- Create INSTEAD OF triggers
+create trigger v_work_order_attachments_instead_of_update
+  instead of update on public.v_work_order_attachments
+  for each row
+  execute function public.handle_v_work_order_attachments_update();
+
+create trigger v_work_order_attachments_instead_of_delete
+  instead of delete on public.v_work_order_attachments
+  for each row
+  execute function public.handle_v_work_order_attachments_delete();
 
 -- ============================================================================
 -- Authorization Views
@@ -3676,7 +3839,7 @@ select
   ph.scheduled_date,
   ph.completed_date,
   ph.completed_by,
-  null::text as completed_by_name,
+  p_completed_by.full_name as completed_by_name,
   ph.actual_hours,
   ph.cost,
   ph.notes,
@@ -3684,11 +3847,12 @@ select
 from app.pm_history ph
 left join app.pm_schedules ps on ph.pm_schedule_id = ps.id
 left join app.work_orders wo on ph.work_order_id = wo.id
+left join app.profiles p_completed_by on p_completed_by.user_id = ph.completed_by and p_completed_by.tenant_id = ph.tenant_id
 where ph.tenant_id = authz.get_current_tenant_id()
 order by ph.scheduled_date desc, ph.completed_date desc nulls last;
 
 comment on view public.v_pm_history is
-  'PM execution history for the current tenant. Includes PM and work order details, completion info. completed_by_name is always NULL (auth.users access removed to prevent permission errors for anon users). Uses SECURITY INVOKER to enforce RLS policies correctly. Clients must set tenant context via rpc_set_tenant_context.';
+  'PM execution history for the current tenant. Includes PM and work order details, completion info. completed_by_name comes from profiles table. Uses SECURITY INVOKER to enforce RLS policies correctly. Clients must set tenant context via rpc_set_tenant_context.';
 
 grant select on public.v_pm_history to authenticated;
 grant select on public.v_pm_history to anon;
@@ -3740,12 +3904,14 @@ select
   mr.reading_type,
   mr.notes,
   mr.recorded_by,
+  p_recorded_by.full_name as recorded_by_name,
   mr.created_at,
   am.name as meter_name,
   a.name as asset_name
 from app.meter_readings mr
 join app.asset_meters am on mr.meter_id = am.id
 join app.assets a on am.asset_id = a.id
+left join app.profiles p_recorded_by on p_recorded_by.user_id = mr.recorded_by and p_recorded_by.tenant_id = mr.tenant_id
 where mr.tenant_id = authz.get_current_tenant_id()
 order by mr.reading_date desc, mr.created_at desc;
 
