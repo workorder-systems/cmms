@@ -583,6 +583,10 @@ create schema if not exists pm;
 comment on schema pm is 
   'Preventive maintenance core functions. Contains business logic for PM scheduling, trigger evaluation, and work order generation.';
 
+-- Grant schema usage so authenticated and anon can execute functions in pm schema
+grant usage on schema pm to authenticated;
+grant usage on schema pm to anon;
+
 -- ============================================================================
 -- Validation Functions
 -- ============================================================================
@@ -1055,6 +1059,8 @@ comment on function pm.is_pm_due(app.pm_schedules) is
 
 revoke all on function pm.is_pm_due(app.pm_schedules) from public;
 grant execute on function pm.is_pm_due(app.pm_schedules) to postgres;
+grant execute on function pm.is_pm_due(app.pm_schedules) to authenticated;
+grant execute on function pm.is_pm_due(app.pm_schedules) to anon;
 
 create or replace function pm.check_pm_dependencies(
   p_pm_schedule_id uuid

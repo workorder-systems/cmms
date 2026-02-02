@@ -286,6 +286,7 @@ comment on function authz.is_tenant_member(uuid, uuid) is
 
 revoke all on function authz.is_tenant_member(uuid, uuid) from public;
 grant execute on function authz.is_tenant_member(uuid, uuid) to authenticated;
+grant execute on function authz.is_tenant_member(uuid, uuid) to anon;
 
 create or replace function authz.is_current_user_tenant_member(
   p_tenant_id uuid
@@ -306,6 +307,7 @@ comment on function authz.is_current_user_tenant_member(uuid) is
 
 revoke all on function authz.is_current_user_tenant_member(uuid) from public;
 grant execute on function authz.is_current_user_tenant_member(uuid) to authenticated;
+grant execute on function authz.is_current_user_tenant_member(uuid) to anon;
 
 create or replace function authz.require_tenant_context()
 returns uuid
@@ -826,6 +828,17 @@ create policy tenant_memberships_select_combined
       where user_id = (select auth.uid())
     )
   );
+
+create policy tenant_memberships_select_anon
+  on app.tenant_memberships
+  for select
+  to anon
+  using (false);
+
+-- Grant SELECT to anon so RLS policies on other tables can evaluate subqueries
+-- that reference tenant_memberships. The RLS policy above ensures anon sees no rows.
+revoke all on app.tenant_memberships from anon;
+grant select on app.tenant_memberships to anon;
 
 create policy locations_select_tenant 
   on app.locations 

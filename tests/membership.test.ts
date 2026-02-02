@@ -29,7 +29,8 @@ describe('Tenant Membership', () => {
         .eq('tenant_id', tenantId);
 
       expect(error).toBeNull();
-      expect(roles.length).toBeGreaterThan(0);
+      expect(Array.isArray(roles)).toBe(true);
+      expect(roles!.length).toBeGreaterThan(0);
     });
 
     it('should allow user to see tenant after membership', async () => {
@@ -51,9 +52,9 @@ describe('Tenant Membership', () => {
         .eq('id', tenantId);
 
       expect(error).toBeNull();
-      expect(tenants).toBeDefined();
-      expect(tenants.length).toBe(1);
-      expect(tenants[0].id).toBe(tenantId);
+      expect(Array.isArray(tenants)).toBe(true);
+      expect(tenants!.length).toBe(1);
+      expect(tenants![0].id).toBe(tenantId);
     });
 
     it('should prevent user from seeing tenant before membership', async () => {
@@ -73,7 +74,7 @@ describe('Tenant Membership', () => {
       // RLS should filter out the tenant (no rows)
       expect(error).toBeNull();
       expect(Array.isArray(tenants)).toBe(true);
-      expect(tenants.length).toBe(0);
+      expect(tenants!.length).toBe(0);
     });
   });
 
@@ -102,7 +103,8 @@ describe('Tenant Membership', () => {
           .select('id')
           .eq('id', tenantId);
         expect(error).toBeNull();
-        expect(tenants.length).toBe(1);
+        expect(Array.isArray(tenants)).toBe(true);
+        expect(tenants!.length).toBe(1);
       }
     });
   });
@@ -145,8 +147,43 @@ describe('Tenant Membership', () => {
         .in('id', [tenantId1, tenantId2]);
 
       expect(error).toBeNull();
-      expect(tenants).toBeDefined();
-      expect(tenants.length).toBe(2);
+      expect(Array.isArray(tenants)).toBe(true);
+      expect(tenants!.length).toBe(2);
+    });
+  });
+
+  describe('RLS robustness for tenant_memberships', () => {
+    it('can evaluate tenant_memberships RLS without recursion errors for a member', async () => {
+      const ownerClient = createTestClient();
+      const { user: owner } = await createTestUser(ownerClient);
+      const tenantId = await createTestTenant(ownerClient);
+
+      // Separate member user to avoid self-assignment restrictions on roles
+      const memberClient = createTestClient();
+      const { user: member } = await createTestUser(memberClient);
+      await addUserToTenant(ownerClient, member.id, tenantId);
+
+      // Query a view that uses tenant_memberships in its RLS policy. This
+      // exercises the exact path that previously had a circular RLS dependency
+      // (tenant_memberships policy querying tenant_memberships in its own USING
+      // clause) and would blow up once SECURITY INVOKER was enabled on views.
+      //
+      // We use v_tenants because it has an RLS policy that queries
+      // tenant_memberships to check membership. If there's a circular dependency,
+      // this query will fail with recursion/stack depth errors.
+      const { data, error } = await memberClient
+        .from('v_tenants')
+        .select('id')
+        .eq('id', tenantId);
+
+      // If the circular dependency ever comes back, this is where we expect
+      // to see an "infinite recursion" / stack depth exceeded error instead
+      // of a normal result set.
+      expect(error).toBeNull();
+      expect(Array.isArray(data)).toBe(true);
+      expect(data!.length).toBe(1);
+      expect(data![0].id).toBe(tenantId);
     });
   });
 });
+
