@@ -1591,6 +1591,12 @@ comment on view public.v_pm_template_checklist_items is
 grant select on public.v_pm_template_checklist_items to authenticated;
 grant select on public.v_pm_template_checklist_items to anon;
 
--- Set security_invoker = false for performance (view runs with owner privileges)
--- This is safe because the WHERE clause filters by tenant_id from authz.get_current_tenant_id()
+-- NOTE: This view was originally set to security_invoker = false for "performance"
+-- optimization. However, this was a security vulnerability as it could bypass RLS.
+-- Migration 20260121132000_fix_security_definer_views.sql changes all views to
+-- SECURITY INVOKER (security_invoker = true) to properly enforce RLS policies.
+-- See ADR 0003 and docs/security-definer-views-research.md for details.
+--
+-- This statement is kept for historical reference but is overridden by the
+-- security fix migration.
 alter view public.v_pm_template_checklist_items set (security_invoker = false);

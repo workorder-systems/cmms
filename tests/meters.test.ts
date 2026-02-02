@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase } from './helpers/supabase';
-import { createTestUser } from './helpers/auth';
+import { createTestUser, TEST_PASSWORD } from './helpers/auth';
 import {
   createTestTenant,
   addUserToTenant,
   assignRoleToUser,
   setTenantContext,
+  clearTenantContext,
 } from './helpers/tenant';
 import {
   createTestAsset,
@@ -653,8 +654,9 @@ describe('Meters', () => {
         const meterId = await createTestMeter(client, tenantId, assetId);
 
         const beforeReading = new Date();
-        // Subtract 1ms to account for timing differences between JS and database
-        beforeReading.setMilliseconds(beforeReading.getMilliseconds() - 1);
+        // Subtract 100ms to account for timing differences between JS and database
+        // This accounts for network latency, database processing time, and clock skew
+        beforeReading.setMilliseconds(beforeReading.getMilliseconds() - 100);
         
         const readingId = await createTestMeterReading(
           client,
@@ -665,8 +667,8 @@ describe('Meters', () => {
           'automated'
         );
         const afterReading = new Date();
-        // Add 1ms buffer to account for timing differences
-        afterReading.setMilliseconds(afterReading.getMilliseconds() + 1);
+        // Add 100ms buffer to account for timing differences
+        afterReading.setMilliseconds(afterReading.getMilliseconds() + 100);
 
         await setTenantContext(client, tenantId);
         // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
@@ -680,9 +682,10 @@ describe('Meters', () => {
         expect(reading).not.toBeNull();
 
         const readingDate = new Date(reading.reading_date);
-        // Add buffer to account for timing differences between client and server
-        expect(readingDate.getTime()).toBeGreaterThanOrEqual(beforeReading.getTime() - 20);
-        expect(readingDate.getTime()).toBeLessThanOrEqual(afterReading.getTime() + 20);
+        // Use larger buffer to account for timing differences between client and server
+        // Network latency, database processing, and clock skew can cause small differences
+        expect(readingDate.getTime()).toBeGreaterThanOrEqual(beforeReading.getTime());
+        expect(readingDate.getTime()).toBeLessThanOrEqual(afterReading.getTime());
       });
 
       it('should record reading with custom reading_date (backdating)', async () => {
@@ -1099,22 +1102,22 @@ describe('Meters', () => {
         const assetId = await createTestAsset(client, tenantId, 'Test Asset');
         const meterId = await createTestMeter(client, tenantId, assetId);
 
-        // Without tenant context, should return empty
-        const { data: noContext } = await client
-          .from('v_asset_meters')
-          .select('*')
-          .eq('id', meterId);
-
-        expect(noContext.length).toBe(0);
-
-        // With tenant context, should return meter
-        await setTenantContext(client, tenantId);
+        // With tenant context (set by createTestTenant), should return meter
         const { data: withContext } = await client
           .from('v_asset_meters')
           .select('*')
           .eq('id', meterId);
 
         expect(withContext.length).toBe(1);
+
+        // Without tenant context, should return empty
+        await clearTenantContext(client);
+        const { data: noContext } = await client
+          .from('v_asset_meters')
+          .select('*')
+          .eq('id', meterId);
+
+        expect(noContext.length).toBe(0);
       });
     });
 
@@ -1173,22 +1176,22 @@ describe('Meters', () => {
         const meterId = await createTestMeter(client, tenantId, assetId);
         const readingId = await createTestMeterReading(client, tenantId, meterId, 100);
 
-        // Without tenant context, should return empty
-        const { data: noContext } = await client
-          .from('v_meter_readings')
-          .select('*')
-          .eq('id', readingId);
-
-        expect(noContext.length).toBe(0);
-
-        // With tenant context, should return reading
-        await setTenantContext(client, tenantId);
+        // With tenant context (set by createTestTenant), should return reading
         const { data: withContext } = await client
           .from('v_meter_readings')
           .select('*')
           .eq('id', readingId);
 
         expect(withContext.length).toBe(1);
+
+        // Without tenant context, should return empty
+        await clearTenantContext(client);
+        const { data: noContext } = await client
+          .from('v_meter_readings')
+          .select('*')
+          .eq('id', readingId);
+
+        expect(noContext.length).toBe(0);
       });
     });
   });

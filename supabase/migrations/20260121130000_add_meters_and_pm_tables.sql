@@ -1643,8 +1643,14 @@ comment on view public.v_pm_history is
 grant select on public.v_pm_history to anon;
 grant select on public.v_pm_history to authenticated;
 
--- Set security_invoker = false for performance optimization
--- Views run with owner privileges rather than invoker privileges
+-- NOTE: These views were originally set to security_invoker = false for "performance"
+-- optimization. However, this was a security vulnerability as it could bypass RLS.
+-- Migration 20260121132000_fix_security_definer_views.sql changes all views to
+-- SECURITY INVOKER (security_invoker = true) to properly enforce RLS policies.
+-- See ADR 0003 and docs/security-definer-views-research.md for details.
+--
+-- These statements are kept for historical reference but are overridden by the
+-- security fix migration.
 alter view public.v_asset_meters set (security_invoker = false);
 alter view public.v_meter_readings set (security_invoker = false);
 alter view public.v_pm_schedules set (security_invoker = false);

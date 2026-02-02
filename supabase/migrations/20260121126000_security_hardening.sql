@@ -45,6 +45,14 @@ alter table app.departments force row level security;
 alter table app.assets force row level security;
 alter table app.work_orders force row level security;
 
+-- NOTE: These views were originally set to security_invoker = false for "performance"
+-- optimization. However, this was a security vulnerability as it could bypass RLS.
+-- Migration 20260121132000_fix_security_definer_views.sql changes all views to
+-- SECURITY INVOKER (security_invoker = true) to properly enforce RLS policies.
+-- See ADR 0003 and docs/security-definer-views-research.md for details.
+--
+-- These statements are kept for historical reference but are overridden by the
+-- security fix migration.
 alter view public.v_work_orders set (security_invoker = false);
 alter view public.v_assets set (security_invoker = false);
 alter view public.v_locations set (security_invoker = false);

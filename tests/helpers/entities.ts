@@ -169,13 +169,20 @@ export async function createTestWorkOrderDirect(
 
 /**
  * Get work order by ID (via public view).
+ * Requires tenant context to be set before calling.
  */
 export async function getWorkOrder(
   client: SupabaseClient,
-  workOrderId: string | null
+  workOrderId: string | null,
+  tenantId?: string
 ): Promise<any> {
   if (!workOrderId) {
     throw new Error('Work order ID is required');
+  }
+
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
   }
 
   // Use .limit(1) instead of .maybeSingle() because PostgREST can't infer primary keys from views
@@ -263,11 +270,18 @@ export async function createTestTimeEntry(
 
 /**
  * Get time entry by ID (via public view).
+ * Requires tenant context to be set before calling.
  */
 export async function getTimeEntry(
   client: SupabaseClient,
-  timeEntryId: string
+  timeEntryId: string,
+  tenantId?: string
 ): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
   // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
   const { data, error } = await client
     .from('v_work_order_time_entries')
@@ -314,11 +328,18 @@ export async function createTestAttachment(
 
 /**
  * Get attachment by ID (via public view).
+ * Requires tenant context to be set before calling.
  */
 export async function getAttachment(
   client: SupabaseClient,
-  attachmentId: string
+  attachmentId: string,
+  tenantId?: string
 ): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
   // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
   const { data, error } = await client
     .from('v_work_order_attachments')
@@ -456,11 +477,18 @@ export async function createTestMeterReading(
 
 /**
  * Get meter by ID (via public view).
+ * Requires tenant context to be set before calling.
  */
 export async function getMeter(
   client: SupabaseClient,
-  meterId: string
+  meterId: string,
+  tenantId?: string
 ): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
   // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
   const { data, error } = await client
     .from('v_asset_meters')
