@@ -1,5 +1,10 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
-create table if not exists cfg.status_catalogs (
+
+-- ============================================================================
+-- Status Catalogs
+-- ============================================================================
+
+create table cfg.status_catalogs (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   entity_type text not null,
@@ -48,13 +53,13 @@ comment on column cfg.status_catalogs.is_final is
 comment on column cfg.status_catalogs.is_system is 
   'If true, this is a system status that cannot be deleted (e.g., default statuses created automatically).';
 
-create index if not exists status_catalogs_tenant_entity_idx 
+create index status_catalogs_tenant_entity_idx 
   on cfg.status_catalogs (tenant_id, entity_type);
 
-create index if not exists status_catalogs_display_idx 
+create index status_catalogs_display_idx 
   on cfg.status_catalogs (tenant_id, entity_type, display_order, category);
 
-create index if not exists status_catalogs_covering_idx 
+create index status_catalogs_covering_idx 
   on cfg.status_catalogs (tenant_id, entity_type, display_order) 
   include (key, name, category, color, icon, is_final);
 
@@ -69,16 +74,25 @@ create policy status_catalogs_select_tenant
   on cfg.status_catalogs 
   for select 
   to authenticated 
-  using (tenant_id = authz.get_current_tenant_id());
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy status_catalogs_select_anon 
   on cfg.status_catalogs 
   for select 
   to anon 
-  using (tenant_id = authz.get_current_tenant_id());
+  using (authz.is_current_user_tenant_member(tenant_id));
 
+comment on policy status_catalogs_select_tenant on cfg.status_catalogs is 
+  'Allows authenticated users to view status catalogs in tenants they are members of.';
 
-create table if not exists cfg.status_transitions (
+comment on policy status_catalogs_select_anon on cfg.status_catalogs is 
+  'Allows anonymous users to view status catalogs in tenants they are members of (via tenant context).';
+
+-- ============================================================================
+-- Status Transitions
+-- ============================================================================
+
+create table cfg.status_transitions (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   entity_type text not null,
@@ -111,16 +125,16 @@ comment on column cfg.status_transitions.required_permission is
 comment on column cfg.status_transitions.guard_condition is 
   'JSONB guard conditions that must be met (e.g., {"assigned_to": "not_null"}). Null means no guard conditions. Guard conditions are evaluated against entity data before allowing transition.';
 
-create index if not exists status_transitions_tenant_entity_from_idx 
+create index status_transitions_tenant_entity_from_idx 
   on cfg.status_transitions (tenant_id, entity_type, from_status_key);
 
-create index if not exists status_transitions_to_status_idx 
+create index status_transitions_to_status_idx 
   on cfg.status_transitions (tenant_id, entity_type, to_status_key);
 
-create index if not exists status_transitions_lookup_idx 
+create index status_transitions_lookup_idx 
   on cfg.status_transitions (tenant_id, entity_type, from_status_key, to_status_key);
 
-create index if not exists status_transitions_guard_condition_gin_idx 
+create index status_transitions_guard_condition_gin_idx 
   on cfg.status_transitions using gin (guard_condition) 
   where guard_condition is not null;
 
@@ -135,16 +149,25 @@ create policy status_transitions_select_tenant
   on cfg.status_transitions 
   for select 
   to authenticated 
-  using (tenant_id = authz.get_current_tenant_id());
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy status_transitions_select_anon 
   on cfg.status_transitions 
   for select 
   to anon 
-  using (tenant_id = authz.get_current_tenant_id());
+  using (authz.is_current_user_tenant_member(tenant_id));
 
+comment on policy status_transitions_select_tenant on cfg.status_transitions is 
+  'Allows authenticated users to view status transitions in tenants they are members of.';
 
-create table if not exists cfg.priority_catalogs (
+comment on policy status_transitions_select_anon on cfg.status_transitions is 
+  'Allows anonymous users to view status transitions in tenants they are members of (via tenant context).';
+
+-- ============================================================================
+-- Priority Catalogs
+-- ============================================================================
+
+create table cfg.priority_catalogs (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   entity_type text not null,
@@ -179,10 +202,10 @@ comment on column cfg.priority_catalogs.key is
 comment on column cfg.priority_catalogs.weight is 
   'Numeric weight for sorting. Lower values = higher priority. Used for ordering queries and displaying priorities in correct order.';
 
-create index if not exists priority_catalogs_tenant_entity_idx 
+create index priority_catalogs_tenant_entity_idx 
   on cfg.priority_catalogs (tenant_id, entity_type);
 
-create index if not exists priority_catalogs_display_order_idx 
+create index priority_catalogs_display_order_idx 
   on cfg.priority_catalogs (tenant_id, entity_type, display_order);
 
 create trigger priority_catalogs_set_updated_at 
@@ -196,15 +219,25 @@ create policy priority_catalogs_select_tenant
   on cfg.priority_catalogs 
   for select 
   to authenticated 
-  using (tenant_id = authz.get_current_tenant_id());
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy priority_catalogs_select_anon 
   on cfg.priority_catalogs 
   for select 
   to anon 
-  using (tenant_id = authz.get_current_tenant_id());
+  using (authz.is_current_user_tenant_member(tenant_id));
 
-create or replace function cfg.validate_status_transition(
+comment on policy priority_catalogs_select_tenant on cfg.priority_catalogs is 
+  'Allows authenticated users to view priority catalogs in tenants they are members of.';
+
+comment on policy priority_catalogs_select_anon on cfg.priority_catalogs is 
+  'Allows anonymous users to view priority catalogs in tenants they are members of (via tenant context).';
+
+-- ============================================================================
+-- Workflow Validation Functions
+-- ============================================================================
+
+create function cfg.validate_status_transition(
   p_tenant_id uuid,
   p_entity_type text,
   p_from_status_key text,
@@ -268,7 +301,7 @@ comment on function cfg.validate_status_transition(uuid, text, text, text, uuid,
 revoke all on function cfg.validate_status_transition(uuid, text, text, text, uuid, jsonb) from public;
 grant execute on function cfg.validate_status_transition(uuid, text, text, text, uuid, jsonb) to authenticated;
 
-create or replace function cfg.evaluate_guard_condition(
+create function cfg.evaluate_guard_condition(
   p_guard_condition jsonb, 
   p_entity_data jsonb
 )
@@ -325,7 +358,7 @@ comment on function cfg.evaluate_guard_condition(jsonb, jsonb) is
 revoke all on function cfg.evaluate_guard_condition(jsonb, jsonb) from public;
 grant execute on function cfg.evaluate_guard_condition(jsonb, jsonb) to authenticated;
 
-create or replace function cfg.get_default_status(
+create function cfg.get_default_status(
   p_tenant_id uuid, 
   p_entity_type text, 
   p_context jsonb default '{}'::jsonb
@@ -380,7 +413,7 @@ comment on function cfg.get_default_status(uuid, text, jsonb) is
 revoke all on function cfg.get_default_status(uuid, text, jsonb) from public;
 grant execute on function cfg.get_default_status(uuid, text, jsonb) to authenticated;
 
-create or replace function cfg.get_valid_next_statuses(
+create function cfg.get_valid_next_statuses(
   p_tenant_id uuid,
   p_entity_type text,
   p_current_status_key text,
@@ -425,7 +458,7 @@ comment on function cfg.get_valid_next_statuses(uuid, text, text, uuid, jsonb) i
 revoke all on function cfg.get_valid_next_statuses(uuid, text, text, uuid, jsonb) from public;
 grant execute on function cfg.get_valid_next_statuses(uuid, text, text, uuid, jsonb) to authenticated;
 
-create or replace function cfg.get_status_metadata(
+create function cfg.get_status_metadata(
   p_tenant_id uuid,
   p_entity_type text,
   p_status_key text
@@ -466,7 +499,11 @@ comment on function cfg.get_status_metadata(uuid, text, text) is
 revoke all on function cfg.get_status_metadata(uuid, text, text) from public;
 grant execute on function cfg.get_status_metadata(uuid, text, text) to authenticated;
 
-create or replace function util.validate_entity_status(
+-- ============================================================================
+-- Status/Priority Validation Functions
+-- ============================================================================
+
+create function util.validate_entity_status(
   p_entity_type text,
   p_tenant_id uuid,
   p_status_key text,
@@ -512,7 +549,7 @@ comment on function util.validate_entity_status(text, uuid, text, text) is
 revoke all on function util.validate_entity_status(text, uuid, text, text) from public;
 grant execute on function util.validate_entity_status(text, uuid, text, text) to postgres;
 
-create or replace function util.validate_asset_status()
+create function util.validate_asset_status()
 returns trigger
 language plpgsql
 security definer
@@ -535,7 +572,7 @@ create trigger assets_validate_status
   for each row 
   execute function util.validate_asset_status();
 
-create or replace function util.validate_work_order_status()
+create function util.validate_work_order_status()
 returns trigger
 language plpgsql
 security definer
@@ -558,8 +595,11 @@ create trigger work_orders_validate_status_priority
   for each row 
   execute function util.validate_work_order_status();
 
+-- ============================================================================
+-- Default Workflow Creation Functions
+-- ============================================================================
 
-create or replace function cfg.create_default_work_order_statuses(
+create function cfg.create_default_work_order_statuses(
   p_tenant_id uuid
 )
 returns void
@@ -574,8 +614,7 @@ begin
     (p_tenant_id, 'work_order', 'assigned', 'Assigned', 'open', 2, true, false),
     (p_tenant_id, 'work_order', 'in_progress', 'In Progress', 'open', 3, true, false),
     (p_tenant_id, 'work_order', 'completed', 'Completed', 'closed', 4, true, true),
-    (p_tenant_id, 'work_order', 'cancelled', 'Cancelled', 'closed', 5, true, true)
-  on conflict (tenant_id, entity_type, key) do nothing;
+    (p_tenant_id, 'work_order', 'cancelled', 'Cancelled', 'closed', 5, true, true);
 
   insert into cfg.status_transitions (tenant_id, entity_type, from_status_key, to_status_key, required_permission, is_system)
   values
@@ -585,18 +624,17 @@ begin
     (p_tenant_id, 'work_order', 'assigned', 'completed', 'workorder.complete.any', true),
     (p_tenant_id, 'work_order', 'draft', 'cancelled', 'workorder.cancel', true),
     (p_tenant_id, 'work_order', 'assigned', 'cancelled', 'workorder.cancel', true),
-    (p_tenant_id, 'work_order', 'in_progress', 'cancelled', 'workorder.cancel', true)
-  on conflict (tenant_id, entity_type, from_status_key, to_status_key) do nothing;
+    (p_tenant_id, 'work_order', 'in_progress', 'cancelled', 'workorder.cancel', true);
 end;
 $$;
 
 comment on function cfg.create_default_work_order_statuses(uuid) is 
-  'Creates default work order statuses (draft, assigned, in_progress, completed, cancelled) and their transitions for a new tenant. Ensures backward compatibility and provides sensible defaults for new tenants. System statuses cannot be deleted. Called automatically during tenant creation.';
+  'Creates default work order statuses (draft, assigned, in_progress, completed, cancelled) and their transitions for a new tenant. Provides sensible defaults for new tenants. System statuses cannot be deleted. Called automatically during tenant creation.';
 
 revoke all on function cfg.create_default_work_order_statuses(uuid) from public;
 grant execute on function cfg.create_default_work_order_statuses(uuid) to authenticated;
 
-create or replace function cfg.create_default_work_order_priorities(
+create function cfg.create_default_work_order_priorities(
   p_tenant_id uuid
 )
 returns void
@@ -610,18 +648,17 @@ begin
     (p_tenant_id, 'work_order', 'low', 'Low', 40, 1, true),
     (p_tenant_id, 'work_order', 'medium', 'Medium', 30, 2, true),
     (p_tenant_id, 'work_order', 'high', 'High', 20, 3, true),
-    (p_tenant_id, 'work_order', 'critical', 'Critical', 10, 4, true)
-  on conflict (tenant_id, entity_type, key) do nothing;
+    (p_tenant_id, 'work_order', 'critical', 'Critical', 10, 4, true);
 end;
 $$;
 
 comment on function cfg.create_default_work_order_priorities(uuid) is 
-  'Creates default work order priorities (low, medium, high, critical) for a new tenant. Priorities have numeric weights for sorting (lower = higher priority). Ensures backward compatibility and provides sensible defaults. Called automatically during tenant creation.';
+  'Creates default work order priorities (low, medium, high, critical) for a new tenant. Priorities have numeric weights for sorting (lower = higher priority). Provides sensible defaults. Called automatically during tenant creation.';
 
 revoke all on function cfg.create_default_work_order_priorities(uuid) from public;
 grant execute on function cfg.create_default_work_order_priorities(uuid) to authenticated;
 
-create or replace function cfg.create_default_asset_statuses(
+create function cfg.create_default_asset_statuses(
   p_tenant_id uuid
 )
 returns void
@@ -634,106 +671,36 @@ begin
   values
     (p_tenant_id, 'asset', 'active', 'Active', 'open', 1, true, false),
     (p_tenant_id, 'asset', 'inactive', 'Inactive', 'closed', 2, true, false),
-    (p_tenant_id, 'asset', 'retired', 'Retired', 'final', 3, true, true)
-  on conflict (tenant_id, entity_type, key) do nothing;
+    (p_tenant_id, 'asset', 'retired', 'Retired', 'final', 3, true, true);
 end;
 $$;
 
 comment on function cfg.create_default_asset_statuses(uuid) is 
-  'Creates default asset statuses (active, inactive, retired) for a new tenant. Ensures backward compatibility and provides sensible defaults. System statuses cannot be deleted. Called automatically during tenant creation.';
+  'Creates default asset statuses (active, inactive, retired) for a new tenant. Provides sensible defaults. System statuses cannot be deleted. Called automatically during tenant creation.';
 
 revoke all on function cfg.create_default_asset_statuses(uuid) from public;
 grant execute on function cfg.create_default_asset_statuses(uuid) to authenticated;
 
-create or replace function cfg.create_default_tenant_roles(
-  p_tenant_id uuid
-)
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_admin_role_id uuid;
-  v_member_role_id uuid;
-begin
-  insert into cfg.tenant_roles (tenant_id, key, name, is_default, is_system)
-  values (p_tenant_id, 'admin', 'Administrator', false, true)
-  returning id into v_admin_role_id;
+-- Note: cfg.create_default_tenant_roles is defined in migration 05_work_order_extensions.sql
+-- to include manager and technician roles, and maintenance types
 
-  insert into cfg.tenant_roles (tenant_id, key, name, is_default, is_system)
-  values (p_tenant_id, 'member', 'Member', true, true)
-  returning id into v_member_role_id;
+-- ============================================================================
+-- Grants for Underlying Tables (needed for SECURITY INVOKER views in migration 07)
+-- ============================================================================
 
-  insert into cfg.tenant_role_permissions (tenant_role_id, permission_id)
-  select v_admin_role_id, id
-  from cfg.permissions;
+grant select on cfg.status_catalogs to authenticated;
+grant select on cfg.status_catalogs to anon;
 
-  insert into cfg.tenant_role_permissions (tenant_role_id, permission_id)
-  select v_member_role_id, id
-  from cfg.permissions
-  where key like '%.view';
+grant select on cfg.status_transitions to authenticated;
+grant select on cfg.status_transitions to anon;
 
-  perform cfg.create_default_work_order_statuses(p_tenant_id);
-  perform cfg.create_default_work_order_priorities(p_tenant_id);
-  perform cfg.create_default_asset_statuses(p_tenant_id);
-end;
-$$;
+grant select on cfg.priority_catalogs to authenticated;
+grant select on cfg.priority_catalogs to anon;
 
+-- ============================================================================
+-- Force RLS on Workflow Tables
+-- ============================================================================
 
-create or replace view public.v_status_catalogs as
-select
-  id,
-  tenant_id,
-  entity_type,
-  key,
-  name,
-  category,
-  display_order,
-  color,
-  icon,
-  is_system,
-  is_final,
-  created_at,
-  updated_at
-from cfg.status_catalogs
-where tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_status_catalogs is 
-  'Tenant status catalogs filtered by current tenant context. RLS on underlying table applies additional filtering. Used by frontend to display available statuses.';
-
-create or replace view public.v_status_transitions as
-select
-  id,
-  tenant_id,
-  entity_type,
-  from_status_key,
-  to_status_key,
-  required_permission,
-  guard_condition,
-  is_system,
-  created_at
-from cfg.status_transitions
-where tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_status_transitions is 
-  'Status transition rules filtered by current tenant context. RLS on underlying table applies additional filtering. Used by frontend to determine available status transitions.';
-
-create or replace view public.v_priority_catalogs as
-select
-  id,
-  tenant_id,
-  entity_type,
-  key,
-  name,
-  weight,
-  color,
-  display_order,
-  is_system,
-  created_at,
-  updated_at
-from cfg.priority_catalogs
-where tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_priority_catalogs is 
-  'Tenant priority catalogs filtered by current tenant context. RLS on underlying table applies additional filtering. Used by frontend to display available priorities.';
+alter table cfg.status_catalogs force row level security;
+alter table cfg.status_transitions force row level security;
+alter table cfg.priority_catalogs force row level security;

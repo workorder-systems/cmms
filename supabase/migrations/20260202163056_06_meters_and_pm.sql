@@ -1,33 +1,10 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Adds comprehensive meter tracking and preventive maintenance (PM) scheduling system.
--- 
--- This migration implements a complete meter and PM system with:
--- - Meter tracking: app.asset_meters and app.meter_readings tables for tracking asset meters
--- - PM templates: cfg.pm_templates for reusable PM procedure definitions
--- - PM schedules: app.pm_schedules for asset-specific PM scheduling
--- - PM history: app.pm_history for audit trail of PM executions
--- - PM dependencies: app.pm_dependencies for PM sequencing rules
--- - Work order integration: pm_schedule_id column added to app.work_orders
--- 
--- Features:
--- - Supports five PM trigger types: time, usage, calendar, condition, manual
--- - Structured work order template columns (wo_title, wo_description, wo_priority, wo_estimated_hours)
--- - Checklist items table (cfg.pm_template_checklist_items) for structured checklists
--- - Comprehensive validation functions and business logic
--- - Full RLS policies for tenant isolation
--- - Public views and RPC functions following ADR conventions
--- 
--- Performance optimizations:
--- - Indexes on all foreign keys and frequently queried columns
--- - Partial indexes for filtered queries (is_active, pm_schedule_id, etc.)
--- - STABLE function markers for query optimization
--- - security_invoker = false on views for performance
 
 -- ============================================================================
 -- Meter System Tables
 -- ============================================================================
 
-create table if not exists app.asset_meters (
+create table app.asset_meters (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   asset_id uuid not null references app.assets(id) on delete cascade,
@@ -88,20 +65,14 @@ comment on column app.asset_meters.decimal_places is
 comment on column app.asset_meters.is_active is 
   'If false, meter is soft-deleted and should not be used for new PM schedules.';
 
--- Composite index for tenant-asset queries (most common pattern)
--- Optimized for: WHERE tenant_id = X AND asset_id = Y
-create index if not exists asset_meters_tenant_asset_idx 
+create index asset_meters_tenant_asset_idx 
   on app.asset_meters (tenant_id, asset_id);
 
--- Partial index for active meters only (smaller, faster for common queries)
--- Optimized for: WHERE tenant_id = X AND asset_id = Y AND is_active = true
--- Note: Partial index is more efficient than full index when most queries filter active meters
--- is_active not in key columns since it's already filtered in WHERE clause
-create index if not exists asset_meters_active_idx 
+create index asset_meters_active_idx 
   on app.asset_meters (tenant_id, asset_id) 
   where is_active = true;
 
-create index if not exists asset_meters_type_idx 
+create index asset_meters_type_idx 
   on app.asset_meters (meter_type);
 
 create trigger asset_meters_set_updated_at 
@@ -111,7 +82,7 @@ create trigger asset_meters_set_updated_at
 
 alter table app.asset_meters enable row level security;
 
-create table if not exists app.meter_readings (
+create table app.meter_readings (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   meter_id uuid not null references app.asset_meters(id) on delete cascade,
@@ -144,20 +115,13 @@ comment on column app.meter_readings.reading_type is
 comment on column app.meter_readings.recorded_by is 
   'User who recorded the reading. Null for automated or imported readings.';
 
--- Composite index for meter-specific queries (most common pattern)
--- Optimized for: WHERE meter_id = X ORDER BY reading_date DESC
-create index if not exists meter_readings_meter_date_idx 
+create index meter_readings_meter_date_idx 
   on app.meter_readings (meter_id, reading_date desc);
 
--- Composite index for tenant-wide queries (RLS and reporting)
--- Optimized for: WHERE tenant_id = X ORDER BY reading_date DESC
-create index if not exists meter_readings_tenant_date_idx 
+create index meter_readings_tenant_date_idx 
   on app.meter_readings (tenant_id, reading_date desc);
 
--- Covering index for meter reading lookups (index-only scans)
--- Includes frequently selected columns to avoid table heap access
--- Includes reading_date in key columns for better range query performance
-create index if not exists meter_readings_meter_covering_idx 
+create index meter_readings_meter_covering_idx 
   on app.meter_readings (meter_id, reading_date desc) 
   include (reading_value, reading_type, notes);
 
@@ -167,7 +131,7 @@ alter table app.meter_readings enable row level security;
 -- PM System Tables
 -- ============================================================================
 
-create table if not exists cfg.pm_templates (
+create table cfg.pm_templates (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   name text not null,
@@ -217,18 +181,13 @@ comment on column cfg.pm_templates.wo_priority_entity_type is
 comment on column cfg.pm_templates.wo_estimated_hours is 
   'Work order estimated hours template. Must be >= 0 if provided.';
 
--- Composite index for tenant template queries (RLS and filtering)
--- Optimized for: WHERE tenant_id = X AND is_system = Y
--- Column order: tenant_id (equality) first for RLS policy efficiency
-create index if not exists pm_templates_tenant_idx 
+create index pm_templates_tenant_idx 
   on cfg.pm_templates (tenant_id, is_system);
 
--- Index for trigger type filtering (useful for template discovery)
--- Optimized for: WHERE trigger_type = X (finding templates by trigger type)
-create index if not exists pm_templates_trigger_type_idx 
+create index pm_templates_trigger_type_idx 
   on cfg.pm_templates (trigger_type);
 
-create index if not exists pm_templates_wo_priority_idx 
+create index pm_templates_wo_priority_idx 
   on cfg.pm_templates (tenant_id, wo_priority) 
   where wo_priority is not null;
 
@@ -239,7 +198,7 @@ create trigger pm_templates_set_updated_at
 
 alter table cfg.pm_templates enable row level security;
 
-create table if not exists app.pm_schedules (
+create table app.pm_schedules (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   asset_id uuid references app.assets(id) on delete cascade,
@@ -319,50 +278,29 @@ comment on column app.pm_schedules.completion_count is
 comment on column app.pm_schedules.parent_pm_id is 
   'Optional reference to parent PM schedule for dependency relationships.';
 
--- Composite index for tenant-asset PM queries (most common lookup pattern)
--- Optimized for: WHERE tenant_id = X AND asset_id = Y AND is_active = Z
--- Column order: tenant_id (equality) first for RLS policy efficiency
-create index if not exists pm_schedules_tenant_asset_idx 
+create index pm_schedules_tenant_asset_idx 
   on app.pm_schedules (tenant_id, asset_id, is_active);
 
--- Partial composite index for due PM queries (most critical performance path)
--- Optimized for: WHERE tenant_id = X AND next_due_date <= NOW() AND is_active = true AND auto_generate = true
--- Column order: tenant_id (equality) first, then next_due_date (range) for optimal query plans
--- Note: is_active removed from key columns since it's already in WHERE clause
-create index if not exists pm_schedules_due_idx 
+create index pm_schedules_due_idx 
   on app.pm_schedules (tenant_id, next_due_date) 
   where is_active = true and auto_generate = true;
 
--- Partial composite index for usage-based PM lookups (optimized for meter reading triggers)
--- Optimized for: WHERE trigger_type = 'usage' AND is_active = true AND auto_generate = true
--- Used by rpc_record_meter_reading to find usage-based PMs for a meter
--- Note: JSONB meter_id extraction still requires table scan, but this narrows the search space
-create index if not exists pm_schedules_usage_trigger_idx 
+create index pm_schedules_usage_trigger_idx 
   on app.pm_schedules (tenant_id, trigger_type) 
   where trigger_type = 'usage' and is_active = true and auto_generate = true;
 
--- General index for trigger type filtering (for other query patterns)
--- Optimized for: WHERE trigger_type = X (reporting and general queries)
-create index if not exists pm_schedules_trigger_type_idx 
+create index pm_schedules_trigger_type_idx 
   on app.pm_schedules (trigger_type);
 
--- Partial index for template-based PMs (only non-null template_id)
--- Optimized for: WHERE template_id = X (common join pattern)
-create index if not exists pm_schedules_template_idx 
+create index pm_schedules_template_idx 
   on app.pm_schedules (template_id) 
   where template_id is not null;
 
--- Partial composite index for priority-based PM queries
--- Optimized for: WHERE tenant_id = X AND wo_priority = Y (filtering by priority)
--- Only indexes non-null priorities to reduce index size
-create index if not exists pm_schedules_wo_priority_idx 
+create index pm_schedules_wo_priority_idx 
   on app.pm_schedules (tenant_id, wo_priority) 
   where wo_priority is not null;
 
--- Partial index on parent_pm_id foreign key for dependency queries
--- Optimized for: WHERE parent_pm_id = X (reverse dependency lookups)
--- Only indexes non-null parent_pm_id to reduce index size
-create index if not exists pm_schedules_parent_pm_idx 
+create index pm_schedules_parent_pm_idx 
   on app.pm_schedules (parent_pm_id) 
   where parent_pm_id is not null;
 
@@ -373,7 +311,7 @@ create trigger pm_schedules_set_updated_at
 
 alter table app.pm_schedules enable row level security;
 
-create table if not exists app.pm_history (
+create table app.pm_history (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   pm_schedule_id uuid not null references app.pm_schedules(id) on delete cascade,
@@ -405,25 +343,19 @@ comment on column app.pm_history.actual_hours is
 comment on column app.pm_history.cost is 
   'Total cost of PM (labor + materials).';
 
--- Composite index for PM-specific history queries
--- Optimized for: WHERE pm_schedule_id = X ORDER BY scheduled_date DESC
-create index if not exists pm_history_pm_idx 
+create index pm_history_pm_idx 
   on app.pm_history (pm_schedule_id, scheduled_date desc);
 
--- Partial index for work order lookups (only non-null work_order_id)
--- Optimized for: WHERE work_order_id = X (common join pattern)
-create index if not exists pm_history_work_order_idx 
+create index pm_history_work_order_idx 
   on app.pm_history (work_order_id) 
   where work_order_id is not null;
 
--- Composite index for tenant-wide history queries (RLS and reporting)
--- Optimized for: WHERE tenant_id = X ORDER BY scheduled_date DESC
-create index if not exists pm_history_tenant_date_idx 
+create index pm_history_tenant_date_idx 
   on app.pm_history (tenant_id, scheduled_date desc);
 
 alter table app.pm_history enable row level security;
 
-create table if not exists app.pm_dependencies (
+create table app.pm_dependencies (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   pm_schedule_id uuid not null references app.pm_schedules(id) on delete cascade,
@@ -442,30 +374,22 @@ comment on table app.pm_dependencies is
 comment on column app.pm_dependencies.dependency_type is 
   'Type of dependency: after (PM must run after dependency), before (PM must run before dependency), same_day (PM must run on same day as dependency).';
 
--- Composite index for PM dependency lookups (forward dependencies)
--- Optimized for: WHERE pm_schedule_id = X (checking if PM has dependencies)
--- Also optimized for JOIN in pm.check_pm_dependencies() function: JOIN on depends_on_pm_id
-create index if not exists pm_dependencies_pm_idx 
+create index pm_dependencies_pm_idx 
   on app.pm_dependencies (pm_schedule_id, depends_on_pm_id);
 
--- Index for reverse dependency lookups (backward dependencies)
--- Optimized for: WHERE depends_on_pm_id = X (checking what depends on this PM)
-create index if not exists pm_dependencies_depends_on_idx 
+create index pm_dependencies_depends_on_idx 
   on app.pm_dependencies (depends_on_pm_id);
 
 alter table app.pm_dependencies enable row level security;
 
--- ============================================================================
--- PM Template Checklist Items Table
--- ============================================================================
-
-create table if not exists cfg.pm_template_checklist_items (
+create table cfg.pm_template_checklist_items (
   id uuid primary key default extensions.gen_random_uuid(),
   template_id uuid not null references cfg.pm_templates(id) on delete cascade,
   description text not null,
   required boolean not null default false,
   display_order integer not null,
   created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now(),
   constraint pm_template_checklist_items_order_check check (display_order >= 0),
   constraint pm_template_checklist_items_description_length_check check (
     length(description) >= 1 and length(description) <= 1000
@@ -487,10 +411,7 @@ comment on column cfg.pm_template_checklist_items.required is
 comment on column cfg.pm_template_checklist_items.display_order is 
   'Order in which this item should be displayed (0-based). Used to preserve the order of checklist items. Must be >= 0.';
 
--- Composite index for checklist item queries (ordered retrieval)
--- Optimized for: WHERE template_id = X ORDER BY display_order ASC
--- Column order: template_id (equality) first, then display_order (ordering)
-create index if not exists pm_template_checklist_items_template_idx 
+create index pm_template_checklist_items_template_idx 
   on cfg.pm_template_checklist_items (template_id, display_order);
 
 create trigger pm_template_checklist_items_set_updated_at 
@@ -501,16 +422,9 @@ create trigger pm_template_checklist_items_set_updated_at
 alter table cfg.pm_template_checklist_items enable row level security;
 
 -- ============================================================================
--- Data Migration: JSONB to Structured Columns
--- ============================================================================
--- 
--- ============================================================================
--- Add Foreign Key Constraints
+-- Foreign Key Constraints
 -- ============================================================================
 
--- Foreign key constraints for wo_priority columns (after data migration)
--- Note: Composite foreign keys reference (tenant_id, entity_type, key) from priority_catalogs
--- The wo_priority_entity_type column defaults to 'work_order' and is included in the FK
 alter table cfg.pm_templates
   add constraint pm_templates_wo_priority_fk 
   foreign key (tenant_id, wo_priority_entity_type, wo_priority) 
@@ -524,66 +438,26 @@ alter table app.pm_schedules
   on delete restrict;
 
 -- ============================================================================
--- Add pm_schedule_id to work_orders table
+-- Add pm_schedule_id to work_orders
 -- ============================================================================
 
 alter table app.work_orders
-  add column if not exists pm_schedule_id uuid references app.pm_schedules(id) on delete set null;
+  add column pm_schedule_id uuid references app.pm_schedules(id) on delete set null;
 
 comment on column app.work_orders.pm_schedule_id is 
   'Reference to PM schedule that generated this work order. Null for manually created work orders. Set automatically when PM generates work order.';
 
--- Partial index for PM-generated work orders (only non-null pm_schedule_id)
--- Optimized for: WHERE pm_schedule_id = X (finding work orders for a PM)
--- Partial index reduces size since most work orders are not PM-generated
-create index if not exists work_orders_pm_schedule_idx 
+create index work_orders_pm_schedule_idx 
   on app.work_orders (pm_schedule_id) 
   where pm_schedule_id is not null;
 
--- Update v_work_orders view to include pm_schedule_id
-create or replace view public.v_work_orders as
-select 
-  wo.id, 
-  wo.tenant_id, 
-  wo.title, 
-  wo.description, 
-  wo.status, 
-  wo.priority,
-  wo.assigned_to, 
-  wo.location_id, 
-  wo.asset_id,
-  wo.due_date, 
-  wo.completed_at, 
-  wo.completed_by,
-  wo.created_at, 
-  wo.updated_at,
-  coalesce(te_agg.total_minutes, 0) as total_labor_minutes,
-  wo.maintenance_type,
-  wo.pm_schedule_id
-from app.work_orders wo
-left join lateral (
-  select sum(minutes) as total_minutes
-  from app.work_order_time_entries
-  where work_order_id = wo.id
-) te_agg on true
-where wo.tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_work_orders is 
-  'Work orders view scoped to the current tenant context. Includes total_labor_minutes aggregated from time entries, maintenance_type, and pm_schedule_id. Clients must set tenant context via rpc_set_tenant_context. Underlying table RLS still applies.';
-
-grant select on public.v_work_orders to authenticated;
-grant select on public.v_work_orders to anon;
-
 -- ============================================================================
--- Create PM Schema
+-- PM Schema
 -- ============================================================================
-
-create schema if not exists pm;
 
 comment on schema pm is 
   'Preventive maintenance core functions. Contains business logic for PM scheduling, trigger evaluation, and work order generation.';
 
--- Grant schema usage so authenticated and anon can execute functions in pm schema
 grant usage on schema pm to authenticated;
 grant usage on schema pm to anon;
 
@@ -591,7 +465,7 @@ grant usage on schema pm to anon;
 -- Validation Functions
 -- ============================================================================
 
-create or replace function util.validate_meter_reading()
+create function util.validate_meter_reading()
 returns trigger
 language plpgsql
 security definer
@@ -601,7 +475,6 @@ declare
   v_meter app.asset_meters%rowtype;
   v_decrease_percentage numeric;
 begin
-  -- Get meter details
   select * into v_meter
   from app.asset_meters
   where id = new.meter_id;
@@ -612,14 +485,12 @@ begin
       errcode = '23503';
   end if;
 
-  -- Validate reading value
   if new.reading_value < 0 then
     raise exception using
       message = 'Reading value must be >= 0',
       errcode = '23514';
   end if;
 
-  -- Validate reading date (allow up to 7 days in future, 90 days in past)
   if new.reading_date > pg_catalog.now() + interval '7 days' then
     raise exception using
       message = 'Reading date cannot be more than 7 days in the future',
@@ -632,7 +503,6 @@ begin
       errcode = '23514';
   end if;
 
-  -- Validate reading direction
   if v_meter.reading_direction = 'increasing' then
     if new.reading_value < v_meter.current_reading then
       v_decrease_percentage := ((v_meter.current_reading - new.reading_value) / nullif(v_meter.current_reading, 0)) * 100;
@@ -648,10 +518,8 @@ begin
         message = 'For decreasing meters, new reading must be <= current reading',
         errcode = '23514';
     end if;
-  -- reset meters: always allow (no validation needed)
   end if;
 
-  -- Update meter current_reading and last_reading_date
   update app.asset_meters
   set
     current_reading = new.reading_value,
@@ -669,7 +537,7 @@ comment on function util.validate_meter_reading() is
 revoke all on function util.validate_meter_reading() from public;
 grant execute on function util.validate_meter_reading() to postgres;
 
-create or replace function util.validate_asset_meter_tenant()
+create function util.validate_asset_meter_tenant()
 returns trigger
 language plpgsql
 security definer
@@ -704,7 +572,7 @@ comment on function util.validate_asset_meter_tenant() is
 revoke all on function util.validate_asset_meter_tenant() from public;
 grant execute on function util.validate_asset_meter_tenant() to postgres;
 
-create or replace function util.validate_pm_trigger_config()
+create function util.validate_pm_trigger_config()
 returns trigger
 language plpgsql
 security definer
@@ -722,7 +590,7 @@ comment on function util.validate_pm_trigger_config() is
 revoke all on function util.validate_pm_trigger_config() from public;
 grant execute on function util.validate_pm_trigger_config() to postgres;
 
-create or replace function util.validate_pm_meter_tenant()
+create function util.validate_pm_meter_tenant()
 returns trigger
 language plpgsql
 security definer
@@ -764,7 +632,7 @@ comment on function util.validate_pm_meter_tenant() is
 revoke all on function util.validate_pm_meter_tenant() from public;
 grant execute on function util.validate_pm_meter_tenant() to postgres;
 
-create or replace function util.validate_pm_dependency_cycle()
+create function util.validate_pm_dependency_cycle()
 returns trigger
 language plpgsql
 security definer
@@ -816,11 +684,34 @@ comment on function util.validate_pm_dependency_cycle() is
 revoke all on function util.validate_pm_dependency_cycle() from public;
 grant execute on function util.validate_pm_dependency_cycle() to postgres;
 
+create function util.update_pm_on_work_order_completion()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.completed_at is not null and (old.completed_at is null or old.completed_at is distinct from new.completed_at) then
+    if new.pm_schedule_id is not null then
+      perform pm.update_pm_on_completion(new.id);
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function util.update_pm_on_work_order_completion() is 
+  'Trigger function that calls pm.update_pm_on_completion() when a PM work order is completed. Checks if completed_at was just set and pm_schedule_id is not null.';
+
+revoke all on function util.update_pm_on_work_order_completion() from public;
+grant execute on function util.update_pm_on_work_order_completion() to postgres;
+
 -- ============================================================================
 -- Core PM Functions
 -- ============================================================================
 
-create or replace function pm.validate_trigger_config(
+create function pm.validate_trigger_config(
   p_trigger_type text,
   p_trigger_config jsonb
 )
@@ -908,7 +799,6 @@ begin
     end if;
 
   elsif p_trigger_type = 'manual' then
-    -- Manual triggers require no configuration
     null;
 
   else
@@ -925,7 +815,7 @@ comment on function pm.validate_trigger_config(text, jsonb) is
 revoke all on function pm.validate_trigger_config(text, jsonb) from public;
 grant execute on function pm.validate_trigger_config(text, jsonb) to postgres;
 
-create or replace function pm.calculate_next_due_date(
+create function pm.calculate_next_due_date(
   p_pm_schedule app.pm_schedules,
   p_last_completed_at timestamptz
 )
@@ -957,23 +847,15 @@ begin
     v_next_due_date := v_base_date + (v_interval_days || ' days')::interval;
 
   elsif p_pm_schedule.trigger_type = 'usage' then
-    -- Usage-based PMs don't have a fixed next_due_date
-    -- They are triggered when meter threshold is reached
     v_next_due_date := null;
 
   elsif p_pm_schedule.trigger_type = 'calendar' then
-    -- Calendar-based PMs require complex date calculation
-    -- For now, return null (to be implemented with full calendar logic)
-    -- This is a placeholder that can be enhanced later
     v_next_due_date := null;
 
   elsif p_pm_schedule.trigger_type = 'condition' then
-    -- Condition-based PMs don't have a fixed next_due_date
-    -- They are triggered when condition threshold is met
     v_next_due_date := null;
 
   elsif p_pm_schedule.trigger_type = 'manual' then
-    -- Manual PMs don't have a next_due_date
     v_next_due_date := null;
 
   else
@@ -992,7 +874,7 @@ comment on function pm.calculate_next_due_date(app.pm_schedules, timestamptz) is
 revoke all on function pm.calculate_next_due_date(app.pm_schedules, timestamptz) from public;
 grant execute on function pm.calculate_next_due_date(app.pm_schedules, timestamptz) to postgres;
 
-create or replace function pm.is_pm_due(
+create function pm.is_pm_due(
   p_pm_schedule app.pm_schedules
 )
 returns boolean
@@ -1030,18 +912,13 @@ begin
     end if;
 
   elsif p_pm_schedule.trigger_type = 'calendar' then
-    -- Calendar-based PMs: check if current date matches pattern
-    -- Simplified: check if next_due_date is today or past
     v_is_due := p_pm_schedule.next_due_date is not null
       and p_pm_schedule.next_due_date::date <= pg_catalog.current_date;
 
   elsif p_pm_schedule.trigger_type = 'condition' then
-    -- Condition-based PMs: check sensor/integration value
-    -- This requires integration with sensor systems (placeholder)
     v_is_due := false;
 
   elsif p_pm_schedule.trigger_type = 'manual' then
-    -- Manual PMs are never automatically due
     v_is_due := false;
 
   else
@@ -1058,11 +935,10 @@ comment on function pm.is_pm_due(app.pm_schedules) is
   'Checks if PM is currently due based on trigger_type. Returns true if PM should be generated now. Handles time, usage, calendar triggers. Condition and manual triggers return false (handled separately).';
 
 revoke all on function pm.is_pm_due(app.pm_schedules) from public;
-grant execute on function pm.is_pm_due(app.pm_schedules) to postgres;
 grant execute on function pm.is_pm_due(app.pm_schedules) to authenticated;
 grant execute on function pm.is_pm_due(app.pm_schedules) to anon;
 
-create or replace function pm.check_pm_dependencies(
+create function pm.check_pm_dependencies(
   p_pm_schedule_id uuid
 )
 returns boolean
@@ -1075,7 +951,6 @@ declare
   v_all_dependencies_met boolean := true;
   v_dependency record;
 begin
-  -- Optimized query using composite index pm_dependencies_pm_idx
   for v_dependency in
     select
       pd.depends_on_pm_id,
@@ -1091,13 +966,11 @@ begin
         exit;
       end if;
     elsif v_dependency.dependency_type = 'before' then
-      -- PM must run before dependency, so dependency should not be completed
       if v_dependency.last_completed_at is not null then
         v_all_dependencies_met := false;
         exit;
       end if;
     elsif v_dependency.dependency_type = 'same_day' then
-      -- For same_day, check if dependency was completed today
       if v_dependency.last_completed_at is null
         or v_dependency.last_completed_at::date != pg_catalog.current_date then
         v_all_dependencies_met := false;
@@ -1116,7 +989,7 @@ comment on function pm.check_pm_dependencies(uuid) is
 revoke all on function pm.check_pm_dependencies(uuid) from public;
 grant execute on function pm.check_pm_dependencies(uuid) to postgres;
 
-create or replace function pm.generate_pm_work_order(
+create function pm.generate_pm_work_order(
   p_pm_schedule_id uuid
 )
 returns uuid
@@ -1135,7 +1008,6 @@ declare
   v_location_id uuid := null;
   v_due_date timestamptz := null;
 begin
-  -- Get PM schedule
   select * into v_pm_schedule
   from app.pm_schedules
   where id = p_pm_schedule_id;
@@ -1146,14 +1018,12 @@ begin
       errcode = 'P0001';
   end if;
 
-  -- Check if dependencies are met
   if not pm.check_pm_dependencies(p_pm_schedule_id) then
     raise exception using
       message = 'PM dependencies not satisfied',
       errcode = '23503';
   end if;
 
-  -- Get work order template values (from schedule or template)
   v_title := coalesce(
     v_pm_schedule.wo_title,
     (
@@ -1182,7 +1052,6 @@ begin
     'medium'
   );
 
-  -- Determine maintenance type based on trigger type
   if v_pm_schedule.trigger_type = 'time' then
     v_maintenance_type := 'preventive_time';
   elsif v_pm_schedule.trigger_type = 'usage' then
@@ -1191,34 +1060,31 @@ begin
     v_maintenance_type := 'preventive_time';
   end if;
 
-  -- Ensure variables are explicitly typed (not null::unknown) for function signature inference
   v_assigned_to := coalesce(v_assigned_to, null::uuid);
   v_location_id := coalesce(v_location_id, null::uuid);
   v_due_date := coalesce(v_due_date, null::timestamptz);
 
-  -- Create work order via RPC
-  -- Variables are now explicitly typed, so PostgreSQL can infer function signature
+  -- Create work order via RPC (will be defined in migration 07)
+  -- Explicit type casts ensure PostgreSQL correctly matches the function signature
   v_work_order_id := public.rpc_create_work_order(
-    v_pm_schedule.tenant_id,
-    v_title,
-    v_description,
-    v_priority,
+    v_pm_schedule.tenant_id::uuid,
+    v_title::text,
+    v_description::text,
+    v_priority::text,
     v_maintenance_type::text,
-    v_assigned_to,
-    v_location_id,
-    v_pm_schedule.asset_id,
-    v_due_date,
-    p_pm_schedule_id
+    v_assigned_to::uuid,
+    v_location_id::uuid,
+    v_pm_schedule.asset_id::uuid,
+    v_due_date::timestamptz,
+    p_pm_schedule_id::uuid
   );
 
-  -- Update PM schedule
   update app.pm_schedules
   set
     last_work_order_id = v_work_order_id,
     updated_at = pg_catalog.now()
   where id = p_pm_schedule_id;
 
-  -- Recalculate next_due_date (for time-based PMs)
   if v_pm_schedule.trigger_type = 'time' then
     update app.pm_schedules
     set
@@ -1240,7 +1106,7 @@ comment on function pm.generate_pm_work_order(uuid) is
 revoke all on function pm.generate_pm_work_order(uuid) from public;
 grant execute on function pm.generate_pm_work_order(uuid) to postgres;
 
-create or replace function pm.update_pm_on_completion(
+create function pm.update_pm_on_completion(
   p_work_order_id uuid
 )
 returns void
@@ -1255,7 +1121,6 @@ declare
   v_reset_after_pm boolean;
   v_threshold_offset numeric;
 begin
-  -- Get work order
   select * into v_work_order
   from app.work_orders
   where id = p_work_order_id;
@@ -1267,11 +1132,9 @@ begin
   end if;
 
   if v_work_order.pm_schedule_id is null then
-    -- Not a PM work order, nothing to do
     return;
   end if;
 
-  -- Get PM schedule
   select * into v_pm_schedule
   from app.pm_schedules
   where id = v_work_order.pm_schedule_id;
@@ -1282,7 +1145,6 @@ begin
       errcode = 'P0001';
   end if;
 
-  -- Update PM schedule
   update app.pm_schedules
   set
     last_completed_at = pg_catalog.now(),
@@ -1294,7 +1156,6 @@ begin
     updated_at = pg_catalog.now()
   where id = v_pm_schedule.id;
 
-  -- Create PM history record
   insert into app.pm_history (
     tenant_id,
     pm_schedule_id,
@@ -1312,7 +1173,6 @@ begin
     v_work_order.completed_by
   );
 
-  -- Handle usage meter reset if configured
   if v_pm_schedule.trigger_type = 'usage' then
     v_reset_after_pm := coalesce(
       (v_pm_schedule.trigger_config->>'reset_after_pm')::boolean,
@@ -1326,7 +1186,6 @@ begin
         0
       );
 
-      -- Update meter threshold offset (stored in trigger_config)
       update app.pm_schedules
       set
         trigger_config = jsonb_set(
@@ -1356,7 +1215,83 @@ revoke all on function pm.update_pm_on_completion(uuid) from public;
 grant execute on function pm.update_pm_on_completion(uuid) to postgres;
 
 -- ============================================================================
--- Triggers
+-- Stub RPC for PM Work Order Generation
+-- ============================================================================
+-- Note: This is a minimal stub to allow pm.generate_pm_work_order to function.
+-- The full implementation will be provided in migration 07_public_api.sql.
+
+create or replace function public.rpc_create_work_order(
+  p_tenant_id uuid,
+  p_title text,
+  p_description text default null,
+  p_priority text default 'medium',
+  p_maintenance_type text default null,
+  p_assigned_to uuid default null,
+  p_location_id uuid default null,
+  p_asset_id uuid default null,
+  p_due_date timestamptz default null,
+  p_pm_schedule_id uuid default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+  v_work_order_id uuid;
+  v_initial_status text;
+begin
+  -- Minimal implementation for PM work order generation
+  -- Full implementation will be in migration 07_public_api.sql
+  v_user_id := authz.rpc_setup(p_tenant_id, 'workorder.create');
+
+  v_initial_status := cfg.get_default_status(
+    p_tenant_id,
+    'work_order',
+    pg_catalog.jsonb_build_object('assigned_to', p_assigned_to)
+  );
+
+  insert into app.work_orders (
+    tenant_id,
+    title,
+    description,
+    priority,
+    maintenance_type,
+    assigned_to,
+    location_id,
+    asset_id,
+    due_date,
+    pm_schedule_id,
+    status
+  )
+  values (
+    p_tenant_id,
+    p_title,
+    p_description,
+    p_priority,
+    p_maintenance_type,
+    p_assigned_to,
+    p_location_id,
+    p_asset_id,
+    p_due_date,
+    p_pm_schedule_id,
+    v_initial_status
+  )
+  returning id into v_work_order_id;
+
+  return v_work_order_id;
+end;
+$$;
+
+comment on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) is 
+  'Stub implementation for PM work order generation. Full implementation with validation, rate limiting, and proper error handling will be provided in migration 07_public_api.sql.';
+
+revoke all on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) from public;
+grant execute on function public.rpc_create_work_order(uuid, text, text, text, text, uuid, uuid, uuid, timestamptz, uuid) to authenticated;
+
+-- ============================================================================
+-- Validation Triggers
 -- ============================================================================
 
 create trigger meter_readings_validate_reading 
@@ -1389,293 +1324,22 @@ create trigger pm_dependencies_validate_cycle
   for each row 
   execute function util.validate_pm_dependency_cycle();
 
--- ============================================================================
--- Work Order Completion Trigger
--- ============================================================================
-
-create or replace function util.update_pm_on_work_order_completion()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  -- Only process if work order was just completed (completed_at was set and was null before)
-  if new.completed_at is not null and (old.completed_at is null or old.completed_at is distinct from new.completed_at) then
-    if new.pm_schedule_id is not null then
-      perform pm.update_pm_on_completion(new.id);
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-comment on function util.update_pm_on_work_order_completion() is 
-  'Trigger function that calls pm.update_pm_on_completion() when a PM work order is completed. Checks if completed_at was just set and pm_schedule_id is not null.';
-
-revoke all on function util.update_pm_on_work_order_completion() from public;
-grant execute on function util.update_pm_on_work_order_completion() to postgres;
-
 create trigger work_orders_update_pm_on_completion 
-  after update of completed_at, completed_by on app.work_orders 
+  after update of completed_at on app.work_orders 
   for each row 
   when (new.completed_at is not null and (old.completed_at is null or old.completed_at is distinct from new.completed_at))
   execute function util.update_pm_on_work_order_completion();
 
 -- ============================================================================
--- Views
+-- Row Level Security Policies
 -- ============================================================================
 
-create or replace view public.v_asset_meters as
-select
-  am.id,
-  am.tenant_id,
-  am.asset_id,
-  a.name as asset_name,
-  am.meter_type,
-  am.name,
-  am.unit,
-  am.current_reading,
-  am.last_reading_date,
-  am.reading_direction,
-  am.decimal_places,
-  am.is_active,
-  am.description,
-  am.installation_date,
-  am.created_at,
-  am.updated_at
-from app.asset_meters am
-join app.assets a on am.asset_id = a.id
-where am.tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_asset_meters is 
-  'Current active meters for assets in current tenant context. Includes asset name, meter details, current reading, last reading date. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_asset_meters to anon;
-grant select on public.v_asset_meters to authenticated;
-
-create or replace view public.v_meter_readings as
-select
-  mr.id,
-  mr.tenant_id,
-  mr.meter_id,
-  am.name as meter_name,
-  am.asset_id,
-  a.name as asset_name,
-  mr.reading_value,
-  mr.reading_date,
-  mr.reading_type,
-  mr.notes,
-  mr.recorded_by,
-  mr.created_at
-from app.meter_readings mr
-join app.asset_meters am on mr.meter_id = am.id
-join app.assets a on am.asset_id = a.id
-where mr.tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_meter_readings is 
-  'Reading history for meters in current tenant context. Includes meter name, asset name, reading details, recorded by user. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_meter_readings to anon;
-grant select on public.v_meter_readings to authenticated;
-
-create or replace view public.v_pm_schedules as
-select
-  ps.id,
-  ps.tenant_id,
-  ps.asset_id,
-  a.name as asset_name,
-  ps.template_id,
-  pt.name as template_name,
-  ps.title,
-  ps.description,
-  ps.trigger_type,
-  ps.trigger_config,
-  ps.wo_title,
-  ps.wo_description,
-  ps.wo_priority,
-  ps.wo_estimated_hours,
-  ps.auto_generate,
-  ps.next_due_date,
-  ps.last_completed_at,
-  ps.completion_count,
-  ps.is_active,
-  ps.created_at,
-  ps.updated_at,
-  case
-    when ps.next_due_date is not null and ps.next_due_date < pg_catalog.now() then true
-    else false
-  end as is_overdue
-from app.pm_schedules ps
-left join app.assets a on ps.asset_id = a.id
-left join cfg.pm_templates pt on ps.template_id = pt.id
-where ps.tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_pm_schedules is 
-  'PM schedules for current tenant. Includes asset name, trigger details, next_due_date, last_completed_at, completion_count, is_overdue flag. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_pm_schedules to anon;
-grant select on public.v_pm_schedules to authenticated;
-
-create or replace view public.v_pm_templates as
-select
-  pt.id,
-  pt.tenant_id,
-  pt.name,
-  pt.description,
-  pt.trigger_type,
-  pt.trigger_config,
-  pt.wo_title,
-  pt.wo_description,
-  pt.wo_priority,
-  pt.wo_estimated_hours,
-  pt.is_system,
-  pt.created_at,
-  pt.updated_at
-from cfg.pm_templates pt
-where pt.tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_pm_templates is 
-  'PM templates for current tenant. Includes trigger_type, trigger_config summary. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_pm_templates to anon;
-grant select on public.v_pm_templates to authenticated;
-
-create or replace view public.v_due_pms as
-select
-  ps.id,
-  ps.tenant_id,
-  ps.asset_id,
-  a.name as asset_name,
-  ps.title,
-  ps.trigger_type,
-  ps.next_due_date,
-  ps.last_completed_at
-from app.pm_schedules ps
-left join app.assets a on ps.asset_id = a.id
-where ps.tenant_id = authz.get_current_tenant_id()
-  and ps.is_active = true
-  and ps.auto_generate = true
-  and ps.next_due_date is not null
-  and ps.next_due_date <= pg_catalog.now()
-  and pm.is_pm_due(ps);
-
-comment on view public.v_due_pms is 
-  'PMs that are currently due (next_due_date <= now() and is_due() = true). For dashboard display. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_due_pms to anon;
-grant select on public.v_due_pms to authenticated;
-
-create or replace view public.v_overdue_pms as
-select
-  ps.id,
-  ps.tenant_id,
-  ps.asset_id,
-  a.name as asset_name,
-  ps.title,
-  ps.trigger_type,
-  ps.next_due_date,
-  ps.last_completed_at,
-  pg_catalog.now() - ps.next_due_date as days_overdue
-from app.pm_schedules ps
-left join app.assets a on ps.asset_id = a.id
-where ps.tenant_id = authz.get_current_tenant_id()
-  and ps.is_active = true
-  and ps.next_due_date is not null
-  and ps.next_due_date < pg_catalog.now() - interval '1 day';
-
-comment on view public.v_overdue_pms is 
-  'PMs that are overdue (next_due_date < now() - interval ''1 day''). For alerts. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_overdue_pms to anon;
-grant select on public.v_overdue_pms to authenticated;
-
-create or replace view public.v_upcoming_pms as
-select
-  ps.id,
-  ps.tenant_id,
-  ps.asset_id,
-  a.name as asset_name,
-  ps.title,
-  ps.trigger_type,
-  ps.next_due_date,
-  ps.last_completed_at,
-  ps.next_due_date - pg_catalog.now() as days_until_due
-from app.pm_schedules ps
-left join app.assets a on ps.asset_id = a.id
-where ps.tenant_id = authz.get_current_tenant_id()
-  and ps.is_active = true
-  and ps.next_due_date is not null
-  and ps.next_due_date between pg_catalog.now() and pg_catalog.now() + interval '30 days';
-
-comment on view public.v_upcoming_pms is 
-  'PMs due in next 30 days. For planning. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_upcoming_pms to anon;
-grant select on public.v_upcoming_pms to authenticated;
-
-create or replace view public.v_pm_history as
-select
-  ph.id,
-  ph.tenant_id,
-  ph.pm_schedule_id,
-  ps.title as pm_title,
-  ps.trigger_type,
-  ph.work_order_id,
-  wo.title as work_order_title,
-  wo.status as work_order_status,
-  ph.scheduled_date,
-  ph.completed_date,
-  ph.completed_by,
-  ph.actual_hours,
-  ph.cost,
-  ph.notes,
-  ph.created_at
-from app.pm_history ph
-join app.pm_schedules ps on ph.pm_schedule_id = ps.id
-left join app.work_orders wo on ph.work_order_id = wo.id
-where ph.tenant_id = authz.get_current_tenant_id();
-
-comment on view public.v_pm_history is 
-  'PM execution history for current tenant. Includes PM details, work order details, completion info. Clients must set tenant context via rpc_set_tenant_context.';
-
-grant select on public.v_pm_history to anon;
-grant select on public.v_pm_history to authenticated;
-
--- NOTE: These views were originally set to security_invoker = false for "performance"
--- optimization. However, this was a security vulnerability as it could bypass RLS.
--- Migration 20260121132000_fix_security_definer_views.sql changes all views to
--- SECURITY INVOKER (security_invoker = true) to properly enforce RLS policies.
--- See ADR 0003 and docs/security-definer-views-research.md for details.
---
--- These statements are kept for historical reference but are overridden by the
--- security fix migration.
-alter view public.v_asset_meters set (security_invoker = false);
-alter view public.v_meter_readings set (security_invoker = false);
-alter view public.v_pm_schedules set (security_invoker = false);
-alter view public.v_pm_templates set (security_invoker = false);
-alter view public.v_due_pms set (security_invoker = false);
-alter view public.v_overdue_pms set (security_invoker = false);
-alter view public.v_upcoming_pms set (security_invoker = false);
-alter view public.v_pm_history set (security_invoker = false);
-
--- ============================================================================
--- RLS Policies
--- ============================================================================
-
--- Asset meters policies
+-- Asset Meters
 create policy asset_meters_select_authenticated
   on app.asset_meters
   for select
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy asset_meters_select_anon
   on app.asset_meters
@@ -1687,13 +1351,7 @@ create policy asset_meters_insert_authenticated
   on app.asset_meters
   for insert
   to authenticated
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy asset_meters_insert_anon
   on app.asset_meters
@@ -1705,20 +1363,8 @@ create policy asset_meters_update_authenticated
   on app.asset_meters
   for update
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id))
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy asset_meters_update_anon
   on app.asset_meters
@@ -1731,13 +1377,7 @@ create policy asset_meters_delete_authenticated
   on app.asset_meters
   for delete
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy asset_meters_delete_anon
   on app.asset_meters
@@ -1745,18 +1385,21 @@ create policy asset_meters_delete_anon
   to anon
   using (false);
 
--- Meter readings policies
+comment on policy asset_meters_select_authenticated on app.asset_meters is 
+  'Allows authenticated users to view asset meters in tenants they are members of.';
+comment on policy asset_meters_insert_authenticated on app.asset_meters is 
+  'Allows authenticated users to create asset meters in tenants they are members of.';
+comment on policy asset_meters_update_authenticated on app.asset_meters is 
+  'Allows authenticated users to update asset meters in tenants they are members of.';
+comment on policy asset_meters_delete_authenticated on app.asset_meters is 
+  'Allows authenticated users to delete asset meters in tenants they are members of.';
+
+-- Meter Readings
 create policy meter_readings_select_authenticated
   on app.meter_readings
   for select
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy meter_readings_select_anon
   on app.meter_readings
@@ -1768,13 +1411,7 @@ create policy meter_readings_insert_authenticated
   on app.meter_readings
   for insert
   to authenticated
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy meter_readings_insert_anon
   on app.meter_readings
@@ -1786,20 +1423,8 @@ create policy meter_readings_update_authenticated
   on app.meter_readings
   for update
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id))
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy meter_readings_update_anon
   on app.meter_readings
@@ -1812,13 +1437,7 @@ create policy meter_readings_delete_authenticated
   on app.meter_readings
   for delete
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy meter_readings_delete_anon
   on app.meter_readings
@@ -1826,18 +1445,21 @@ create policy meter_readings_delete_anon
   to anon
   using (false);
 
--- PM templates policies
+comment on policy meter_readings_select_authenticated on app.meter_readings is 
+  'Allows authenticated users to view meter readings in tenants they are members of.';
+comment on policy meter_readings_insert_authenticated on app.meter_readings is 
+  'Allows authenticated users to create meter readings in tenants they are members of.';
+comment on policy meter_readings_update_authenticated on app.meter_readings is 
+  'Allows authenticated users to update meter readings in tenants they are members of.';
+comment on policy meter_readings_delete_authenticated on app.meter_readings is 
+  'Allows authenticated users to delete meter readings in tenants they are members of.';
+
+-- PM Templates
 create policy pm_templates_select_authenticated
   on cfg.pm_templates
   for select
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_templates_select_anon
   on cfg.pm_templates
@@ -1850,11 +1472,7 @@ create policy pm_templates_insert_authenticated
   for insert
   to authenticated
   with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
+    authz.is_current_user_tenant_member(tenant_id)
     and authz.has_permission(auth.uid(), tenant_id, 'tenant.admin')
   );
 
@@ -1869,19 +1487,11 @@ create policy pm_templates_update_authenticated
   for update
   to authenticated
   using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
+    authz.is_current_user_tenant_member(tenant_id)
     and authz.has_permission(auth.uid(), tenant_id, 'tenant.admin')
   )
   with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
+    authz.is_current_user_tenant_member(tenant_id)
     and authz.has_permission(auth.uid(), tenant_id, 'tenant.admin')
   );
 
@@ -1897,11 +1507,7 @@ create policy pm_templates_delete_authenticated
   for delete
   to authenticated
   using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
+    authz.is_current_user_tenant_member(tenant_id)
     and authz.has_permission(auth.uid(), tenant_id, 'tenant.admin')
   );
 
@@ -1911,20 +1517,26 @@ create policy pm_templates_delete_anon
   to anon
   using (false);
 
--- PM template checklist items policies
+comment on policy pm_templates_select_authenticated on cfg.pm_templates is 
+  'Allows authenticated users to view PM templates in tenants they are members of.';
+comment on policy pm_templates_insert_authenticated on cfg.pm_templates is 
+  'Allows authenticated users with tenant.admin permission to create PM templates in tenants they are members of.';
+comment on policy pm_templates_update_authenticated on cfg.pm_templates is 
+  'Allows authenticated users with tenant.admin permission to update PM templates in tenants they are members of.';
+comment on policy pm_templates_delete_authenticated on cfg.pm_templates is 
+  'Allows authenticated users with tenant.admin permission to delete PM templates in tenants they are members of.';
+
+-- PM Template Checklist Items
 create policy pm_template_checklist_items_select_authenticated
   on cfg.pm_template_checklist_items
   for select
   to authenticated
   using (
-    template_id in (
-      select id
-      from cfg.pm_templates
-      where tenant_id in (
-        select tenant_id
-        from app.tenant_memberships
-        where user_id = (select auth.uid())
-      )
+    exists (
+      select 1
+      from cfg.pm_templates pt
+      where pt.id = pm_template_checklist_items.template_id
+        and authz.is_current_user_tenant_member(pt.tenant_id)
     )
   );
 
@@ -1939,14 +1551,11 @@ create policy pm_template_checklist_items_insert_authenticated
   for insert
   to authenticated
   with check (
-    template_id in (
-      select id
-      from cfg.pm_templates
-      where tenant_id in (
-        select tenant_id
-        from app.tenant_memberships
-        where user_id = (select auth.uid())
-      )
+    exists (
+      select 1
+      from cfg.pm_templates pt
+      where pt.id = pm_template_checklist_items.template_id
+        and authz.is_current_user_tenant_member(pt.tenant_id)
     )
   );
 
@@ -1961,25 +1570,19 @@ create policy pm_template_checklist_items_update_authenticated
   for update
   to authenticated
   using (
-    template_id in (
-      select id
-      from cfg.pm_templates
-      where tenant_id in (
-        select tenant_id
-        from app.tenant_memberships
-        where user_id = (select auth.uid())
-      )
+    exists (
+      select 1
+      from cfg.pm_templates pt
+      where pt.id = pm_template_checklist_items.template_id
+        and authz.is_current_user_tenant_member(pt.tenant_id)
     )
   )
   with check (
-    template_id in (
-      select id
-      from cfg.pm_templates
-      where tenant_id in (
-        select tenant_id
-        from app.tenant_memberships
-        where user_id = (select auth.uid())
-      )
+    exists (
+      select 1
+      from cfg.pm_templates pt
+      where pt.id = pm_template_checklist_items.template_id
+        and authz.is_current_user_tenant_member(pt.tenant_id)
     )
   );
 
@@ -1995,14 +1598,11 @@ create policy pm_template_checklist_items_delete_authenticated
   for delete
   to authenticated
   using (
-    template_id in (
-      select id
-      from cfg.pm_templates
-      where tenant_id in (
-        select tenant_id
-        from app.tenant_memberships
-        where user_id = (select auth.uid())
-      )
+    exists (
+      select 1
+      from cfg.pm_templates pt
+      where pt.id = pm_template_checklist_items.template_id
+        and authz.is_current_user_tenant_member(pt.tenant_id)
     )
   );
 
@@ -2012,18 +1612,21 @@ create policy pm_template_checklist_items_delete_anon
   to anon
   using (false);
 
--- PM schedules policies
+comment on policy pm_template_checklist_items_select_authenticated on cfg.pm_template_checklist_items is 
+  'Allows authenticated users to view checklist items for PM templates in tenants they are members of.';
+comment on policy pm_template_checklist_items_insert_authenticated on cfg.pm_template_checklist_items is 
+  'Allows authenticated users to create checklist items for PM templates in tenants they are members of.';
+comment on policy pm_template_checklist_items_update_authenticated on cfg.pm_template_checklist_items is 
+  'Allows authenticated users to update checklist items for PM templates in tenants they are members of.';
+comment on policy pm_template_checklist_items_delete_authenticated on cfg.pm_template_checklist_items is 
+  'Allows authenticated users to delete checklist items for PM templates in tenants they are members of.';
+
+-- PM Schedules
 create policy pm_schedules_select_authenticated
   on app.pm_schedules
   for select
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_schedules_select_anon
   on app.pm_schedules
@@ -2035,13 +1638,7 @@ create policy pm_schedules_insert_authenticated
   on app.pm_schedules
   for insert
   to authenticated
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_schedules_insert_anon
   on app.pm_schedules
@@ -2053,20 +1650,8 @@ create policy pm_schedules_update_authenticated
   on app.pm_schedules
   for update
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id))
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_schedules_update_anon
   on app.pm_schedules
@@ -2079,13 +1664,7 @@ create policy pm_schedules_delete_authenticated
   on app.pm_schedules
   for delete
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_schedules_delete_anon
   on app.pm_schedules
@@ -2093,18 +1672,21 @@ create policy pm_schedules_delete_anon
   to anon
   using (false);
 
--- PM history policies
+comment on policy pm_schedules_select_authenticated on app.pm_schedules is 
+  'Allows authenticated users to view PM schedules in tenants they are members of.';
+comment on policy pm_schedules_insert_authenticated on app.pm_schedules is 
+  'Allows authenticated users to create PM schedules in tenants they are members of.';
+comment on policy pm_schedules_update_authenticated on app.pm_schedules is 
+  'Allows authenticated users to update PM schedules in tenants they are members of.';
+comment on policy pm_schedules_delete_authenticated on app.pm_schedules is 
+  'Allows authenticated users to delete PM schedules in tenants they are members of.';
+
+-- PM History
 create policy pm_history_select_authenticated
   on app.pm_history
   for select
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_history_select_anon
   on app.pm_history
@@ -2116,13 +1698,7 @@ create policy pm_history_insert_authenticated
   on app.pm_history
   for insert
   to authenticated
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_history_insert_anon
   on app.pm_history
@@ -2130,62 +1706,17 @@ create policy pm_history_insert_anon
   to anon
   with check (false);
 
-create policy pm_history_update_authenticated
-  on app.pm_history
-  for update
-  to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+comment on policy pm_history_select_authenticated on app.pm_history is 
+  'Allows authenticated users to view PM history in tenants they are members of.';
+comment on policy pm_history_insert_authenticated on app.pm_history is 
+  'Allows authenticated users to create PM history records in tenants they are members of.';
 
-create policy pm_history_update_anon
-  on app.pm_history
-  for update
-  to anon
-  using (false)
-  with check (false);
-
-create policy pm_history_delete_authenticated
-  on app.pm_history
-  for delete
-  to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy pm_history_delete_anon
-  on app.pm_history
-  for delete
-  to anon
-  using (false);
-
--- PM dependencies policies
+-- PM Dependencies
 create policy pm_dependencies_select_authenticated
   on app.pm_dependencies
   for select
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_dependencies_select_anon
   on app.pm_dependencies
@@ -2197,13 +1728,7 @@ create policy pm_dependencies_insert_authenticated
   on app.pm_dependencies
   for insert
   to authenticated
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_dependencies_insert_anon
   on app.pm_dependencies
@@ -2215,20 +1740,8 @@ create policy pm_dependencies_update_authenticated
   on app.pm_dependencies
   for update
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id))
+  with check (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_dependencies_update_anon
   on app.pm_dependencies
@@ -2241,16 +1754,62 @@ create policy pm_dependencies_delete_authenticated
   on app.pm_dependencies
   for delete
   to authenticated
-  using (
-    tenant_id in (
-      select tenant_id
-      from app.tenant_memberships
-      where user_id = (select auth.uid())
-    )
-  );
+  using (authz.is_current_user_tenant_member(tenant_id));
 
 create policy pm_dependencies_delete_anon
   on app.pm_dependencies
   for delete
   to anon
   using (false);
+
+comment on policy pm_dependencies_select_authenticated on app.pm_dependencies is 
+  'Allows authenticated users to view PM dependencies in tenants they are members of.';
+comment on policy pm_dependencies_insert_authenticated on app.pm_dependencies is 
+  'Allows authenticated users to create PM dependencies in tenants they are members of.';
+comment on policy pm_dependencies_update_authenticated on app.pm_dependencies is 
+  'Allows authenticated users to update PM dependencies in tenants they are members of.';
+comment on policy pm_dependencies_delete_authenticated on app.pm_dependencies is 
+  'Allows authenticated users to delete PM dependencies in tenants they are members of.';
+
+-- ============================================================================
+-- Grants for SECURITY INVOKER Views
+-- ============================================================================
+
+grant select on app.asset_meters to authenticated;
+grant select on app.asset_meters to anon;
+
+grant update on app.asset_meters to authenticated;
+grant delete on app.asset_meters to authenticated;
+
+grant select on app.meter_readings to authenticated;
+grant select on app.meter_readings to anon;
+
+grant update on app.meter_readings to authenticated;
+grant delete on app.meter_readings to authenticated;
+
+grant select on cfg.pm_templates to authenticated;
+grant select on cfg.pm_templates to anon;
+
+grant select on cfg.pm_template_checklist_items to authenticated;
+grant select on cfg.pm_template_checklist_items to anon;
+
+grant select on app.pm_schedules to authenticated;
+grant select on app.pm_schedules to anon;
+
+grant update on app.pm_schedules to authenticated;
+grant delete on app.pm_schedules to authenticated;
+
+grant select on app.pm_history to authenticated;
+grant select on app.pm_history to anon;
+
+-- ============================================================================
+-- Force RLS on Meter and PM Tables
+-- ============================================================================
+
+alter table app.asset_meters force row level security;
+alter table app.meter_readings force row level security;
+alter table cfg.pm_templates force row level security;
+alter table cfg.pm_template_checklist_items force row level security;
+alter table app.pm_schedules force row level security;
+alter table app.pm_history force row level security;
+alter table app.pm_dependencies force row level security;

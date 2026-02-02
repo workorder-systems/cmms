@@ -1,15 +1,22 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 
+-- ============================================================================
+-- Schema Creation
+-- ============================================================================
+
+-- Note: Supabase automatically creates the 'extensions' schema, so we use IF NOT EXISTS
 create schema if not exists extensions;
 create extension if not exists pgcrypto schema extensions;
 create extension if not exists citext schema extensions;
 
-create schema if not exists app;
-create schema if not exists cfg;
-create schema if not exists int;
-create schema if not exists audit;
-create schema if not exists util;
-create schema if not exists authz;
+-- Custom schemas: assume fresh database, so no IF NOT EXISTS needed
+create schema app;
+create schema cfg;
+create schema int;
+create schema audit;
+create schema util;
+create schema authz;
+create schema pm;
 
 comment on schema extensions is 'PostgreSQL extensions (pgcrypto, citext, etc.)';
 comment on schema app is 'Core application write model (CMMS domain - tenants, work orders, assets, locations)';
@@ -18,11 +25,22 @@ comment on schema int is 'Integrations, async jobs, webhooks';
 comment on schema audit is 'Audit log & domain events for compliance and security';
 comment on schema util is 'Shared utility functions & triggers (timestamps, validations)';
 comment on schema authz is 'Authorization & RLS helper functions for multi-tenant security';
+comment on schema pm is 'Preventive maintenance core functions. Contains business logic for PM scheduling, trigger evaluation, and work order generation.';
 
 revoke create on schema public from public;
 grant usage on schema public to authenticated, anon;
+grant usage on schema app to authenticated, anon;
+grant usage on schema cfg to authenticated, anon;
+grant usage on schema audit to authenticated, anon;
+grant usage on schema int to authenticated, anon;
+grant usage on schema authz to authenticated, anon;
+grant usage on schema pm to authenticated, anon;
 
-create or replace function util.set_updated_at()
+-- ============================================================================
+-- Utility Functions
+-- ============================================================================
+
+create function util.set_updated_at()
 returns trigger
 language plpgsql
 security definer
@@ -39,7 +57,7 @@ comment on function util.set_updated_at() is 'Automatically sets updated_at = no
 revoke all on function util.set_updated_at() from public;
 grant execute on function util.set_updated_at() to postgres;
 
-create or replace function util.prevent_created_at_update()
+create function util.prevent_created_at_update()
 returns trigger
 language plpgsql
 security definer
@@ -60,7 +78,11 @@ comment on function util.prevent_created_at_update() is 'Prevents modification o
 revoke all on function util.prevent_created_at_update() from public;
 grant execute on function util.prevent_created_at_update() to postgres;
 
-create or replace function authz.get_current_tenant_id()
+-- ============================================================================
+-- Authorization Helper Functions (Basic - No Table Dependencies)
+-- ============================================================================
+
+create function authz.get_current_tenant_id()
 returns uuid
 language plpgsql
 stable
@@ -83,7 +105,6 @@ begin
   end;
   
   -- Fallback: Session variable (for RPC functions within same call)
-  -- This maintains backward compatibility for RPC functions that set context
   begin
     v_tenant_id := pg_catalog.current_setting('app.current_tenant_id', true)::uuid;
     return v_tenant_id;
@@ -94,8 +115,33 @@ begin
 end;
 $$;
 
-comment on function authz.get_current_tenant_id() is 'Gets current tenant ID from JWT claims (primary) or session context variable (fallback). JWT claims are set by custom_access_token_hook based on user metadata and persist across PostgREST requests. Session variable fallback maintains backward compatibility for RPC functions. CRITICAL: This is NOT used for security enforcement - RLS policies must derive tenant access via auth.uid() and membership tables.';
+comment on function authz.get_current_tenant_id() is 'Gets current tenant ID from JWT claims (primary) or session context variable (fallback). JWT claims are set by custom_access_token_hook based on user metadata and persist across PostgREST requests. Session variable fallback for RPC functions. CRITICAL: This is NOT used for security enforcement - RLS policies must derive tenant access via auth.uid() and membership tables.';
 
 revoke all on function authz.get_current_tenant_id() from public;
 grant execute on function authz.get_current_tenant_id() to authenticated;
 grant execute on function authz.get_current_tenant_id() to anon;
+
+create function authz.validate_authenticated()
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception using
+      message = 'Unauthorized: User must be authenticated',
+      errcode = '28000';
+  end if;
+  return v_user_id;
+end;
+$$;
+
+comment on function authz.validate_authenticated() is 'Validates that user is authenticated and returns user ID. Uses auth.uid() which is always available in Supabase RLS context. Raises exception if user not authenticated. Used by RPC functions for authorization checks.';
+
+revoke all on function authz.validate_authenticated() from public;
+grant execute on function authz.validate_authenticated() to authenticated;
