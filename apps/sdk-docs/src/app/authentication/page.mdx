@@ -1,41 +1,57 @@
 export const metadata = {
   title: 'Authentication',
-  description:
-    'In this guide, we’ll look at how authentication works. WorkOrder Systems offers two ways to authenticate your API requests: Basic authentication and OAuth2 with a token.',
+  description: 'Authenticate with Supabase Auth; the SDK uses the same session.',
 }
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Sign in', id: 'sign-in' },
+  { title: 'Using the SDK', id: 'using-the-sdk' },
+]
 
 # Authentication
 
-You'll need to authenticate your requests to access any of the endpoints in the WorkOrder Systems API. In this guide, we'll look at how authentication works. WorkOrder Systems offers two ways to authenticate your API requests: Basic authentication and OAuth2 with a token — OAuth2 is the recommended way. {{ className: 'lead' }}
+The Work Order Systems API is backed by Supabase. All requests run in the context of the authenticated user. There is no separate “API key” header: you sign in with Supabase Auth, and the SDK uses that session. {{ className: 'lead' }}
 
-## Basic authentication
+## Overview
 
-With basic authentication, you use your username and password to authenticate your HTTP requests. Unless you have a very good reason, you probably shouldn't use basic auth. Here's how to authenticate using cURL:
+- **Auth provider:** Supabase Auth (JWT).
+- **No API key:** You use the Supabase project URL and **anon** key to create the client. The anon key is safe to use in the browser; Row Level Security (RLS) and RPC permission checks enforce what each user can do.
+- **Session:** Sign in with `client.supabase.auth.signInWithPassword()` (or OAuth, magic link, etc.). The SDK’s `tenants`, `workOrders`, and other resources use the same Supabase client, so they automatically use the current session.
 
-```bash {{ title: 'Example request with basic auth' }}
-curl https://api.workordersystems.com/v1/conversations \
-  -u username:password
+## Sign in
+
+Get your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Create the client and sign in:
+
+<CodeGroup title="Sign in with email and password">
+
+```ts
+import { createDbClient } from '@workorder-systems/db'
+
+const client = createDbClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+)
+
+const { data, error } = await client.supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'your-password',
+})
 ```
 
-Please don't commit your WorkOrder Systems password to GitHub!
+</CodeGroup>
 
-## OAuth2 with bearer token
+After sign-in, the JWT is stored in the session (or in the storage you configured). All subsequent calls to `client.tenants.list()`, `client.workOrders.list()`, etc., use this session.
 
-The recommended way to authenticate with the WorkOrder Systems API is by using OAuth2. When establishing a connection using OAuth2, you will need your access token — you will find it in the [WorkOrder Systems dashboard](#) under API settings. Here's how to add the token to the request header using cURL:
+## Using the SDK
 
-```bash {{ title: 'Example request with bearer token' }}
-curl https://api.workordersystems.com/v1/conversations \
-  -H "Authorization: Bearer {token}"
-```
+You do not pass a token into each request. The SDK wraps the Supabase client; once the user is signed in via `client.supabase.auth`, all resource methods run as that user. For tenant-scoped operations you must also call `client.setTenant(tenantId)` and refresh the session so the JWT carries the tenant context — see [Tenant context](/tenant-context).
 
-Always keep your token safe and reset it if you suspect it has been compromised.
-
-## Using an SDK
-
-If you use one of our official SDKs, you won't have to worry about any of the above — fetch your access token from the [WorkOrder Systems dashboard](#) under API settings, and the client library will take care of the rest. All the client libraries use OAuth2 behind the scenes.
-
-<div className="not-prose">
-  <Button href="/sdks" variant="text" arrow="right">
-    <>Check out our list of first-party SDKs</>
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/quickstart" variant="text" arrow="right">
+    <>Quickstart</>
   </Button>
 </div>

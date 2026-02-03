@@ -1,0 +1,221 @@
+export const metadata = {
+  title: 'Work orders',
+  description: 'List, create, and manage work orders; transition status, log time, add attachments.',
+}
+
+export const sections = [
+  { title: 'List work orders', id: 'list-work-orders' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Create work order', id: 'create-work-order' },
+  { title: 'Transition status', id: 'transition-status' },
+  { title: 'Complete work order', id: 'complete-work-order' },
+  { title: 'Log time', id: 'log-time' },
+  { title: 'Add attachment', id: 'add-attachment' },
+]
+
+# Work orders
+
+The work orders resource lets you list and get work orders for the current tenant, create work orders, transition status, complete them, log time, and add attachments. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List work orders
+
+List all work orders for the current tenant (from `v_work_orders`).
+
+<CodeGroup title="client.workOrders.list()">
+
+```ts
+await client.setTenant(tenantId)
+// Refresh session so JWT carries tenant_id, then:
+const workOrders = await client.workOrders.list()
+// Returns WorkOrderRow[]
+```
+
+</CodeGroup>
+
+## Get by ID
+
+Fetch a single work order by ID.
+
+<CodeGroup title="client.workOrders.getById(id)">
+
+```ts
+const workOrder = await client.workOrders.getById('uuid-of-work-order')
+// Returns WorkOrderRow | null
+```
+
+</CodeGroup>
+
+## Create work order
+
+Create a new work order. Returns the new work order UUID.
+
+<CodeGroup title="client.workOrders.create(params)">
+
+```ts
+const workOrderId = await client.workOrders.create({
+  tenantId: 'uuid-of-tenant',
+  title: 'Repair HVAC unit',
+  description: 'Inspect and repair unit 3B',
+  priority: 'medium',
+  maintenanceType: 'corrective',
+  assignedTo: 'uuid-of-user',
+  locationId: 'uuid-of-location',
+  assetId: 'uuid-of-asset',
+  dueDate: '2025-03-01',
+  pmScheduleId: null,
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="title">
+    Required. Title of the work order.
+  </Property>
+  <Property name="description">
+    Optional. Description.
+  </Property>
+  <Property name="priority">
+    Optional. Default `medium`. Priority key.
+  </Property>
+  <Property name="maintenanceType">
+    Optional. Maintenance type key.
+  </Property>
+  <Property name="assignedTo">
+    Optional. User UUID to assign.
+  </Property>
+  <Property name="locationId">
+    Optional. Location UUID.
+  </Property>
+  <Property name="assetId">
+    Optional. Asset UUID.
+  </Property>
+  <Property name="dueDate">
+    Optional. ISO date string.
+  </Property>
+  <Property name="pmScheduleId">
+    Optional. PM schedule UUID.
+  </Property>
+</Properties>
+
+## Transition status
+
+Move a work order to a new status (e.g. from `open` to `in_progress`).
+
+<CodeGroup title="client.workOrders.transitionStatus(params)">
+
+```ts
+await client.workOrders.transitionStatus({
+  tenantId: 'uuid-of-tenant',
+  workOrderId: 'uuid-of-work-order',
+  toStatusKey: 'in_progress',
+})
+```
+
+</CodeGroup>
+
+## Complete work order
+
+Mark a work order as completed (transition to completed status).
+
+<CodeGroup title="client.workOrders.complete(params)">
+
+```ts
+await client.workOrders.complete({
+  tenantId: 'uuid-of-tenant',
+  workOrderId: 'uuid-of-work-order',
+})
+```
+
+</CodeGroup>
+
+## Log time
+
+Log time spent on a work order. Returns the time entry UUID.
+
+<CodeGroup title="client.workOrders.logTime(params)">
+
+```ts
+const timeEntryId = await client.workOrders.logTime({
+  tenantId: 'uuid-of-tenant',
+  workOrderId: 'uuid-of-work-order',
+  minutes: 60,
+  entryDate: '2025-02-03',
+  userId: null,
+  description: 'Replaced filter',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="workOrderId">
+    Required. Work order UUID.
+  </Property>
+  <Property name="minutes">
+    Required. Number of minutes.
+  </Property>
+  <Property name="entryDate">
+    Optional. ISO date string.
+  </Property>
+  <Property name="userId">
+    Optional. User UUID (defaults to current user).
+  </Property>
+  <Property name="description">
+    Optional. Description of the work.
+  </Property>
+</Properties>
+
+## Add attachment
+
+Add an attachment to a work order (e.g. file reference from storage). Returns the attachment UUID.
+
+<CodeGroup title="client.workOrders.addAttachment(params)">
+
+```ts
+const attachmentId = await client.workOrders.addAttachment({
+  tenantId: 'uuid-of-tenant',
+  workOrderId: 'uuid-of-work-order',
+  fileRef: 'bucket/path/to/file.pdf',
+  label: 'Invoice',
+  kind: 'document',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="workOrderId">
+    Required. Work order UUID.
+  </Property>
+  <Property name="fileRef">
+    Required. Reference to the file (e.g. storage path).
+  </Property>
+  <Property name="label">
+    Optional. Display label.
+  </Property>
+  <Property name="kind">
+    Optional. Attachment kind (e.g. `document`, `image`).
+  </Property>
+</Properties>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+</div>

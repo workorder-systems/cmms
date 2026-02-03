@@ -1,0 +1,129 @@
+export const metadata = {
+  title: 'Assets',
+  description: 'List, create, update, and delete assets.',
+}
+
+export const sections = [
+  { title: 'List assets', id: 'list-assets' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Create asset', id: 'create-asset' },
+  { title: 'Update asset', id: 'update-asset' },
+  { title: 'Delete asset', id: 'delete-asset' },
+]
+
+# Assets
+
+The assets resource lets you list and get assets for the current tenant, create, update, and delete assets. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List assets
+
+List all assets for the current tenant (from `v_assets`).
+
+<CodeGroup title="client.assets.list()">
+
+```ts
+const assets = await client.assets.list()
+// Returns AssetRow[]
+```
+
+</CodeGroup>
+
+## Get by ID
+
+Fetch a single asset by ID.
+
+<CodeGroup title="client.assets.getById(id)">
+
+```ts
+const asset = await client.assets.getById('uuid-of-asset')
+// Returns AssetRow | null
+```
+
+</CodeGroup>
+
+## Create asset
+
+Create a new asset. Returns the new asset UUID.
+
+<CodeGroup title="client.assets.create(params)">
+
+```ts
+const assetId = await client.assets.create({
+  tenantId: 'uuid-of-tenant',
+  name: 'HVAC Unit 3B',
+  description: 'Main floor HVAC',
+  assetNumber: 'AST-003',
+  locationId: 'uuid-of-location',
+  departmentId: 'uuid-of-department',
+  status: 'active',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="name">
+    Required. Asset name.
+  </Property>
+  <Property name="description">
+    Optional. Description.
+  </Property>
+  <Property name="assetNumber">
+    Optional. Asset number/code.
+  </Property>
+  <Property name="locationId">
+    Optional. Location UUID.
+  </Property>
+  <Property name="departmentId">
+    Optional. Department UUID.
+  </Property>
+  <Property name="status">
+    Optional. Default `active`. Status key.
+  </Property>
+</Properties>
+
+## Update asset
+
+Update an existing asset. All fields except `tenantId` and `assetId` are optional.
+
+<CodeGroup title="client.assets.update(params)">
+
+```ts
+await client.assets.update({
+  tenantId: 'uuid-of-tenant',
+  assetId: 'uuid-of-asset',
+  name: 'HVAC Unit 3B (updated)',
+  description: null,
+  assetNumber: null,
+  locationId: null,
+  departmentId: null,
+  status: 'inactive',
+})
+```
+
+</CodeGroup>
+
+## Delete asset
+
+Delete an asset by tenant and asset ID.
+
+<CodeGroup title="client.assets.delete(tenantId, assetId)">
+
+```ts
+await client.assets.delete('uuid-of-tenant', 'uuid-of-asset')
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+  <Button href="/locations" variant="text" arrow="right">
+    <>Locations</>
+  </Button>
+</div>

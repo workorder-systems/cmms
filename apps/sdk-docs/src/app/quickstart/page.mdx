@@ -1,98 +1,95 @@
 export const metadata = {
   title: 'Quickstart',
   description:
-    'This guide will get you all set up and ready to use the WorkOrder Systems API. We’ll cover how to get started an API client and how to make your first API request.',
+    'Install @workorder-systems/db, create a client, and make your first requests to the Work Order Systems API.',
 }
+
+export const sections = [
+  { title: 'Choose your client', id: 'choose-your-client' },
+  { title: 'Making your first request', id: 'making-your-first-request' },
+  { title: "What's next?", id: 'whats-next' },
+]
 
 # Quickstart
 
-This guide will get you all set up and ready to use the WorkOrder Systems API. We'll cover how to get started using one of our API clients and how to make your first API request. We'll also look at where to go next to find all the information you need to take full advantage of our powerful REST API. {{ className: 'lead' }}
+This guide gets you set up with the Work Order Systems TypeScript SDK (`@workorder-systems/db`), creates a client, and shows how to make your first requests. {{ className: 'lead' }}
 
 <Note>
-  Before you can make requests to the WorkOrder Systems API, you will need to grab your
-  API key from your dashboard. You find it under [Settings &raquo; API](#).
+  You need a Supabase project URL and anon key. Get them from the [Supabase dashboard](https://supabase.com/dashboard) under Project Settings → API. For tenant-scoped operations you will also sign in with Supabase Auth and set tenant context.
 </Note>
 
 ## Choose your client
 
-Before making your first API request, you need to pick which API client you will use. In addition to good ol' cURL HTTP requests, WorkOrder Systems offers clients for JavaScript, Python, and PHP. In the following example, you can see how to install each client.
+Install the SDK and its peer dependency:
 
 <CodeGroup>
 
-```bash {{ title: 'cURL' }}
-# cURL is most likely already installed on your machine
-curl --version
-```
-
-```bash {{ language: 'js' }}
-# Install the WorkOrder Systems JavaScript SDK
-npm install @example/work-order-systems-api --save
-```
-
-```bash {{ language: 'python' }}
-# Install the WorkOrder Systems Python SDK
-pip install work_order_systems_api
-```
-
-```bash {{ language: 'php' }}
-# Install the WorkOrder Systems PHP SDK
-composer require work-order-systems/sdk
+```bash
+npm install @workorder-systems/db @supabase/supabase-js
 ```
 
 </CodeGroup>
 
-<div className="not-prose">
-  <Button href="/sdks" variant="text" arrow="right">
-    <>Check out our list of first-party SDKs</>
+The SDK is a type-safe wrapper over the Supabase client. It exposes domain resources (tenants, work orders, assets, locations, departments, meters) and tenant context helpers.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/installation" variant="text" arrow="right">
+    <>Installation details</>
   </Button>
 </div>
 
-## Making your first API request
+## Making your first request
 
-After picking your preferred client, you are ready to make your first call to the WorkOrder Systems API. Below, you can see how to send a GET request to the Conversations endpoint to get a list of all your conversations. In the cURL example, results are limited to ten conversations, the default page length for each client.
+Create a client with your Supabase URL and anon key, then call the API. List tenants (no tenant context needed) or, after signing in and setting tenant context, list work orders.
 
-<CodeGroup tag="GET" label="/v1/conversations">
+<CodeGroup title="Create client and list tenants">
 
-```bash {{ title: 'cURL' }}
-curl -G https://api.workordersystems.com/v1/conversations \
-  -H "Authorization: Bearer {token}" \
-  -d limit=10
-```
+```ts
+import { createDbClient } from '@workorder-systems/db'
 
-```js
-import ApiClient from '@example/work-order-systems-api'
+const client = createDbClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+)
 
-const client = new ApiClient(token)
-
-await client.conversations.list()
-```
-
-```python
-from work_order_systems_api import ApiClient
-
-client = ApiClient(token)
-
-client.conversations.list()
-```
-
-```php
-$client = new \WorkOrderSystems\ApiClient($token);
-
-$client->conversations->list();
+// List tenants the current user is a member of (requires auth)
+const tenants = await client.tenants.list()
 ```
 
 </CodeGroup>
 
-<div className="not-prose">
-  <Button href="/conversations" variant="text" arrow="right">
-    <>Read the docs for the Conversations endpoint</>
+To get data from tenant-scoped resources (work orders, assets, etc.), sign in with Supabase Auth and set tenant context before calling them:
+
+<CodeGroup title="Sign in and list work orders">
+
+```ts
+// Sign in (e.g. in your app after login)
+const { data } = await client.supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'password',
+})
+
+// Set tenant context, then refresh session so JWT carries tenant_id
+await client.setTenant(tenantId)
+// In a real app you would refresh the session here (getSession → setSession)
+
+const workOrders = await client.workOrders.list()
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders API</>
   </Button>
 </div>
 
 ## What's next?
 
-Great, you're now set up with an API client and have made your first request to the API. Here are a few links that might be handy as you venture further into the WorkOrder Systems API:
-
-- [Grab your API key from the WorkOrder Systems dashboard](#)
-- [Check out the Conversations endpoint](/conversations)
-- [Learn about the different error messages in WorkOrder Systems](/errors)
+- [Installation](/installation) — package details and edge/browser usage
+- [Authentication](/authentication) — Supabase Auth and the SDK
+- [Tenant context](/tenant-context) — setTenant, clearTenant, and JWT refresh
+- [Errors](/errors) — SdkError and common codes

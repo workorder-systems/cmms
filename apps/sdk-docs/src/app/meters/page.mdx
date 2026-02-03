@@ -1,0 +1,179 @@
+export const metadata = {
+  title: 'Meters',
+  description: 'List meters and meter readings; create, update, record readings, delete.',
+}
+
+export const sections = [
+  { title: 'List meters', id: 'list-meters' },
+  { title: 'Get readings', id: 'get-readings' },
+  { title: 'Create meter', id: 'create-meter' },
+  { title: 'Update meter', id: 'update-meter' },
+  { title: 'Record reading', id: 'record-reading' },
+  { title: 'Delete meter', id: 'delete-meter' },
+]
+
+# Meters
+
+The meters resource lets you list asset meters and meter readings for the current tenant, create and update meters, record readings, and delete meters. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List meters
+
+List all asset meters for the current tenant (from `v_asset_meters`).
+
+<CodeGroup title="client.meters.list()">
+
+```ts
+const meters = await client.meters.list()
+// Returns AssetMeterRow[]
+```
+
+</CodeGroup>
+
+## Get readings
+
+List meter readings (from `v_meter_readings`).
+
+<CodeGroup title="client.meters.getReadings()">
+
+```ts
+const readings = await client.meters.getReadings()
+// Returns MeterReadingRow[]
+```
+
+</CodeGroup>
+
+## Create meter
+
+Create a new meter for an asset. Returns the new meter UUID.
+
+<CodeGroup title="client.meters.create(params)">
+
+```ts
+const meterId = await client.meters.create({
+  tenantId: 'uuid-of-tenant',
+  assetId: 'uuid-of-asset',
+  meterType: 'usage',
+  name: 'Runtime hours',
+  unit: 'hours',
+  currentReading: 0,
+  readingDirection: 'increasing',
+  decimalPlaces: 0,
+  description: 'Equipment runtime',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="assetId">
+    Required. Asset UUID.
+  </Property>
+  <Property name="meterType">
+    Required. Meter type key (e.g. `usage`, `counter`).
+  </Property>
+  <Property name="name">
+    Required. Meter name.
+  </Property>
+  <Property name="unit">
+    Required. Unit (e.g. `hours`, `miles`, `kWh`).
+  </Property>
+  <Property name="currentReading">
+    Optional. Default `0`. Initial reading value.
+  </Property>
+  <Property name="readingDirection">
+    Optional. Default `increasing`. Direction for rollover.
+  </Property>
+  <Property name="decimalPlaces">
+    Optional. Default `0`. Decimal places for display.
+  </Property>
+  <Property name="description">
+    Optional. Description.
+  </Property>
+</Properties>
+
+## Update meter
+
+Update an existing meter. All fields except `tenantId` and `meterId` are optional.
+
+<CodeGroup title="client.meters.update(params)">
+
+```ts
+await client.meters.update({
+  tenantId: 'uuid-of-tenant',
+  meterId: 'uuid-of-meter',
+  name: 'Runtime hours (total)',
+  unit: null,
+  readingDirection: null,
+  decimalPlaces: null,
+  description: null,
+  isActive: true,
+})
+```
+
+</CodeGroup>
+
+## Record reading
+
+Record a meter reading. Returns the reading record UUID.
+
+<CodeGroup title="client.meters.recordReading(params)">
+
+```ts
+const readingId = await client.meters.recordReading({
+  tenantId: 'uuid-of-tenant',
+  meterId: 'uuid-of-meter',
+  readingValue: 125.5,
+  readingDate: '2025-02-03',
+  readingType: 'manual',
+  notes: 'Monthly reading',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="meterId">
+    Required. Meter UUID.
+  </Property>
+  <Property name="readingValue">
+    Required. Reading value.
+  </Property>
+  <Property name="readingDate">
+    Optional. ISO date string.
+  </Property>
+  <Property name="readingType">
+    Optional. Default `manual`. Reading type key.
+  </Property>
+  <Property name="notes">
+    Optional. Notes.
+  </Property>
+</Properties>
+
+## Delete meter
+
+Delete a meter by tenant and meter ID.
+
+<CodeGroup title="client.meters.delete(tenantId, meterId)">
+
+```ts
+await client.meters.delete('uuid-of-tenant', 'uuid-of-meter')
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+</div>

@@ -10,9 +10,11 @@ import Link from 'next/link'
 
 import { GridPattern } from '@/components/GridPattern'
 import { Heading } from '@/components/Heading'
-import { ChatBubbleIcon } from '@/components/icons/ChatBubbleIcon'
-import { EnvelopeIcon } from '@/components/icons/EnvelopeIcon'
-import { UserIcon } from '@/components/icons/UserIcon'
+import { BoltIcon } from '@/components/icons/BoltIcon'
+import { CogIcon } from '@/components/icons/CogIcon'
+import { FolderIcon } from '@/components/icons/FolderIcon'
+import { MapPinIcon } from '@/components/icons/MapPinIcon'
+import { PackageIcon } from '@/components/icons/PackageIcon'
 import { UsersIcon } from '@/components/icons/UsersIcon'
 
 interface Resource {
@@ -28,11 +30,11 @@ interface Resource {
 
 const resources: Array<Resource> = [
   {
-    href: '/contacts',
-    name: 'Contacts',
+    href: '/tenants',
+    name: 'Tenants',
     description:
-      'Learn about the contact model and how to create, retrieve, update, delete, and list contacts.',
-    icon: UserIcon,
+      'Create and manage tenants, invite users, and assign roles.',
+    icon: UsersIcon,
     pattern: {
       y: 16,
       squares: [
@@ -42,11 +44,11 @@ const resources: Array<Resource> = [
     },
   },
   {
-    href: '/conversations',
-    name: 'Conversations',
+    href: '/work-orders',
+    name: 'Work orders',
     description:
-      'Learn about the conversation model and how to create, retrieve, update, delete, and list conversations.',
-    icon: ChatBubbleIcon,
+      'List, create, and manage work orders; transition status, log time, add attachments.',
+    icon: BoltIcon,
     pattern: {
       y: -6,
       squares: [
@@ -56,11 +58,11 @@ const resources: Array<Resource> = [
     },
   },
   {
-    href: '/messages',
-    name: 'Messages',
+    href: '/assets',
+    name: 'Assets',
     description:
-      'Learn about the message model and how to create, retrieve, update, delete, and list messages.',
-    icon: EnvelopeIcon,
+      'List, create, update, and delete assets.',
+    icon: PackageIcon,
     pattern: {
       y: 32,
       squares: [
@@ -70,14 +72,42 @@ const resources: Array<Resource> = [
     },
   },
   {
-    href: '/groups',
-    name: 'Groups',
+    href: '/locations',
+    name: 'Locations',
     description:
-      'Learn about the group model and how to create, retrieve, update, delete, and list groups.',
-    icon: UsersIcon,
+      'List, create, update, and delete locations.',
+    icon: MapPinIcon,
     pattern: {
       y: 22,
       squares: [[0, 1]],
+    },
+  },
+  {
+    href: '/departments',
+    name: 'Departments',
+    description:
+      'List, create, update, and delete departments.',
+    icon: FolderIcon,
+    pattern: {
+      y: 16,
+      squares: [
+        [0, 1],
+        [1, 3],
+      ],
+    },
+  },
+  {
+    href: '/meters',
+    name: 'Meters',
+    description:
+      'List meters and meter readings; create, update, and record readings.',
+    icon: CogIcon,
+    pattern: {
+      y: -6,
+      squares: [
+        [-1, 2],
+        [1, 3],
+      ],
     },
   },
 ]

@@ -3,26 +3,34 @@ import { Heading } from '@/components/Heading'
 
 const guides = [
   {
-    href: '/authentication',
-    name: 'Authentication',
-    description: 'Learn how to authenticate your API requests.',
+    href: '/quickstart',
+    name: 'Quickstart',
+    description: 'Install the SDK, create a client, and make your first requests.',
   },
   {
-    href: '/pagination',
-    name: 'Pagination',
-    description: 'Understand how to work with paginated responses.',
+    href: '/installation',
+    name: 'Installation',
+    description: 'Package name, peer dependency, and usage in browser, Node, and edge.',
+  },
+  {
+    href: '/authentication',
+    name: 'Authentication',
+    description: 'Sign in with Supabase Auth; the SDK uses the same session.',
+  },
+  {
+    href: '/tenant-context',
+    name: 'Tenant context',
+    description: 'Set and clear tenant context for multi-tenant operations.',
+  },
+  {
+    href: '/authorization',
+    name: 'Authorization (RBAC & ABAC)',
+    description: 'Roles, permissions, scopes, and how RPCs enforce access.',
   },
   {
     href: '/errors',
     name: 'Errors',
-    description:
-      'Read about the different types of errors returned by the API.',
-  },
-  {
-    href: '/webhooks',
-    name: 'Webhooks',
-    description:
-      'Learn how to programmatically configure webhooks for your app.',
+    description: 'SdkError and common PostgREST/Supabase error codes.',
   },
 ]
 

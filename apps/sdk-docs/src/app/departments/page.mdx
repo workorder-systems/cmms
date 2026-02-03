@@ -1,0 +1,114 @@
+export const metadata = {
+  title: 'Departments',
+  description: 'List, create, update, and delete departments.',
+}
+
+export const sections = [
+  { title: 'List departments', id: 'list-departments' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Create department', id: 'create-department' },
+  { title: 'Update department', id: 'update-department' },
+  { title: 'Delete department', id: 'delete-department' },
+]
+
+# Departments
+
+The departments resource lets you list and get departments for the current tenant, create, update, and delete departments. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List departments
+
+List all departments for the current tenant (from `v_departments`).
+
+<CodeGroup title="client.departments.list()">
+
+```ts
+const departments = await client.departments.list()
+// Returns DepartmentRow[]
+```
+
+</CodeGroup>
+
+## Get by ID
+
+Fetch a single department by ID.
+
+<CodeGroup title="client.departments.getById(id)">
+
+```ts
+const department = await client.departments.getById('uuid-of-department')
+// Returns DepartmentRow | null
+```
+
+</CodeGroup>
+
+## Create department
+
+Create a new department. Returns the new department UUID.
+
+<CodeGroup title="client.departments.create(params)">
+
+```ts
+const departmentId = await client.departments.create({
+  tenantId: 'uuid-of-tenant',
+  name: 'Maintenance',
+  description: 'Facilities maintenance',
+  code: 'MNT',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="name">
+    Required. Department name.
+  </Property>
+  <Property name="description">
+    Optional. Description.
+  </Property>
+  <Property name="code">
+    Optional. Department code.
+  </Property>
+</Properties>
+
+## Update department
+
+Update an existing department. All fields except `tenantId` and `departmentId` are optional.
+
+<CodeGroup title="client.departments.update(params)">
+
+```ts
+await client.departments.update({
+  tenantId: 'uuid-of-tenant',
+  departmentId: 'uuid-of-department',
+  name: 'Facilities & Maintenance',
+  description: null,
+  code: 'FM',
+})
+```
+
+</CodeGroup>
+
+## Delete department
+
+Delete a department by tenant and department ID.
+
+<CodeGroup title="client.departments.delete(tenantId, departmentId)">
+
+```ts
+await client.departments.delete('uuid-of-tenant', 'uuid-of-department')
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+  <Button href="/meters" variant="text" arrow="right">
+    <>Meters</>
+  </Button>
+</div>

@@ -1,0 +1,135 @@
+export const metadata = {
+  title: 'Tenants',
+  description: 'Create and manage tenants, invite users, assign roles.',
+}
+
+export const sections = [
+  { title: 'List tenants', id: 'list-tenants' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Create tenant', id: 'create-tenant' },
+  { title: 'Invite user', id: 'invite-user' },
+  { title: 'Assign role', id: 'assign-role' },
+]
+
+# Tenants
+
+The tenants resource lets you list tenants the current user is a member of, create a new tenant, invite users to a tenant, and assign roles. Tenant context is **not** required for tenants; use `setTenant` for other resources (work orders, assets, etc.). {{ className: 'lead' }}
+
+## List tenants
+
+List all tenants the authenticated user is a member of (from `v_tenants`).
+
+<CodeGroup title="client.tenants.list()">
+
+```ts
+const tenants = await client.tenants.list()
+// Returns TenantRow[]
+```
+
+</CodeGroup>
+
+## Get by ID
+
+Fetch a single tenant by ID.
+
+<CodeGroup title="client.tenants.getById(id)">
+
+```ts
+const tenant = await client.tenants.getById('uuid-of-tenant')
+// Returns TenantRow | null
+```
+
+</CodeGroup>
+
+## Create tenant
+
+Create a new tenant. The authenticated user becomes a member and is assigned the admin role. Returns the new tenant UUID.
+
+<CodeGroup title="client.tenants.create(params)">
+
+```ts
+const tenantId = await client.tenants.create({
+  name: 'Acme Corp',
+  slug: 'acme-corp',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="name">
+    Required. Display name of the tenant.
+  </Property>
+  <Property name="slug">
+    Required. Unique slug (e.g. for URLs).
+  </Property>
+</Properties>
+
+## Invite user
+
+Invite a user to a tenant with a role (e.g. `admin`, `member`). The invitee receives an invite; they must accept to join.
+
+<CodeGroup title="client.tenants.inviteUser(params)">
+
+```ts
+await client.tenants.inviteUser({
+  tenantId: 'uuid-of-tenant',
+  inviteeEmail: 'newuser@example.com',
+  roleKey: 'member',
+})
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="inviteeEmail">
+    Required. Email of the user to invite.
+  </Property>
+  <Property name="roleKey">
+    Required. Role key (e.g. `admin`, `member`).
+  </Property>
+</Properties>
+
+## Assign role
+
+Assign a role to an existing user in a tenant.
+
+<CodeGroup title="client.tenants.assignRole(params)">
+
+```ts
+await client.tenants.assignRole({
+  tenantId: 'uuid-of-tenant',
+  userId: 'uuid-of-user',
+  roleKey: 'member',
+})
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="userId">
+    Required. User UUID (Supabase Auth user id).
+  </Property>
+  <Property name="roleKey">
+    Required. Role key.
+  </Property>
+</Properties>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/authorization" variant="text" arrow="right">
+    <>Authorization (RBAC & ABAC)</>
+  </Button>
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+</div>
