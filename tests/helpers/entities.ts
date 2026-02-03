@@ -7,6 +7,7 @@ import {
   makeWorkOrderTitle,
 } from './faker';
 import { setTenantContext } from './tenant';
+import { formatPostgrestError } from './errors.js';
 
 /**
  * Create a test location via public RPC.
@@ -27,7 +28,7 @@ export async function createTestLocation(
   });
 
   if (error) {
-    throw new Error(`Failed to create location: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create location', error));
   }
 
   return data as string;
@@ -52,7 +53,7 @@ export async function createTestDepartment(
   });
 
   if (error) {
-    throw new Error(`Failed to create department: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create department', error));
   }
 
   return data as string;
@@ -97,7 +98,7 @@ export async function createTestAsset(
   });
 
   if (error) {
-    throw new Error(`Failed to create asset: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create asset', error));
   }
 
   return data as string;
@@ -134,7 +135,7 @@ export async function createTestWorkOrder(
   });
 
   if (error) {
-    throw new Error(`Failed to create work order: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create work order', error));
   }
 
   return data as string;
@@ -193,7 +194,7 @@ export async function getWorkOrder(
     .limit(1);
 
   if (error) {
-    throw new Error(`Failed to get work order: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get work order', error));
   }
 
   if (!data || data.length === 0) {
@@ -236,7 +237,7 @@ export async function transitionWorkOrderStatus(
   });
 
   if (error) {
-    throw new Error(`Failed to transition work order: ${error.message || JSON.stringify(error)}`);
+    throw new Error(formatPostgrestError('Failed to transition work order', error));
   }
 }
 
@@ -262,7 +263,7 @@ export async function createTestTimeEntry(
   });
 
   if (error) {
-    throw new Error(`Failed to create time entry: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create time entry', error));
   }
 
   return data as string;
@@ -290,7 +291,7 @@ export async function getTimeEntry(
     .limit(1);
 
   if (error) {
-    throw new Error(`Failed to get time entry: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get time entry', error));
   }
 
   if (!data || data.length === 0) {
@@ -320,7 +321,7 @@ export async function createTestAttachment(
   });
 
   if (error) {
-    throw new Error(`Failed to create attachment: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create attachment', error));
   }
 
   return data as string;
@@ -348,7 +349,7 @@ export async function getAttachment(
     .limit(1);
 
   if (error) {
-    throw new Error(`Failed to get attachment: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get attachment', error));
   }
 
   if (!data || data.length === 0) {
@@ -374,7 +375,7 @@ export async function getMaintenanceTypes(
     .order('display_order', { ascending: true });
 
   if (error) {
-    throw new Error(`Failed to get maintenance types: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get maintenance types', error));
   }
 
   return data || [];
@@ -404,7 +405,7 @@ export async function createTestMaintenanceType(
   });
 
   if (error) {
-    throw new Error(`Failed to create maintenance type: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create maintenance type', error));
   }
 
   return data as string;
@@ -441,7 +442,7 @@ export async function createTestMeter(
   });
 
   if (error) {
-    throw new Error(`Failed to create meter: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create meter', error));
   }
 
   return data as string;
@@ -469,7 +470,7 @@ export async function createTestMeterReading(
   });
 
   if (error) {
-    throw new Error(`Failed to record meter reading: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to record meter reading', error));
   }
 
   return data as string;
@@ -497,7 +498,7 @@ export async function getMeter(
     .limit(1);
 
   if (error) {
-    throw new Error(`Failed to get meter: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get meter', error));
   }
 
   if (!data || data.length === 0) {
@@ -537,7 +538,7 @@ export async function createTestPmTemplate(
   });
 
   if (error) {
-    throw new Error(`Failed to create PM template: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create PM template', error));
   }
 
   return data as string;
@@ -578,7 +579,7 @@ export async function createTestPmSchedule(
   });
 
   if (error) {
-    throw new Error(`Failed to create PM schedule: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create PM schedule', error));
   }
 
   return data as string;
@@ -602,7 +603,7 @@ export async function createTestPmDependency(
   });
 
   if (error) {
-    throw new Error(`Failed to create PM dependency: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to create PM dependency', error));
   }
 
   return data as string;
@@ -630,7 +631,7 @@ export async function getPmTemplate(
     .limit(1);
 
   if (error) {
-    throw new Error(`Failed to get PM template: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get PM template', error));
   }
 
   if (!data || data.length === 0) {
@@ -662,7 +663,7 @@ export async function getPmSchedule(
     .limit(1);
 
   if (error) {
-    throw new Error(`Failed to get PM schedule: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get PM schedule', error));
   }
 
   if (!data || data.length === 0) {

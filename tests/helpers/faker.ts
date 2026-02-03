@@ -86,6 +86,14 @@ export function makeTenant(): { name: string; slug: string } {
   };
 }
 
+/**
+ * Return a short slug (≤63 chars) for tenants_slug_format_check (a-z0-9_- only).
+ * Use when appending suffixes would exceed the limit (e.g. in SDK tests).
+ */
+export function shortSlug(): string {
+  return `sdk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function makeLocationName(): string {
   const campus = faker.location.street();
   const buildingNumber = faker.number.int({ min: 1, max: 9 });

@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { makeUser } from './faker';
+import { formatPostgrestError } from './errors.js';
 
 /** Standard password used for all test users */
 export const TEST_PASSWORD = 'StrongPassword!123';
@@ -39,7 +40,7 @@ export async function createTestUser(
     });
     if (signInError) {
       throw new Error(
-        `Failed to create or sign in test user: signup="${error.message}", signin="${signInError.message}"`
+        `${formatPostgrestError('Failed to create or sign in test user (signup)', error)}; signin: ${formatPostgrestError('signin', signInError)}`
       );
     }
     return {
@@ -56,7 +57,7 @@ export async function createTestUser(
       password: finalPassword,
     });
     if (signInError) {
-      throw new Error(`Failed to sign in test user after sign up: ${signInError.message}`);
+      throw new Error(formatPostgrestError('Failed to sign in test user after sign up', signInError));
     }
     return {
       user: signInData.user as TestUser,
@@ -84,7 +85,7 @@ export async function signInTestUser(
   });
 
   if (error) {
-    throw new Error(`Failed to sign in test user: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to sign in test user', error));
   }
 
   return {
@@ -99,7 +100,7 @@ export async function signInTestUser(
 export async function signOutUser(client: SupabaseClient): Promise<void> {
   const { error } = await client.auth.signOut();
   if (error) {
-    throw new Error(`Failed to sign out: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to sign out', error));
   }
 }
 

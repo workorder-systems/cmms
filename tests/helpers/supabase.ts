@@ -5,7 +5,7 @@ import { execSync } from 'node:child_process';
  * Get Supabase configuration from environment variables or Supabase CLI
  * Priority: Environment variables > Supabase CLI > Default local values
  */
-function getSupabaseConfig(): { url: string; anonKey: string } {
+export function getSupabaseConfig(): { url: string; anonKey: string } {
   // Check environment variables first
   const envUrl = process.env.SUPABASE_URL;
   const envAnonKey = process.env.SUPABASE_ANON_KEY;

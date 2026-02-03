@@ -6,12 +6,14 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'tests/**'
+      - 'packages/sdk/**'
       - '.github/workflows/test.yml'
   pull_request:
     branches: [main, master, testing]
     paths:
       - 'supabase/migrations/**'
       - 'tests/**'
+      - 'packages/sdk/**'
       - '.github/workflows/test.yml'
 
 jobs:
@@ -127,6 +129,14 @@ jobs:
         run: |
           echo "Supabase instance status:"
           supabase status || true
+
+      - name: 📐 Generate SDK types
+        if: success()
+        run: npm run gen-types
+
+      - name: 📦 Build SDK
+        if: success()
+        run: npm run build --workspace=@db/sdk
 
       - name: 🧪 Run test suite
         run: npm test

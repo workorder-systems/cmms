@@ -1,0 +1,46 @@
+{
+  "name": "@db/sdk",
+  "version": "0.1.0",
+  "description": "Type-safe domain SDK for the database public API (views + RPCs). Works in browser, Node.js, and edge runtimes.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen-types": "bash scripts/gen-types.sh"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "supabase",
+    "database",
+    "sdk",
+    "typescript"
+  ],
+  "license": "ISC"
+}

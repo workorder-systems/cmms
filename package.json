@@ -3,8 +3,15 @@
   "version": "1.0.0",
   "description": "Supabase database with TypeScript tests",
   "type": "module",
+  "private": true,
+  "workspaces": ["packages/sdk"],
+  "dependencies": {
+    "@db/sdk": "workspace:*"
+  },
   "scripts": {
     "test": "vitest run",
+    "test:db": "vitest run --exclude tests/sdk.test.ts",
+    "test:sdk": "vitest run tests/sdk.test.ts",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
@@ -12,11 +19,12 @@
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
     "test:setup": "supabase start && npm run test",
-    "test:teardown": "supabase stop"
+    "test:teardown": "supabase stop",
+    "gen-types": "bash packages/sdk/scripts/gen-types.sh"
   },
-  "keywords": [],
+  "keywords": ["supabase", "postgres", "cmms", "work-orders", "multi-tenant", "rls"],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-or-later",
   "devDependencies": {
     "@faker-js/faker": "^9.0.0",
     "@supabase/supabase-js": "^2.39.3",
