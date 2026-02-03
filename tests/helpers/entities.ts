@@ -303,6 +303,9 @@ export async function getTimeEntry(
 
 /**
  * Create a test attachment for a work order.
+ * Uploads a small file to the attachments bucket with path tenant_id/work_order_id/uuid_filename
+ * and metadata; the storage trigger creates app.files and app.work_order_attachments.
+ * Returns the new attachment id by querying v_work_order_attachments (public API only).
  */
 export async function createTestAttachment(
   client: SupabaseClient,
@@ -312,19 +315,42 @@ export async function createTestAttachment(
   label?: string,
   kind?: string
 ): Promise<string> {
-  const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
-    p_tenant_id: tenantId,
-    p_work_order_id: workOrderId,
-    p_file_ref: fileRef,
-    p_label: label || null,
-    p_kind: kind || null,
-  });
+  const filename = fileRef.split('/').pop() || 'file';
+  const storagePath = `${tenantId}/${workOrderId}/${crypto.randomUUID()}_${filename}`;
+  const body = Buffer.from('test');
 
-  if (error) {
-    throw new Error(formatPostgrestError('Failed to create attachment', error));
+  const { error: uploadError } = await client.storage
+    .from('attachments')
+    .upload(storagePath, body, {
+      contentType: 'application/octet-stream',
+      upsert: false,
+      metadata: {
+        work_order_id: workOrderId,
+        tenant_id: tenantId,
+        ...(label != null && { label }),
+        ...(kind != null && { kind }),
+      },
+    });
+
+  if (uploadError) {
+    throw new Error(formatPostgrestError('Failed to upload attachment', uploadError));
   }
 
-  return data as string;
+  await setTenantContext(client, tenantId);
+  const { data: rows, error: selectError } = await client
+    .from('v_work_order_attachments')
+    .select('id')
+    .eq('work_order_id', workOrderId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (selectError || !rows?.length) {
+    throw new Error(
+      formatPostgrestError('Failed to get created attachment id from v_work_order_attachments', selectError)
+    );
+  }
+
+  return rows[0].id as string;
 }
 
 /**
