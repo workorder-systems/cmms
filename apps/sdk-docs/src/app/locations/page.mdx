@@ -13,7 +13,7 @@ export const sections = [
 
 # Locations
 
-The locations resource lets you list and get locations for the current tenant, create, update, and delete locations. Locations can have a parent for hierarchy. Set tenant context before calling these methods. {{ className: 'lead' }}
+Lists and gets locations for the current tenant; create, update, delete. Locations can have a parent for hierarchy. Set tenant context before calling these methods. {{ className: 'lead' }}
 
 ## List locations
 
@@ -64,13 +64,13 @@ const locationId = await client.locations.create({
     Required. Tenant UUID.
   </Property>
   <Property name="name">
-    Required. Location name.
+    Required. Location display name.
   </Property>
   <Property name="description">
     Optional. Description.
   </Property>
   <Property name="parentLocationId">
-    Optional. Parent location UUID for hierarchy.
+    Optional. Parent location UUID.
   </Property>
 </Properties>
 

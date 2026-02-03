@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Tenants',
-  description: 'Create and manage tenants, invite users, assign roles.',
+  description: 'List tenants, create tenants, invite users, assign roles.',
 }
 
 export const sections = [
@@ -13,7 +13,7 @@ export const sections = [
 
 # Tenants
 
-The tenants resource lets you list tenants the current user is a member of, create a new tenant, invite users to a tenant, and assign roles. Tenant context is **not** required for tenants; use `setTenant` for other resources (work orders, assets, etc.). {{ className: 'lead' }}
+Lists tenants the current user is a member of; create tenants, invite users, assign roles. Tenant context is **not** required for tenants; use `setTenant` for work orders, assets, and other tenant-scoped resources. {{ className: 'lead' }}
 
 ## List tenants
 
@@ -59,10 +59,10 @@ const tenantId = await client.tenants.create({
 
 <Properties>
   <Property name="name">
-    Required. Display name of the tenant.
+    Required. Tenant display name.
   </Property>
   <Property name="slug">
-    Required. Unique slug (e.g. for URLs).
+    Required. Unique slug.
   </Property>
 </Properties>
 
@@ -87,7 +87,7 @@ await client.tenants.inviteUser({
     Required. Tenant UUID.
   </Property>
   <Property name="inviteeEmail">
-    Required. Email of the user to invite.
+    Required. Invitee email.
   </Property>
   <Property name="roleKey">
     Required. Role key (e.g. `admin`, `member`).
@@ -115,7 +115,7 @@ await client.tenants.assignRole({
     Required. Tenant UUID.
   </Property>
   <Property name="userId">
-    Required. User UUID (Supabase Auth user id).
+    Required. User UUID (Supabase Auth).
   </Property>
   <Property name="roleKey">
     Required. Role key.

@@ -33,7 +33,7 @@ const resources: Array<Resource> = [
     href: '/tenants',
     name: 'Tenants',
     description:
-      'Create and manage tenants, invite users, and assign roles.',
+      'List tenants, create tenants, invite users, assign roles.',
     icon: UsersIcon,
     pattern: {
       y: 16,
@@ -47,7 +47,7 @@ const resources: Array<Resource> = [
     href: '/work-orders',
     name: 'Work orders',
     description:
-      'List, create, and manage work orders; transition status, log time, add attachments.',
+      'List, create, transition, complete, log time, add attachments.',
     icon: BoltIcon,
     pattern: {
       y: -6,
@@ -100,7 +100,7 @@ const resources: Array<Resource> = [
     href: '/meters',
     name: 'Meters',
     description:
-      'List meters and meter readings; create, update, and record readings.',
+      'List meters and readings; create, update, record readings, delete meters.',
     icon: CogIcon,
     pattern: {
       y: -6,

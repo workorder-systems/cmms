@@ -13,7 +13,7 @@ export const sections = [
 
 # Departments
 
-The departments resource lets you list and get departments for the current tenant, create, update, and delete departments. Set tenant context before calling these methods. {{ className: 'lead' }}
+Lists and gets departments for the current tenant; create, update, delete. Set tenant context before calling these methods. {{ className: 'lead' }}
 
 ## List departments
 
@@ -64,7 +64,7 @@ const departmentId = await client.departments.create({
     Required. Tenant UUID.
   </Property>
   <Property name="name">
-    Required. Department name.
+    Required. Department display name.
   </Property>
   <Property name="description">
     Optional. Description.

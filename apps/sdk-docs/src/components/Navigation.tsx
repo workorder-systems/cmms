@@ -241,7 +241,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Installation', href: '/installation' },
       { title: 'Authentication', href: '/authentication' },
       { title: 'Tenant context', href: '/tenant-context' },
-      { title: 'Authorization (RBAC & ABAC)', href: '/authorization' },
+      { title: 'Authorization (RBAC and ABAC)', href: '/authorization' },
       { title: 'Errors', href: '/errors' },
     ],
   },

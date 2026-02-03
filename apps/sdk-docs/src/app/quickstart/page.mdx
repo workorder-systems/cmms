@@ -1,21 +1,20 @@
 export const metadata = {
   title: 'Quickstart',
-  description:
-    'Install @workorder-systems/db, create a client, and make your first requests to the Work Order Systems API.',
+  description: 'Set up the SDK, create a client, and make your first requests.',
 }
 
 export const sections = [
   { title: 'Choose your client', id: 'choose-your-client' },
-  { title: 'Making your first request', id: 'making-your-first-request' },
+  { title: 'Make your first request', id: 'making-your-first-request' },
   { title: "What's next?", id: 'whats-next' },
 ]
 
 # Quickstart
 
-This guide gets you set up with the Work Order Systems TypeScript SDK (`@workorder-systems/db`), creates a client, and shows how to make your first requests. {{ className: 'lead' }}
+Set up the SDK, create a client, and make your first requests. {{ className: 'lead' }}
 
 <Note>
-  You need a Supabase project URL and anon key. Get them from the [Supabase dashboard](https://supabase.com/dashboard) under Project Settings → API. For tenant-scoped operations you will also sign in with Supabase Auth and set tenant context.
+  Requires Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). For tenant-scoped operations, sign in with Supabase Auth and set tenant context.
 </Note>
 
 ## Choose your client
@@ -34,11 +33,11 @@ The SDK is a type-safe wrapper over the Supabase client. It exposes domain resou
 
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/installation" variant="text" arrow="right">
-    <>Installation details</>
+    <>View installation</>
   </Button>
 </div>
 
-## Making your first request
+## Make your first request
 
 Create a client with your Supabase URL and anon key, then call the API. List tenants (no tenant context needed) or, after signing in and setting tenant context, list work orders.
 

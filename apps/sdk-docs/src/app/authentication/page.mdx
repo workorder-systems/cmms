@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Authentication',
-  description: 'Authenticate with Supabase Auth; the SDK uses the same session.',
+  description: 'Sign in with Supabase Auth; SDK uses the same session.',
 }
 
 export const sections = [
@@ -11,12 +11,12 @@ export const sections = [
 
 # Authentication
 
-The Work Order Systems API is backed by Supabase. All requests run in the context of the authenticated user. There is no separate “API key” header: you sign in with Supabase Auth, and the SDK uses that session. {{ className: 'lead' }}
+The API is backed by Supabase. All requests run in the context of the authenticated user. No separate “API key” header: sign in with Supabase Auth; the SDK uses that session. {{ className: 'lead' }}
 
 ## Overview
 
 - **Auth provider:** Supabase Auth (JWT).
-- **No API key:** You use the Supabase project URL and **anon** key to create the client. The anon key is safe to use in the browser; Row Level Security (RLS) and RPC permission checks enforce what each user can do.
+- **No API key:** Use the Supabase project URL and **anon** key to create the client. The anon key is safe to use in the browser; Row Level Security (RLS) and RPC permission checks enforce what each user can do.
 - **Session:** Sign in with `client.supabase.auth.signInWithPassword()` (or OAuth, magic link, etc.). The SDK’s `tenants`, `workOrders`, and other resources use the same Supabase client, so they automatically use the current session.
 
 ## Sign in

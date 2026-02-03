@@ -13,7 +13,7 @@ export const sections = [
 
 # Assets
 
-The assets resource lets you list and get assets for the current tenant, create, update, and delete assets. Set tenant context before calling these methods. {{ className: 'lead' }}
+Lists and gets assets for the current tenant; create, update, delete. Set tenant context before calling these methods. {{ className: 'lead' }}
 
 ## List assets
 
@@ -67,13 +67,13 @@ const assetId = await client.assets.create({
     Required. Tenant UUID.
   </Property>
   <Property name="name">
-    Required. Asset name.
+    Required. Asset display name.
   </Property>
   <Property name="description">
     Optional. Description.
   </Property>
   <Property name="assetNumber">
-    Optional. Asset number/code.
+    Optional. Asset number or code.
   </Property>
   <Property name="locationId">
     Optional. Location UUID.

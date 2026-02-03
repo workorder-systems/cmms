@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Work orders',
-  description: 'List, create, and manage work orders; transition status, log time, add attachments.',
+  description: 'List, create, transition, complete, log time, add attachments.',
 }
 
 export const sections = [
@@ -10,12 +10,16 @@ export const sections = [
   { title: 'Transition status', id: 'transition-status' },
   { title: 'Complete work order', id: 'complete-work-order' },
   { title: 'Log time', id: 'log-time' },
-  { title: 'Add attachment', id: 'add-attachment' },
+  { title: 'Attachments overview', id: 'attachments-overview' },
+  { title: 'Upload attachment', id: 'upload-attachment' },
+  { title: 'List attachments', id: 'list-attachments' },
+  { title: 'Get signed URL', id: 'get-signed-url' },
+  { title: 'Update attachment metadata', id: 'update-attachment-metadata' },
 ]
 
 # Work orders
 
-The work orders resource lets you list and get work orders for the current tenant, create work orders, transition status, complete them, log time, and add attachments. Set tenant context before calling these methods. {{ className: 'lead' }}
+Lists and gets work orders for the current tenant; create, transition status, complete, log time, add attachments. Set tenant context before calling these methods. {{ className: 'lead' }}
 
 ## List work orders
 
@@ -74,7 +78,7 @@ const workOrderId = await client.workOrders.create({
     Required. Tenant UUID.
   </Property>
   <Property name="title">
-    Required. Title of the work order.
+    Required. Work order title.
   </Property>
   <Property name="description">
     Optional. Description.
@@ -86,7 +90,7 @@ const workOrderId = await client.workOrders.create({
     Optional. Maintenance type key.
   </Property>
   <Property name="assignedTo">
-    Optional. User UUID to assign.
+    Optional. Assignee user UUID.
   </Property>
   <Property name="locationId">
     Optional. Location UUID.
@@ -167,47 +171,120 @@ const timeEntryId = await client.workOrders.logTime({
     Optional. ISO date string.
   </Property>
   <Property name="userId">
-    Optional. User UUID (defaults to current user).
+    Optional. User UUID. Defaults to current user.
   </Property>
   <Property name="description">
-    Optional. Description of the work.
+    Optional. Work description.
   </Property>
 </Properties>
 
-## Add attachment
+## Attachments overview
 
-Add an attachment to a work order (e.g. file reference from storage). Returns the attachment UUID.
+Attachments use **Supabase Storage** and a **database trigger**: there is no RPC to “add” an attachment. You upload a file to the `attachments` bucket with a path that includes `tenant_id` and `work_order_id`. A trigger then creates the file record in `app.files` and the link in `app.work_order_attachments`. You list attachments via the view `v_work_order_attachments` and get short-lived **signed URLs** from `bucket_id` and `storage_path` (no permanent URLs are stored).
 
-<CodeGroup title="client.workOrders.addAttachment(params)">
+| Action | How |
+|--------|-----|
+| Create attachment | Upload to `attachments` bucket (path: `tenant_id/work_order_id/uuid_filename`); trigger creates records. |
+| List attachments | Query `v_work_order_attachments` (with tenant context set). |
+| Get file URL | `client.supabase.storage.from(bucket_id).createSignedUrl(storage_path, expiresIn)`. |
+| Update label/kind | RPC `rpc_update_work_order_attachment_metadata(attachment_id, label?, kind?)`. |
+
+Use `client.supabase` for Storage and for querying the view; set tenant context with `client.setTenant(tenantId)` before listing or uploading.
+
+## Upload attachment
+
+Upload the file to the `attachments` bucket. The path must be `{tenantId}/{workOrderId}/{uuid}_{filename}` so the trigger can associate the file with the work order. Optional metadata (`work_order_id`, `tenant_id`, `label`, `kind`) may be passed if your Supabase version supports it; otherwise set label/kind later via `rpc_update_work_order_attachment_metadata`.
+
+<CodeGroup title="Upload to attachments bucket">
 
 ```ts
-const attachmentId = await client.workOrders.addAttachment({
-  tenantId: 'uuid-of-tenant',
-  workOrderId: 'uuid-of-work-order',
-  fileRef: 'bucket/path/to/file.pdf',
-  label: 'Invoice',
-  kind: 'document',
+await client.setTenant(tenantId)
+
+const path = `${tenantId}/${workOrderId}/${crypto.randomUUID()}_${file.name}`
+const { data, error } = await client.supabase.storage
+  .from('attachments')
+  .upload(path, file, {
+    contentType: file.type ?? 'application/octet-stream',
+    upsert: false,
+    metadata: {
+      work_order_id: workOrderId,
+      tenant_id: tenantId,
+      label: 'Before photo',  // optional
+      kind: 'photo',          // optional
+    },
+  })
+if (error) throw error
+// Trigger creates app.files + work_order_attachments; no attachment UUID returned from upload.
+// To get the new attachment id, list v_work_order_attachments for this work_order_id and take the latest.
+```
+
+</CodeGroup>
+
+The uploader must be a tenant member and either **assigned to the work order** or have **workorder.edit** permission; otherwise Storage RLS rejects the upload.
+
+## List attachments
+
+Query the view `v_work_order_attachments` with tenant context set. The view exposes `id`, `work_order_id`, `file_id`, `bucket_id`, `storage_path`, `filename`, `label`, `kind`, `created_by_name`, `created_at`.
+
+<CodeGroup title="List attachments for a work order">
+
+```ts
+await client.setTenant(tenantId)
+
+const { data: attachments, error } = await client.supabase
+  .from('v_work_order_attachments')
+  .select('id, work_order_id, file_id, bucket_id, storage_path, filename, label, kind, created_by_name, created_at')
+  .eq('work_order_id', workOrderId)
+  .order('created_at', { ascending: false })
+
+if (error) throw error
+// Use bucket_id and storage_path to create signed URLs (see next section).
+```
+
+</CodeGroup>
+
+## Get signed URL
+
+Attachments are stored in a **private** bucket. Do not store permanent URLs. For each attachment row, call `createSignedUrl` with `bucket_id` and `storage_path` from the view to get a short-lived URL (e.g. 1 hour). RLS on `storage.objects` is evaluated when creating the signed URL; only users who can read the linked work order receive a URL.
+
+<CodeGroup title="Create signed URL for an attachment row">
+
+```ts
+const { data, error } = await client.supabase.storage
+  .from(row.bucket_id)   // from v_work_order_attachments
+  .createSignedUrl(row.storage_path, 3600)  // 3600 seconds = 1 hour
+
+if (error) throw error
+// data.signedUrl — use for display or download
+```
+
+</CodeGroup>
+
+## Update attachment metadata
+
+To set or change the label and/or kind after upload (e.g. when Storage metadata was not used), call `rpc_update_work_order_attachment_metadata`. The caller must be a tenant member and either the attachment creator or an admin/manager.
+
+<CodeGroup title="rpc_update_work_order_attachment_metadata">
+
+```ts
+await client.supabase.rpc('rpc_update_work_order_attachment_metadata', {
+  p_attachment_id: attachmentId,  // from v_work_order_attachments
+  p_label: 'Before photo',
+  p_kind: 'photo',
 })
-// Returns string (UUID)
 ```
 
 </CodeGroup>
 
 <Properties>
-  <Property name="tenantId">
-    Required. Tenant UUID.
+  <Property name="p_attachment_id">
+    Required. Attachment UUID (view row <code>id</code>).
   </Property>
-  <Property name="workOrderId">
-    Required. Work order UUID.
+  <Property name="p_label">
+    Optional. Label. Max 255 characters.
   </Property>
-  <Property name="fileRef">
-    Required. Reference to the file (e.g. storage path).
-  </Property>
-  <Property name="label">
-    Optional. Display label.
-  </Property>
-  <Property name="kind">
-    Optional. Attachment kind (e.g. `document`, `image`).
+  <Property name="p_kind">
+    Optional. Kind key (e.g. <code>photo</code>, <code>document</code>); format a-z0-9_.
   </Property>
 </Properties>
 

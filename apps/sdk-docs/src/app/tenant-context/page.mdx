@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Tenant context',
-  description: 'Set and clear tenant context for multi-tenant operations.',
+  description: 'Set and clear tenant context for tenant-scoped resources.',
 }
 
 export const sections = [
@@ -12,7 +12,7 @@ export const sections = [
 
 # Tenant context
 
-The API is multi-tenant. Tenant-scoped resources (work orders, assets, locations, departments, meters) only return and modify data for the current tenant. You must set the tenant context before calling those resources. {{ className: 'lead' }}
+The API is multi-tenant. Tenant-scoped resources (work orders, assets, locations, departments, meters) only return and modify data for the current tenant. Set tenant context before calling tenant-scoped resources. {{ className: 'lead' }}
 
 ## Why tenant context?
 
