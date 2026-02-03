@@ -64,27 +64,26 @@ jobs:
           while [ $attempt -lt $max_attempts ]; do
             # First check if Supabase status command works
             if supabase status > /dev/null 2>&1; then
-              # Try to extract actual keys from JSON status
+              # Extract actual keys from JSON status. Prefer jq (exact keys, no accidental Secret).
               STATUS_JSON=$(supabase status --output json 2>/dev/null || echo "{}")
               
-              # Extract API URL
-              EXTRACTED_URL=$(echo "$STATUS_JSON" | grep -o '"APIUrl":"[^"]*"' | head -1 | cut -d'"' -f4)
-              if [ -n "$EXTRACTED_URL" ]; then
-                API_URL="$EXTRACTED_URL"
+              if command -v jq >/dev/null 2>&1; then
+                EXTRACTED_URL=$(echo "$STATUS_JSON" | jq -r '.API_URL // .APIUrl // empty')
+                EXTRACTED_ANON=$(echo "$STATUS_JSON" | jq -r '.ANON_KEY // .anon_key // .anonKey // .PUBLISHABLE_KEY // .PublishableKey // empty')
+                EXTRACTED_SERVICE=$(echo "$STATUS_JSON" | jq -r '.SERVICE_ROLE_KEY // .service_role_key // .serviceRoleKey // empty')
+              else
+                EXTRACTED_URL=$(echo "$STATUS_JSON" | grep -o '"API_URL":"[^"]*"' | head -1 | cut -d'"' -f4)
+                [ -z "$EXTRACTED_URL" ] && EXTRACTED_URL=$(echo "$STATUS_JSON" | grep -o '"APIUrl":"[^"]*"' | head -1 | cut -d'"' -f4)
+                EXTRACTED_ANON=$(echo "$STATUS_JSON" | grep -oE '"(ANON_KEY|anon_key|anonKey|PUBLISHABLE_KEY|PublishableKey)":"[^"]*"' | head -1 | cut -d'"' -f4)
+                EXTRACTED_SERVICE=$(echo "$STATUS_JSON" | grep -oE '"(SERVICE_ROLE_KEY|service_role_key|serviceRoleKey)":"[^"]*"' | head -1 | cut -d'"' -f4)
               fi
               
-              # Extract anon key (try different field names)
-              EXTRACTED_ANON=$(echo "$STATUS_JSON" | grep -oE '"(anonKey|anon_key|anonKey)":"[^"]*"' | head -1 | cut -d'"' -f4)
-              if [ -z "$EXTRACTED_ANON" ]; then
-                # Try Publishable key field
-                EXTRACTED_ANON=$(echo "$STATUS_JSON" | grep -o '"Publishable":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ -n "$EXTRACTED_URL" ]; then
+                API_URL="$EXTRACTED_URL"
               fi
               if [ -n "$EXTRACTED_ANON" ]; then
                 ANON_KEY="$EXTRACTED_ANON"
               fi
-              
-              # Extract service role key
-              EXTRACTED_SERVICE=$(echo "$STATUS_JSON" | grep -oE '"(serviceRoleKey|service_role_key|SERVICE_ROLE_KEY|Secret)":"[^"]*"' | head -1 | cut -d'"' -f4)
               if [ -n "$EXTRACTED_SERVICE" ]; then
                 SERVICE_ROLE_KEY="$EXTRACTED_SERVICE"
               fi
