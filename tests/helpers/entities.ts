@@ -6,6 +6,7 @@ import {
   makeLocationName,
   makeWorkOrderTitle,
 } from './faker';
+import { setTenantContext } from './tenant';
 
 /**
  * Create a test location via public RPC.
@@ -115,7 +116,8 @@ export async function createTestWorkOrder(
   assignedTo?: string,
   locationId?: string,
   assetId?: string,
-  dueDate?: Date
+  dueDate?: Date,
+  pmScheduleId?: string
 ): Promise<string> {
   const finalTitle = title ?? makeWorkOrderTitle();
 
@@ -128,6 +130,7 @@ export async function createTestWorkOrder(
     p_location_id: locationId || null,
     p_asset_id: assetId || null,
     p_due_date: dueDate?.toISOString() || null,
+    p_pm_schedule_id: pmScheduleId || null,
   });
 
   if (error) {
@@ -166,22 +169,38 @@ export async function createTestWorkOrderDirect(
 
 /**
  * Get work order by ID (via public view).
+ * Requires tenant context to be set before calling.
  */
 export async function getWorkOrder(
   client: SupabaseClient,
-  workOrderId: string
+  workOrderId: string | null,
+  tenantId?: string
 ): Promise<any> {
+  if (!workOrderId) {
+    throw new Error('Work order ID is required');
+  }
+
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
+  // Use .limit(1) instead of .maybeSingle() because PostgREST can't infer primary keys from views
   const { data, error } = await client
     .from('v_work_orders')
     .select('*')
     .eq('id', workOrderId)
-    .single();
+    .limit(1);
 
   if (error) {
     throw new Error(`Failed to get work order: ${error.message}`);
   }
 
-  return data;
+  if (!data || data.length === 0) {
+    throw new Error(`Work order ${workOrderId} not found`);
+  }
+
+  return data[0];
 }
 
 /**
@@ -193,6 +212,23 @@ export async function transitionWorkOrderStatus(
   workOrderId: string,
   toStatus: string
 ): Promise<void> {
+  // Check current status first to avoid unnecessary transitions
+  // Set tenant context to query the view (idempotent if already set)
+  await setTenantContext(client, tenantId);
+  // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
+  const { data: woData, error: queryError } = await client
+    .from('v_work_orders')
+    .select('status')
+    .eq('id', workOrderId)
+    .limit(1);
+  
+  const wo = woData && woData.length > 0 ? woData[0] : null;
+
+  // Skip if already in target status (only if query succeeded)
+  if (!queryError && wo?.status === toStatus) {
+    return;
+  }
+
   const { error } = await client.rpc('rpc_transition_work_order_status', {
     p_tenant_id: tenantId,
     p_work_order_id: workOrderId,
@@ -200,6 +236,438 @@ export async function transitionWorkOrderStatus(
   });
 
   if (error) {
-    throw new Error(`Failed to transition work order: ${error.message}`);
+    throw new Error(`Failed to transition work order: ${error.message || JSON.stringify(error)}`);
   }
+}
+
+/**
+ * Create a test time entry for a work order.
+ */
+export async function createTestTimeEntry(
+  client: SupabaseClient,
+  tenantId: string,
+  workOrderId: string,
+  minutes: number,
+  entryDate?: Date,
+  userId?: string,
+  description?: string
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_log_work_order_time', {
+    p_tenant_id: tenantId,
+    p_work_order_id: workOrderId,
+    p_minutes: minutes,
+    p_entry_date: entryDate ? entryDate.toISOString().split('T')[0] : null,
+    p_user_id: userId || null,
+    p_description: description || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create time entry: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Get time entry by ID (via public view).
+ * Requires tenant context to be set before calling.
+ */
+export async function getTimeEntry(
+  client: SupabaseClient,
+  timeEntryId: string,
+  tenantId?: string
+): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
+  // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
+  const { data, error } = await client
+    .from('v_work_order_time_entries')
+    .select('*')
+    .eq('id', timeEntryId)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Failed to get time entry: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`Time entry ${timeEntryId} not found`);
+  }
+
+  return data[0];
+}
+
+/**
+ * Create a test attachment for a work order.
+ */
+export async function createTestAttachment(
+  client: SupabaseClient,
+  tenantId: string,
+  workOrderId: string,
+  fileRef: string,
+  label?: string,
+  kind?: string
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
+    p_tenant_id: tenantId,
+    p_work_order_id: workOrderId,
+    p_file_ref: fileRef,
+    p_label: label || null,
+    p_kind: kind || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create attachment: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Get attachment by ID (via public view).
+ * Requires tenant context to be set before calling.
+ */
+export async function getAttachment(
+  client: SupabaseClient,
+  attachmentId: string,
+  tenantId?: string
+): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
+  // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
+  const { data, error } = await client
+    .from('v_work_order_attachments')
+    .select('*')
+    .eq('id', attachmentId)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Failed to get attachment: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`Attachment ${attachmentId} not found`);
+  }
+
+  return data[0];
+}
+
+/**
+ * Get maintenance types for a tenant (via public view).
+ */
+export async function getMaintenanceTypes(
+  client: SupabaseClient,
+  tenantId: string
+): Promise<any[]> {
+  await setTenantContext(client, tenantId);
+  
+  const { data, error } = await client
+    .from('v_maintenance_type_catalogs')
+    .select('*')
+    .order('category', { ascending: true })
+    .order('display_order', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to get maintenance types: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Create a custom maintenance type (requires tenant.admin permission).
+ */
+export async function createTestMaintenanceType(
+  client: SupabaseClient,
+  tenantId: string,
+  category: string,
+  key: string,
+  name: string,
+  description?: string,
+  displayOrder?: number
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_create_maintenance_type', {
+    p_tenant_id: tenantId,
+    p_category: category,
+    p_key: key,
+    p_name: name,
+    p_description: description || null,
+    p_display_order: displayOrder || null,
+    p_color: null,
+    p_icon: null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create maintenance type: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Create a test meter via RPC.
+ */
+export async function createTestMeter(
+  client: SupabaseClient,
+  tenantId: string,
+  assetId: string,
+  meterType: string = 'runtime_hours',
+  name?: string,
+  unit?: string,
+  currentReading: number = 0,
+  readingDirection: string = 'increasing',
+  decimalPlaces: number = 0,
+  description?: string
+): Promise<string> {
+  const finalName = name ?? `Meter ${Date.now()}`;
+  const finalUnit = unit ?? 'hours';
+
+  const { data, error } = await client.rpc('rpc_create_meter', {
+    p_tenant_id: tenantId,
+    p_asset_id: assetId,
+    p_meter_type: meterType,
+    p_name: finalName,
+    p_unit: finalUnit,
+    p_current_reading: currentReading,
+    p_reading_direction: readingDirection,
+    p_decimal_places: decimalPlaces,
+    p_description: description || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create meter: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Record a meter reading via RPC.
+ */
+export async function createTestMeterReading(
+  client: SupabaseClient,
+  tenantId: string,
+  meterId: string,
+  readingValue: number,
+  readingDate?: Date,
+  readingType: string = 'manual',
+  notes?: string
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_record_meter_reading', {
+    p_tenant_id: tenantId,
+    p_meter_id: meterId,
+    p_reading_value: readingValue,
+    p_reading_date: readingDate?.toISOString() || null,
+    p_reading_type: readingType,
+    p_notes: notes || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to record meter reading: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Get meter by ID (via public view).
+ * Requires tenant context to be set before calling.
+ */
+export async function getMeter(
+  client: SupabaseClient,
+  meterId: string,
+  tenantId?: string
+): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
+  // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
+  const { data, error } = await client
+    .from('v_asset_meters')
+    .select('*')
+    .eq('id', meterId)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Failed to get meter: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`Meter ${meterId} not found`);
+  }
+
+  return data[0];
+}
+
+/**
+ * Create a test PM template via RPC.
+ */
+export async function createTestPmTemplate(
+  client: SupabaseClient,
+  tenantId: string,
+  name: string,
+  triggerType: string,
+  triggerConfig: any,
+  description?: string,
+  woTitle?: string,
+  woDescription?: string,
+  woPriority?: string,
+  woEstimatedHours?: number,
+  checklistItems?: Array<{ description: string; required?: boolean }>
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_create_pm_template', {
+    p_tenant_id: tenantId,
+    p_name: name,
+    p_trigger_type: triggerType,
+    p_trigger_config: triggerConfig,
+    p_description: description || null,
+    p_wo_title: woTitle || null,
+    p_wo_description: woDescription || null,
+    p_wo_priority: woPriority || null,
+    p_wo_estimated_hours: woEstimatedHours || null,
+    p_checklist_items: checklistItems || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create PM template: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Create a test PM schedule via RPC.
+ */
+export async function createTestPmSchedule(
+  client: SupabaseClient,
+  tenantId: string,
+  assetId: string,
+  title: string,
+  triggerType: string,
+  triggerConfig: any,
+  description?: string,
+  templateId?: string,
+  woTitle?: string,
+  woDescription?: string,
+  woPriority?: string,
+  woEstimatedHours?: number,
+  autoGenerate: boolean = true
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_create_pm_schedule', {
+    p_tenant_id: tenantId,
+    p_asset_id: assetId,
+    p_title: title,
+    p_trigger_type: triggerType,
+    p_trigger_config: triggerConfig,
+    p_description: description || null,
+    p_template_id: templateId || null,
+    p_auto_generate: autoGenerate,
+    p_estimated_hours: null, // Explicitly pass for backward compatibility
+    p_wo_title: woTitle || null,
+    p_wo_description: woDescription || null,
+    p_wo_priority: woPriority || null,
+    p_wo_estimated_hours: woEstimatedHours || null,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create PM schedule: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Create a test PM dependency via RPC.
+ */
+export async function createTestPmDependency(
+  client: SupabaseClient,
+  tenantId: string,
+  pmScheduleId: string,
+  dependsOnPmId: string,
+  dependencyType: string = 'after'
+): Promise<string> {
+  const { data, error } = await client.rpc('rpc_create_pm_dependency', {
+    p_tenant_id: tenantId,
+    p_pm_schedule_id: pmScheduleId,
+    p_depends_on_pm_id: dependsOnPmId,
+    p_dependency_type: dependencyType,
+  });
+
+  if (error) {
+    throw new Error(`Failed to create PM dependency: ${error.message}`);
+  }
+
+  return data as string;
+}
+
+/**
+ * Get PM template by ID (via public view).
+ * Requires tenant context to be set before calling.
+ */
+export async function getPmTemplate(
+  client: SupabaseClient,
+  templateId: string,
+  tenantId?: string
+): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
+  // Use .limit(1) instead of .single() because PostgREST can't infer primary keys from views
+  const { data, error } = await client
+    .from('v_pm_templates')
+    .select('*')
+    .eq('id', templateId)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Failed to get PM template: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`PM template ${templateId} not found`);
+  }
+
+  return data[0];
+}
+
+/**
+ * Get PM schedule by ID (via public view).
+ * Requires tenant context to be set before calling.
+ */
+export async function getPmSchedule(
+  client: SupabaseClient,
+  pmScheduleId: string,
+  tenantId?: string
+): Promise<any> {
+  // Set tenant context if provided
+  if (tenantId) {
+    await setTenantContext(client, tenantId);
+  }
+
+  // Use .limit(1) instead of .maybeSingle() because PostgREST can't infer primary keys from views
+  const { data, error } = await client
+    .from('v_pm_schedules')
+    .select('*')
+    .eq('id', pmScheduleId)
+    .limit(1);
+
+  if (error) {
+    throw new Error(`Failed to get PM schedule: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`PM schedule ${pmScheduleId} not found`);
+  }
+
+  return data[0];
 }

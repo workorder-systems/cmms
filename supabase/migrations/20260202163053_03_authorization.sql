@@ -1,5 +1,10 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
-create table if not exists cfg.permissions (
+
+-- ============================================================================
+-- Permissions Catalog
+-- ============================================================================
+
+create table cfg.permissions (
   id uuid primary key default extensions.gen_random_uuid(),
   key text unique not null,
   name text not null,
@@ -19,13 +24,13 @@ comment on table cfg.permissions is
 comment on column cfg.permissions.key is 
   'Permission key following <resource>.<action>[.<qualifier>] pattern. Unique across all tenants. Examples: workorder.create, asset.view, tenant.admin.';
 
-create index if not exists permissions_key_idx 
+create index permissions_key_idx 
   on cfg.permissions (key);
 
-create index if not exists permissions_category_idx 
+create index permissions_category_idx 
   on cfg.permissions (category);
 
-create index if not exists permissions_category_key_idx 
+create index permissions_category_key_idx 
   on cfg.permissions (category, key);
 
 alter table cfg.permissions enable row level security;
@@ -36,6 +41,10 @@ create policy permissions_select_all
   to authenticated 
   using (true);
 
+comment on policy permissions_select_all on cfg.permissions is 
+  'Allows all authenticated users to view permissions catalog. Permissions are global and not tenant-specific.';
+
+-- Seed permissions data
 insert into cfg.permissions (key, name, category, description) values
   ('workorder.create', 'Create Work Orders', 'workorder', 'Allows creating new work orders'),
   ('workorder.view', 'View Work Orders', 'workorder', 'Allows viewing work orders'),
@@ -44,45 +53,32 @@ insert into cfg.permissions (key, name, category, description) values
   ('workorder.assign', 'Assign Work Orders', 'workorder', 'Allows assigning work orders to users'),
   ('workorder.complete.assigned', 'Complete Assigned Work Orders', 'workorder', 'Allows completing work orders assigned to the user'),
   ('workorder.complete.any', 'Complete Any Work Order', 'workorder', 'Allows completing any work order regardless of assignment'),
-  ('workorder.cancel', 'Cancel Work Orders', 'workorder', 'Allows cancelling work orders')
-on conflict (key) do nothing;
-
-insert into cfg.permissions (key, name, category, description) values
+  ('workorder.cancel', 'Cancel Work Orders', 'workorder', 'Allows cancelling work orders'),
   ('asset.create', 'Create Assets', 'asset', 'Allows creating new assets'),
   ('asset.view', 'View Assets', 'asset', 'Allows viewing assets'),
   ('asset.edit', 'Edit Assets', 'asset', 'Allows editing asset details'),
-  ('asset.delete', 'Delete Assets', 'asset', 'Allows deleting assets')
-on conflict (key) do nothing;
-
-insert into cfg.permissions (key, name, category, description) values
+  ('asset.delete', 'Delete Assets', 'asset', 'Allows deleting assets'),
   ('location.create', 'Create Locations', 'location', 'Allows creating new locations'),
   ('location.view', 'View Locations', 'location', 'Allows viewing locations'),
   ('location.edit', 'Edit Locations', 'location', 'Allows editing location details'),
-  ('location.delete', 'Delete Locations', 'location', 'Allows deleting locations')
-on conflict (key) do nothing;
-
-insert into cfg.permissions (key, name, category, description) values
+  ('location.delete', 'Delete Locations', 'location', 'Allows deleting locations'),
   ('department.create', 'Create Departments', 'department', 'Allows creating new departments'),
   ('department.view', 'View Departments', 'department', 'Allows viewing departments'),
   ('department.edit', 'Edit Departments', 'department', 'Allows editing department details'),
-  ('department.delete', 'Delete Departments', 'department', 'Allows deleting departments')
-on conflict (key) do nothing;
-
-insert into cfg.permissions (key, name, category, description) values
+  ('department.delete', 'Delete Departments', 'department', 'Allows deleting departments'),
   ('tenant.admin', 'Tenant Administration', 'tenant', 'Full administrative access to tenant settings, roles, and members'),
   ('tenant.member.invite', 'Invite Members', 'tenant', 'Allows inviting new members to the tenant'),
   ('tenant.member.remove', 'Remove Members', 'tenant', 'Allows removing members from the tenant'),
-  ('tenant.role.manage', 'Manage Roles', 'tenant', 'Allows creating, editing, and assigning tenant roles')
-on conflict (key) do nothing;
-
-insert into cfg.permissions (key, name, category, description) values
+  ('tenant.role.manage', 'Manage Roles', 'tenant', 'Allows creating, editing, and assigning tenant roles'),
   ('inventory.stock.view', 'View Stock', 'inventory', 'Allows viewing inventory stock levels'),
   ('inventory.stock.move', 'Move Stock', 'inventory', 'Allows moving inventory between locations'),
-  ('inventory.stock.adjust', 'Adjust Stock', 'inventory', 'Allows adjusting inventory quantities')
-on conflict (key) do nothing;
+  ('inventory.stock.adjust', 'Adjust Stock', 'inventory', 'Allows adjusting inventory quantities');
 
+-- ============================================================================
+-- Tenant Roles
+-- ============================================================================
 
-create table if not exists cfg.tenant_roles (
+create table cfg.tenant_roles (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   key text not null,
@@ -100,18 +96,18 @@ create table if not exists cfg.tenant_roles (
 );
 
 comment on table cfg.tenant_roles is 
-  'Tenant-defined roles. Each tenant can create custom roles and assign permissions from the global permissions catalog. System roles (admin, member) are created automatically and cannot be deleted.';
+  'Tenant-defined roles. Each tenant can create custom roles and assign permissions from the global permissions catalog. System roles (admin, member, technician, manager) are created automatically and cannot be deleted.';
 
 comment on column cfg.tenant_roles.key is 
-  'Role key (e.g., admin, member, technician). Unique within tenant. Used for programmatic role references.';
+  'Role key (e.g., admin, member, technician, manager). Unique within tenant. Used for programmatic role references.';
 
 comment on column cfg.tenant_roles.is_default is 
   'If true, this role is automatically assigned to new members when they join the tenant.';
 
 comment on column cfg.tenant_roles.is_system is 
-  'If true, role cannot be deleted (e.g., admin, member roles created automatically).';
+  'If true, role cannot be deleted (e.g., admin, member, technician, manager roles created automatically).';
 
-create index if not exists tenant_roles_tenant_idx 
+create index tenant_roles_tenant_idx 
   on cfg.tenant_roles (tenant_id);
 
 create trigger tenant_roles_set_updated_at 
@@ -125,10 +121,16 @@ create policy tenant_roles_select_tenant
   on cfg.tenant_roles 
   for select 
   to authenticated 
-  using (tenant_id = authz.get_current_tenant_id());
+  using (authz.is_current_user_tenant_member(tenant_id));
 
+comment on policy tenant_roles_select_tenant on cfg.tenant_roles is 
+  'Allows authenticated users to view roles in tenants they are members of.';
 
-create table if not exists cfg.tenant_role_permissions (
+-- ============================================================================
+-- Tenant Role Permissions
+-- ============================================================================
+
+create table cfg.tenant_role_permissions (
   id bigint generated always as identity primary key,
   tenant_role_id uuid not null references cfg.tenant_roles(id) on delete cascade,
   permission_id uuid not null references cfg.permissions(id) on delete cascade,
@@ -139,13 +141,13 @@ create table if not exists cfg.tenant_role_permissions (
 comment on table cfg.tenant_role_permissions is 
   'Maps tenant roles to permissions. Defines which permissions each role has. Users inherit permissions through their role assignments.';
 
-create index if not exists tenant_role_permissions_role_idx 
+create index tenant_role_permissions_role_idx 
   on cfg.tenant_role_permissions (tenant_role_id);
 
-create index if not exists tenant_role_permissions_permission_idx 
+create index tenant_role_permissions_permission_idx 
   on cfg.tenant_role_permissions (permission_id);
 
-create index if not exists tenant_role_permissions_permission_role_idx 
+create index tenant_role_permissions_permission_role_idx 
   on cfg.tenant_role_permissions (permission_id, tenant_role_id);
 
 alter table cfg.tenant_role_permissions enable row level security;
@@ -159,12 +161,18 @@ create policy tenant_role_permissions_select_tenant
       select 1 
       from cfg.tenant_roles 
       where tenant_roles.id = tenant_role_permissions.tenant_role_id 
-        and tenant_roles.tenant_id = authz.get_current_tenant_id()
+        and authz.is_current_user_tenant_member(tenant_roles.tenant_id)
     )
   );
 
+comment on policy tenant_role_permissions_select_tenant on cfg.tenant_role_permissions is 
+  'Allows authenticated users to view role permissions for roles in tenants they are members of.';
 
-create table if not exists app.user_tenant_roles (
+-- ============================================================================
+-- User Tenant Roles
+-- ============================================================================
+
+create table app.user_tenant_roles (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   tenant_id uuid not null references app.tenants(id) on delete cascade,
@@ -180,13 +188,13 @@ comment on table app.user_tenant_roles is
 comment on column app.user_tenant_roles.assigned_by is 
   'User who assigned this role (for audit trail). Null for system-assigned roles (e.g., default member role).';
 
-create index if not exists user_tenant_roles_user_tenant_idx 
+create index user_tenant_roles_user_tenant_idx 
   on app.user_tenant_roles (user_id, tenant_id);
 
-create index if not exists user_tenant_roles_role_idx 
+create index user_tenant_roles_role_idx 
   on app.user_tenant_roles (tenant_role_id);
 
-create index if not exists user_tenant_roles_role_user_idx 
+create index user_tenant_roles_role_user_idx 
   on app.user_tenant_roles (tenant_role_id, user_id);
 
 alter table app.user_tenant_roles enable row level security;
@@ -197,11 +205,17 @@ create policy user_tenant_roles_select_combined
   to authenticated 
   using (
     user_id = (select auth.uid()) 
-    or tenant_id = authz.get_current_tenant_id()
+    or authz.is_current_user_tenant_member(tenant_id)
   );
 
+comment on policy user_tenant_roles_select_combined on app.user_tenant_roles is 
+  'Allows users to see their own role assignments, or role assignments in tenants they are members of.';
 
-create table if not exists app.membership_scopes (
+-- ============================================================================
+-- Membership Scopes (ABAC)
+-- ============================================================================
+
+create table app.membership_scopes (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   tenant_id uuid not null references app.tenants(id) on delete cascade,
@@ -225,18 +239,18 @@ comment on column app.membership_scopes.scope_type is
 comment on column app.membership_scopes.scope_value is 
   'Scope value UUID (e.g., location_id, department_id). Null for boolean scopes (e.g., contractor flag).';
 
-create index if not exists membership_scopes_user_tenant_idx 
+create index membership_scopes_user_tenant_idx 
   on app.membership_scopes (user_id, tenant_id);
 
-create index if not exists membership_scopes_tenant_type_value_idx 
+create index membership_scopes_tenant_type_value_idx 
   on app.membership_scopes (tenant_id, scope_type, scope_value) 
   where scope_value is not null;
 
-create index if not exists membership_scopes_tenant_type_boolean_idx 
+create index membership_scopes_tenant_type_boolean_idx 
   on app.membership_scopes (tenant_id, scope_type) 
   where scope_value is null;
 
-create index if not exists membership_scopes_value_user_idx 
+create index membership_scopes_value_user_idx 
   on app.membership_scopes (scope_value, user_id) 
   where scope_value is not null;
 
@@ -248,66 +262,17 @@ create policy membership_scopes_select_combined
   to authenticated 
   using (
     user_id = (select auth.uid()) 
-    or tenant_id = authz.get_current_tenant_id()
+    or authz.is_current_user_tenant_member(tenant_id)
   );
 
-create or replace view authz.v_user_tenants as
-select distinct 
-  tenant_id, 
-  user_id 
-from app.tenant_memberships 
-where user_id = (select auth.uid());
+comment on policy membership_scopes_select_combined on app.membership_scopes is 
+  'Allows users to see their own scopes, or scopes in tenants they are members of.';
 
-comment on view authz.v_user_tenants is 
-  'Optimized view for RLS policy membership checks. Returns distinct tenant IDs for the current authenticated user. Used in EXISTS patterns for fast membership verification.';
+-- ============================================================================
+-- Authorization Helper Functions
+-- ============================================================================
 
-create or replace function authz.is_tenant_member(
-  p_user_id uuid,
-  p_tenant_id uuid
-)
-returns boolean
-language plpgsql
-stable
-security definer
-set search_path = ''
-as $$
-begin
-  return exists (
-    select 1 
-    from app.tenant_memberships
-    where user_id = p_user_id 
-      and tenant_id = p_tenant_id
-  );
-end;
-$$;
-
-comment on function authz.is_tenant_member(uuid, uuid) is 
-  'Checks if a user is a member of a tenant. Optimized single indexed lookup using (user_id, tenant_id) composite index. Returns true if membership exists, false otherwise. Used by RLS policies and authorization checks. Security implications: Uses security definer to access tenant_memberships table.';
-
-revoke all on function authz.is_tenant_member(uuid, uuid) from public;
-grant execute on function authz.is_tenant_member(uuid, uuid) to authenticated;
-
-create or replace function authz.is_current_user_tenant_member(
-  p_tenant_id uuid
-)
-returns boolean
-language plpgsql
-stable
-security definer
-set search_path = ''
-as $$
-begin
-  return authz.is_tenant_member(auth.uid(), p_tenant_id);
-end;
-$$;
-
-comment on function authz.is_current_user_tenant_member(uuid) is 
-  'Checks if the current authenticated user is a member of the specified tenant. Uses auth.uid() to get current user ID. Returns true if membership exists, false otherwise. Used by RLS policies for convenience.';
-
-revoke all on function authz.is_current_user_tenant_member(uuid) from public;
-grant execute on function authz.is_current_user_tenant_member(uuid) to authenticated;
-
-create or replace function authz.require_tenant_context()
+create function authz.require_tenant_context()
 returns uuid
 language plpgsql
 stable
@@ -333,7 +298,7 @@ comment on function authz.require_tenant_context() is
 revoke all on function authz.require_tenant_context() from public;
 grant execute on function authz.require_tenant_context() to authenticated;
 
-create or replace function authz.set_tenant_context(
+create function authz.set_tenant_context(
   p_tenant_id uuid
 )
 returns void
@@ -366,7 +331,6 @@ begin
   where id = v_user_id;
   
   -- Also set session variable for RPC functions (fallback)
-  -- Maintains backward compatibility for RPC functions that use context within same call
   perform pg_catalog.set_config('app.current_tenant_id', p_tenant_id::text, true);
 end;
 $$;
@@ -377,10 +341,10 @@ comment on function authz.set_tenant_context(uuid) is
 revoke all on function authz.set_tenant_context(uuid) from public;
 grant execute on function authz.set_tenant_context(uuid) to authenticated;
 
-create or replace function authz.validate_authenticated()
-returns uuid
+create function authz.clear_tenant_context()
+returns void
 language plpgsql
-stable
+volatile
 security definer
 set search_path = ''
 as $$
@@ -393,17 +357,24 @@ begin
       message = 'Unauthorized: User must be authenticated',
       errcode = '28000';
   end if;
-  return v_user_id;
+  
+  -- Remove tenant_id from user metadata
+  update auth.users
+  set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) - 'current_tenant_id'
+  where id = v_user_id;
+  
+  -- Clear session variable
+  perform pg_catalog.set_config('app.current_tenant_id', '', true);
 end;
 $$;
 
-comment on function authz.validate_authenticated() is 
-  'Validates that user is authenticated and returns user ID. Uses auth.uid() which is always available in Supabase RLS context. Raises exception if user not authenticated. Used by RPC functions for authorization checks.';
+comment on function authz.clear_tenant_context() is 
+  'Clears tenant context by removing tenant_id from user metadata and session variable. Useful for testing or when switching tenants. Side effects: Updates user metadata and clears app.current_tenant_id session variable.';
 
-revoke all on function authz.validate_authenticated() from public;
-grant execute on function authz.validate_authenticated() to authenticated;
+revoke all on function authz.clear_tenant_context() from public;
+grant execute on function authz.clear_tenant_context() to authenticated;
 
-create or replace function authz.get_user_tenant_roles(
+create function authz.get_user_tenant_roles(
   p_user_id uuid,
   p_tenant_id uuid
 )
@@ -436,7 +407,7 @@ comment on function authz.get_user_tenant_roles(uuid, uuid) is
 revoke all on function authz.get_user_tenant_roles(uuid, uuid) from public;
 grant execute on function authz.get_user_tenant_roles(uuid, uuid) to authenticated;
 
-create or replace function authz.has_permission(
+create function authz.has_permission(
   p_user_id uuid,
   p_tenant_id uuid,
   p_permission_key text
@@ -473,8 +444,9 @@ comment on function authz.has_permission(uuid, uuid, text) is
 
 revoke all on function authz.has_permission(uuid, uuid, text) from public;
 grant execute on function authz.has_permission(uuid, uuid, text) to authenticated;
+grant execute on function authz.has_permission(uuid, uuid, text) to anon;
 
-create or replace function authz.has_any_permission(
+create function authz.has_any_permission(
   p_user_id uuid,
   p_tenant_id uuid,
   p_permission_keys text[]
@@ -512,7 +484,7 @@ comment on function authz.has_any_permission(uuid, uuid, text[]) is
 revoke all on function authz.has_any_permission(uuid, uuid, text[]) from public;
 grant execute on function authz.has_any_permission(uuid, uuid, text[]) to authenticated;
 
-create or replace function authz.get_user_permissions(
+create function authz.get_user_permissions(
   p_user_id uuid,
   p_tenant_id uuid
 )
@@ -547,7 +519,7 @@ comment on function authz.get_user_permissions(uuid, uuid) is
 revoke all on function authz.get_user_permissions(uuid, uuid) from public;
 grant execute on function authz.get_user_permissions(uuid, uuid) to authenticated;
 
-create or replace function authz.has_current_user_permission(
+create function authz.has_current_user_permission(
   p_tenant_id uuid,
   p_permission_key text
 )
@@ -567,8 +539,9 @@ comment on function authz.has_current_user_permission(uuid, text) is
 
 revoke all on function authz.has_current_user_permission(uuid, text) from public;
 grant execute on function authz.has_current_user_permission(uuid, text) to authenticated;
+grant execute on function authz.has_current_user_permission(uuid, text) to anon;
 
-create or replace function authz.validate_permission(
+create function authz.validate_permission(
   p_user_id uuid,
   p_tenant_id uuid,
   p_permission_key text
@@ -594,7 +567,7 @@ comment on function authz.validate_permission(uuid, uuid, text) is
 revoke all on function authz.validate_permission(uuid, uuid, text) from public;
 grant execute on function authz.validate_permission(uuid, uuid, text) to authenticated;
 
-create or replace function authz.check_abac_scope(
+create function authz.check_abac_scope(
   p_user_id uuid,
   p_tenant_id uuid,
   p_scope_type text,
@@ -631,7 +604,7 @@ comment on function authz.check_abac_scope(uuid, uuid, text, uuid) is
 revoke all on function authz.check_abac_scope(uuid, uuid, text, uuid) from public;
 grant execute on function authz.check_abac_scope(uuid, uuid, text, uuid) to authenticated;
 
-create or replace function authz.has_location_scope(
+create function authz.has_location_scope(
   p_user_id uuid,
   p_tenant_id uuid,
   p_location_id uuid
@@ -653,7 +626,7 @@ comment on function authz.has_location_scope(uuid, uuid, uuid) is
 revoke all on function authz.has_location_scope(uuid, uuid, uuid) from public;
 grant execute on function authz.has_location_scope(uuid, uuid, uuid) to authenticated;
 
-create or replace function authz.has_department_scope(
+create function authz.has_department_scope(
   p_user_id uuid,
   p_tenant_id uuid,
   p_department_id uuid
@@ -675,7 +648,7 @@ comment on function authz.has_department_scope(uuid, uuid, uuid) is
 revoke all on function authz.has_department_scope(uuid, uuid, uuid) from public;
 grant execute on function authz.has_department_scope(uuid, uuid, uuid) to authenticated;
 
-create or replace function authz.rpc_setup(
+create function authz.rpc_setup(
   p_tenant_id uuid,
   p_permission_key text default null
 )
@@ -702,7 +675,7 @@ begin
   
   perform authz.set_tenant_context(p_tenant_id);
   
-  return p_tenant_id;
+  return v_user_id;
 end;
 $$;
 
@@ -712,12 +685,11 @@ comment on function authz.rpc_setup(uuid, text) is
 revoke all on function authz.rpc_setup(uuid, text) from public;
 grant execute on function authz.rpc_setup(uuid, text) to authenticated;
 
--- Custom access token hook that adds tenant_id to JWT claims
--- This hook is called by Supabase Auth before issuing tokens
--- Purpose: Enables stateless tenant context across PostgREST requests via JWT claims
--- Security: Validates tenant membership before adding claim to JWT
--- Note: Function created in authz schema (auth schema is protected, authz is for authorization helpers)
-create or replace function authz.custom_access_token_hook(
+-- ============================================================================
+-- Custom Access Token Hook (JWT)
+-- ============================================================================
+
+create function authz.custom_access_token_hook(
   event jsonb
 )
 returns jsonb
@@ -799,250 +771,31 @@ revoke all on function authz.custom_access_token_hook(jsonb) from public;
 revoke all on function authz.custom_access_token_hook(jsonb) from authenticated;
 revoke all on function authz.custom_access_token_hook(jsonb) from anon;
 
---
---
---
-create policy tenants_select_for_members 
-  on app.tenants 
-  for select 
-  to authenticated 
-  using (
-    id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+-- ============================================================================
+-- Grants for SECURITY INVOKER Views
+-- ============================================================================
 
-create policy tenant_memberships_select_combined 
-  on app.tenant_memberships 
-  for select 
-  to authenticated 
-  using (
-    user_id = (select auth.uid())
-    or tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+grant select on cfg.permissions to authenticated;
+grant select on cfg.permissions to anon;
 
-create policy locations_select_tenant 
-  on app.locations 
-  for select 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+grant select on cfg.tenant_roles to authenticated;
+grant select on cfg.tenant_roles to anon;
 
-create policy locations_insert_tenant 
-  on app.locations 
-  for insert 
-  to authenticated 
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+grant select on cfg.tenant_role_permissions to authenticated;
+grant select on cfg.tenant_role_permissions to anon;
 
-create policy locations_update_tenant 
-  on app.locations 
-  for update 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+grant select on app.user_tenant_roles to authenticated;
+grant select on app.user_tenant_roles to anon;
 
-create policy locations_delete_tenant 
-  on app.locations 
-  for delete 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+grant select on app.membership_scopes to authenticated;
+grant select on app.membership_scopes to anon;
 
-create policy assets_select_tenant 
-  on app.assets 
-  for select 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+-- ============================================================================
+-- Force RLS on Authorization Tables
+-- ============================================================================
 
-create policy assets_insert_tenant 
-  on app.assets 
-  for insert 
-  to authenticated 
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy assets_update_tenant 
-  on app.assets 
-  for update 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy assets_delete_tenant 
-  on app.assets 
-  for delete 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy work_orders_select_tenant 
-  on app.work_orders 
-  for select 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy work_orders_insert_tenant 
-  on app.work_orders 
-  for insert 
-  to authenticated 
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy work_orders_update_tenant 
-  on app.work_orders 
-  for update 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy work_orders_delete_tenant 
-  on app.work_orders 
-  for delete 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy departments_select_tenant 
-  on app.departments 
-  for select 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy departments_insert_tenant 
-  on app.departments 
-  for insert 
-  to authenticated 
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy departments_update_tenant 
-  on app.departments 
-  for update 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  )
-  with check (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
-
-create policy departments_delete_tenant 
-  on app.departments 
-  for delete 
-  to authenticated 
-  using (
-    tenant_id in (
-      select tenant_id 
-      from app.tenant_memberships 
-      where user_id = (select auth.uid())
-    )
-  );
+alter table cfg.permissions force row level security;
+alter table cfg.tenant_roles force row level security;
+alter table cfg.tenant_role_permissions force row level security;
+alter table app.user_tenant_roles force row level security;
+alter table app.membership_scopes force row level security;

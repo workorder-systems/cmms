@@ -1,5 +1,19 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
-create table if not exists util.rate_limit_tracking (
+-- Migration: Enterprise Features
+-- 
+-- This migration creates all enterprise features:
+-- - Rate limiting tables and functions
+-- - Audit logging tables, triggers, and retention configuration
+-- - Plugin/integration scaffolding
+-- - Analytics materialized views and refresh functions
+--
+-- All features are implemented correctly the first time with no backward compatibility.
+
+-- ============================================================================
+-- Rate Limiting
+-- ============================================================================
+
+create table util.rate_limit_tracking (
   id bigint generated always as identity primary key,
   user_id uuid references auth.users(id) on delete cascade,
   tenant_id uuid references app.tenants(id) on delete cascade,
@@ -23,13 +37,13 @@ comment on column util.rate_limit_tracking.operation_key is
 comment on column util.rate_limit_tracking.window_start is 
   'Start of the rate limit window (truncated to minute for simplicity).';
 
-create index if not exists rate_limit_tracking_lookup_idx 
+create index rate_limit_tracking_lookup_idx 
   on util.rate_limit_tracking (user_id, tenant_id, operation_type, operation_key, window_start);
 
-create index if not exists rate_limit_tracking_cleanup_idx 
+create index rate_limit_tracking_cleanup_idx 
   on util.rate_limit_tracking (window_start);
 
-create table if not exists cfg.rate_limit_configs (
+create table cfg.rate_limit_configs (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid references app.tenants(id) on delete cascade,
   operation_type text not null,
@@ -44,7 +58,7 @@ create table if not exists cfg.rate_limit_configs (
 comment on table cfg.rate_limit_configs is 
   'Tenant-specific rate limit configurations. Overrides default limits if specified. Allows per-tenant customization of rate limits for different operation types.';
 
-create index if not exists rate_limit_configs_tenant_idx 
+create index rate_limit_configs_tenant_idx 
   on cfg.rate_limit_configs (tenant_id, operation_type, is_active);
 
 create trigger rate_limit_configs_set_updated_at 
@@ -193,8 +207,11 @@ comment on function util.cleanup_rate_limit_tracking() is
 revoke all on function util.cleanup_rate_limit_tracking() from public;
 grant execute on function util.cleanup_rate_limit_tracking() to postgres;
 
+-- ============================================================================
+-- Audit Logging
+-- ============================================================================
 
-create table if not exists audit.entity_changes (
+create table audit.entity_changes (
   id bigint generated always as identity primary key,
   table_schema text not null,
   table_name text not null,
@@ -234,28 +251,28 @@ comment on column audit.entity_changes.new_data is
 comment on column audit.entity_changes.changed_fields is 
   'Array of field names that changed (for UPDATE operations only). Helps identify which fields were modified.';
 
-create index if not exists entity_changes_table_idx 
+create index entity_changes_table_idx 
   on audit.entity_changes (table_schema, table_name, record_id);
 
-create index if not exists entity_changes_tenant_created_idx 
+create index entity_changes_tenant_created_idx 
   on audit.entity_changes (tenant_id, created_at desc) 
   where tenant_id is not null;
 
-create index if not exists entity_changes_user_created_idx 
+create index entity_changes_user_created_idx 
   on audit.entity_changes (user_id, created_at desc) 
   where user_id is not null;
 
-create index if not exists entity_changes_operation_created_idx 
+create index entity_changes_operation_created_idx 
   on audit.entity_changes (operation, created_at desc);
 
-create index if not exists entity_changes_tenant_table_record_idx
+create index entity_changes_tenant_table_record_idx
   on audit.entity_changes (tenant_id, table_name, record_id)
   where tenant_id is not null;
 
-create index if not exists entity_changes_created_at_brin_idx 
+create index entity_changes_created_at_brin_idx 
   on audit.entity_changes using brin (created_at);
 
-create table if not exists audit.permission_changes (
+create table audit.permission_changes (
   id bigint generated always as identity primary key,
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   user_id uuid references auth.users(id) on delete set null,
@@ -272,18 +289,18 @@ create table if not exists audit.permission_changes (
 comment on table audit.permission_changes is 
   'Audit log specifically for role and permission changes. Tracks who granted/revoked permissions and roles. Separate from entity_changes for specialized permission auditing.';
 
-create index if not exists permission_changes_tenant_created_idx 
+create index permission_changes_tenant_created_idx 
   on audit.permission_changes (tenant_id, created_at desc);
 
-create index if not exists permission_changes_target_user_idx 
+create index permission_changes_target_user_idx 
   on audit.permission_changes (target_user_id, created_at desc) 
   where target_user_id is not null;
 
-create index if not exists permission_changes_tenant_target_idx
+create index permission_changes_tenant_target_idx
   on audit.permission_changes (tenant_id, target_user_id, created_at desc)
   where target_user_id is not null;
 
-create index if not exists permission_changes_change_type_idx 
+create index permission_changes_change_type_idx 
   on audit.permission_changes (change_type, created_at desc);
 
 create or replace function audit.log_entity_change()
@@ -531,6 +548,14 @@ create trigger user_tenant_roles_permission_audit_trigger
   after insert or delete on app.user_tenant_roles
   for each row execute function audit.log_permission_change();
 
+create trigger work_order_time_entries_audit_trigger
+  after insert or update or delete on app.work_order_time_entries
+  for each row execute function audit.log_entity_change();
+
+create trigger work_order_attachments_audit_trigger
+  after insert or update or delete on app.work_order_attachments
+  for each row execute function audit.log_entity_change();
+
 alter table audit.entity_changes enable row level security;
 alter table audit.permission_changes enable row level security;
 
@@ -565,7 +590,9 @@ create policy permission_changes_select_tenant_admin
     )
   );
 
-create or replace view public.v_audit_entity_changes as
+create or replace view public.v_audit_entity_changes
+with (security_invoker = true)
+as
 select
   id,
   table_schema,
@@ -590,12 +617,11 @@ where tenant_id = authz.get_current_tenant_id()
   );
 
 comment on view public.v_audit_entity_changes is 
-  'Tenant-scoped audit log view. Only accessible to tenant admins. Returns audit trail for current tenant context. Used for compliance reporting and security monitoring.';
+  'Tenant-scoped audit log view. Only accessible to tenant admins. Returns audit trail for current tenant context. Uses SECURITY INVOKER to enforce RLS policies correctly. Used for compliance reporting and security monitoring.';
 
-/*
-  audit retention configuration and access views
-*/
-create table if not exists cfg.audit_retention_configs (
+grant select on public.v_audit_entity_changes to authenticated;
+
+create table cfg.audit_retention_configs (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   retention_months integer not null default 24,
@@ -616,7 +642,7 @@ comment on column cfg.audit_retention_configs.retention_months is
 comment on column cfg.audit_retention_configs.is_active is
   'If true, this config overrides the default retention window.';
 
-create index if not exists audit_retention_configs_tenant_idx
+create index audit_retention_configs_tenant_idx
   on cfg.audit_retention_configs (tenant_id, is_active);
 
 create trigger audit_retention_configs_set_updated_at
@@ -691,7 +717,9 @@ create policy audit_retention_configs_delete_anon
   to anon
   using (false);
 
-create or replace view public.v_audit_retention_configs as
+create or replace view public.v_audit_retention_configs
+with (security_invoker = true)
+as
 select
   id,
   tenant_id,
@@ -703,9 +731,13 @@ from cfg.audit_retention_configs
 where tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_audit_retention_configs is
-  'Tenant-scoped audit retention configuration for the current tenant context. Requires tenant.admin access via RLS.';
+  'Tenant-scoped audit retention configuration for the current tenant context. Requires tenant.admin access via RLS. Uses SECURITY INVOKER to enforce RLS policies correctly.';
 
-create or replace view public.v_audit_permission_changes as
+grant select on public.v_audit_retention_configs to authenticated;
+
+create or replace view public.v_audit_permission_changes
+with (security_invoker = true)
+as
 select
   id,
   tenant_id,
@@ -730,7 +762,9 @@ where tenant_id = authz.get_current_tenant_id()
   );
 
 comment on view public.v_audit_permission_changes is
-  'Tenant-scoped permission audit log view. Only accessible to tenant admins. Returns permission change events for current tenant context.';
+  'Tenant-scoped permission audit log view. Only accessible to tenant admins. Returns permission change events for current tenant context. Uses SECURITY INVOKER to enforce RLS policies correctly.';
+
+grant select on public.v_audit_permission_changes to authenticated;
 
 create or replace function public.rpc_set_audit_retention_config(
   p_tenant_id uuid,
@@ -849,10 +883,11 @@ comment on function util.purge_audit_records(uuid, integer, boolean) is
 revoke all on function util.purge_audit_records(uuid, integer, boolean) from public;
 grant execute on function util.purge_audit_records(uuid, integer, boolean) to postgres;
 
-/*
-  integration and plugin scaffolding (int schema)
-*/
-create table if not exists int.plugins (
+-- ============================================================================
+-- Plugin/Integration System
+-- ============================================================================
+
+create table int.plugins (
   id uuid primary key default extensions.gen_random_uuid(),
   key text not null unique,
   name text not null,
@@ -882,7 +917,7 @@ create trigger plugins_set_updated_at
   for each row
   execute function util.set_updated_at();
 
-create table if not exists int.plugin_installations (
+create table int.plugin_installations (
   id uuid primary key default extensions.gen_random_uuid(),
   tenant_id uuid not null references app.tenants(id) on delete cascade,
   plugin_id uuid not null references int.plugins(id) on delete cascade,
@@ -904,10 +939,10 @@ comment on column int.plugin_installations.config is
 comment on column int.plugin_installations.status is
   'Lifecycle state for the installation: installed, disabled, or uninstalled.';
 
-create index if not exists plugin_installations_tenant_idx
+create index plugin_installations_tenant_idx
   on int.plugin_installations (tenant_id, status);
 
-create index if not exists plugin_installations_plugin_idx
+create index plugin_installations_plugin_idx
   on int.plugin_installations (plugin_id);
 
 create trigger plugin_installations_set_updated_at
@@ -918,7 +953,6 @@ create trigger plugin_installations_set_updated_at
 alter table int.plugins enable row level security;
 alter table int.plugin_installations enable row level security;
 
--- Plugins: read-only for authenticated users. No direct writes from clients.
 create policy plugins_select_authenticated
   on int.plugins
   for select
@@ -980,6 +1014,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = ''
+volatile
 as $$
 declare
   v_plugin_id uuid;
@@ -1024,13 +1059,12 @@ end;
 $$;
 
 comment on function public.rpc_register_plugin(text, text, text, boolean, boolean) is
-  'Registers or updates a plugin catalog entry. Intended for internal or service_role usage only.';
+  'Registers or updates a plugin catalog entry in int.plugins. This is an internal-only function for service_role usage (not part of public client API). Follows ADR pattern: public RPC wrapper that accesses internal int schema.';
 
 revoke all on function public.rpc_register_plugin(text, text, text, boolean, boolean) from public;
 grant execute on function public.rpc_register_plugin(text, text, text, boolean, boolean) to service_role;
 grant execute on function public.rpc_register_plugin(text, text, text, boolean, boolean) to postgres;
 
--- Plugin installations: tenant scoped; admin-managed.
 create policy plugin_installations_select_authenticated
   on int.plugin_installations
   for select
@@ -1104,7 +1138,9 @@ create trigger plugin_installations_audit_changes
   after insert or update or delete on int.plugin_installations
   for each row execute function audit.log_entity_change();
 
-create or replace view public.v_plugins as
+create or replace view public.v_plugins
+with (security_invoker = true)
+as
 select
   id,
   key,
@@ -1118,9 +1154,14 @@ from int.plugins
 where is_active = true;
 
 comment on view public.v_plugins is
-  'Public catalog of active plugins and integrations. Read-only view for client discovery.';
+  'Public catalog of active plugins and integrations. Read-only view for client discovery. Uses SECURITY INVOKER to enforce RLS policies correctly.';
 
-create or replace view public.v_plugin_installations as
+grant select on public.v_plugins to authenticated;
+grant select on public.v_plugins to anon;
+
+create or replace view public.v_plugin_installations
+with (security_invoker = true)
+as
 select
   pi.id,
   pi.tenant_id,
@@ -1137,26 +1178,15 @@ select
 from int.plugin_installations pi
 join int.plugins p on p.id = pi.plugin_id
 where pi.tenant_id = authz.get_current_tenant_id()
-  -- Additional permission check: only show if user has tenant.admin permission
-  -- This works together with RLS policies to ensure admin-only access
-  -- Handle NULL user_id gracefully (returns false, hiding installations)
   and (
     (select auth.uid()) is not null
     and authz.has_permission((select auth.uid()), pi.tenant_id, 'tenant.admin')
   );
 
--- Keep security_invoker = true (default) so view runs with invoker's privileges
--- This ensures RLS policies on underlying table are enforced
--- The view should NOT have security_invoker = false because we want RLS to be enforced
-
--- Grant SELECT to authenticated users (RLS policies will filter based on permissions)
-grant select on public.v_plugin_installations to authenticated;
-
--- Revoke from anon (admin-only view)
-revoke all on public.v_plugin_installations from anon;
-
 comment on view public.v_plugin_installations is
-  'Tenant-scoped plugin installation status for the current tenant context. Admin-only view; requires tenant.admin permission. Includes plugin metadata and configuration references. RLS policies on underlying table provide additional security.';
+  'Tenant-scoped plugin installation status for the current tenant context. Admin-only view; requires tenant.admin permission. Includes plugin metadata and configuration references. Uses SECURITY INVOKER to enforce RLS policies correctly. RLS policies on underlying table provide additional security.';
+
+grant select on public.v_plugin_installations to authenticated;
 
 create or replace function public.rpc_install_plugin(
   p_tenant_id uuid,
@@ -1174,17 +1204,10 @@ declare
   v_plugin_id uuid;
   v_installation_id uuid;
 begin
-  -- rpc_setup returns tenant_id, not user_id, so we need to get user_id separately
+  perform util.check_rate_limit('plugin_install', null, 10, 1, auth.uid(), p_tenant_id);
+  
   perform authz.rpc_setup(p_tenant_id, 'tenant.admin');
   v_user_id := authz.validate_authenticated();
-
-  perform util.check_rate_limit('plugin_install', null, 10, 1, v_user_id, p_tenant_id);
-
-  if p_secret_ref is not null and length(pg_catalog.btrim(p_secret_ref)) = 0 then
-    raise exception using
-      message = 'Secret reference must be non-empty when provided',
-      errcode = '23514';
-  end if;
 
   select id into v_plugin_id
   from int.plugins
@@ -1193,8 +1216,14 @@ begin
 
   if v_plugin_id is null then
     raise exception using
-      message = format('Plugin %s not found or inactive', p_plugin_key),
+      message = format('Plugin %s not found or not active', p_plugin_key),
       errcode = 'P0001';
+  end if;
+
+  if p_secret_ref is not null and length(pg_catalog.btrim(p_secret_ref)) = 0 then
+    raise exception using
+      message = 'Secret reference must be non-empty when provided',
+      errcode = '23514';
   end if;
 
   insert into int.plugin_installations (
@@ -1227,7 +1256,7 @@ end;
 $$;
 
 comment on function public.rpc_install_plugin(uuid, text, text, jsonb) is
-  'Installs or re-installs a plugin for a tenant. Requires tenant.admin permission. Stores only secret_ref (opaque reference) and non-secret config. Returns installation id.';
+  'Installs a plugin for a tenant. Public API wrapper that accesses int.plugin_installations internally. Requires tenant.admin permission. Follows ADR 0001 (public RPC for writes) and ADR 0010 (rpc_<verb>_<resource> naming). Rate limited to 10 requests per minute per user.';
 
 revoke all on function public.rpc_install_plugin(uuid, text, text, jsonb) from public;
 grant execute on function public.rpc_install_plugin(uuid, text, text, jsonb) to authenticated;
@@ -1309,23 +1338,24 @@ declare
   v_user_id uuid;
   v_installation_tenant_id uuid;
 begin
-  v_user_id := authz.rpc_setup(p_tenant_id, 'tenant.admin');
-
-  perform util.check_rate_limit('plugin_uninstall', null, 10, 1, v_user_id, p_tenant_id);
+  perform util.check_rate_limit('plugin_uninstall', null, 10, 1, auth.uid(), p_tenant_id);
+  
+  perform authz.rpc_setup(p_tenant_id, 'tenant.admin');
+  v_user_id := authz.validate_authenticated();
 
   select tenant_id into v_installation_tenant_id
   from int.plugin_installations
   where id = p_installation_id;
 
-  if v_installation_tenant_id is null then
+  if not found then
     raise exception using
-      message = 'Plugin installation not found',
+      message = format('Plugin installation %s not found', p_installation_id),
       errcode = 'P0001';
   end if;
 
   if v_installation_tenant_id != p_tenant_id then
     raise exception using
-      message = 'Unauthorized: Plugin installation does not belong to this tenant',
+      message = 'Unauthorized: Installation does not belong to this tenant',
       errcode = '42501';
   end if;
 
@@ -1335,13 +1365,16 @@ end;
 $$;
 
 comment on function public.rpc_uninstall_plugin(uuid, uuid) is
-  'Uninstalls a plugin for a tenant by deleting the installation record. Requires tenant.admin permission. Deletions are audited in audit.entity_changes.';
+  'Uninstalls a plugin for a tenant. Public API wrapper that accesses int.plugin_installations internally. Requires tenant.admin permission. Follows ADR 0001 (public RPC for writes) and ADR 0010 (rpc_<verb>_<resource> naming). Rate limited to 10 requests per minute per user.';
 
 revoke all on function public.rpc_uninstall_plugin(uuid, uuid) from public;
 grant execute on function public.rpc_uninstall_plugin(uuid, uuid) to authenticated;
 
+-- ============================================================================
+-- Analytics Materialized Views
+-- ============================================================================
 
-create materialized view if not exists public.mv_work_order_summary as
+create materialized view public.mv_work_order_summary as
 select
   tenant_id,
   status,
@@ -1361,13 +1394,13 @@ group by tenant_id, status, priority;
 comment on materialized view public.mv_work_order_summary is 
   'Pre-computed work order statistics by tenant, status, and priority. Aggregated counts, completion metrics, and time-based statistics. Updated via refresh functions.';
 
-create unique index if not exists mv_work_order_summary_pkey 
+create unique index mv_work_order_summary_pkey 
   on public.mv_work_order_summary (tenant_id, status, priority);
 
-create index if not exists mv_work_order_summary_tenant_idx 
+create index mv_work_order_summary_tenant_idx 
   on public.mv_work_order_summary (tenant_id);
 
-create materialized view if not exists public.mv_asset_summary as
+create materialized view public.mv_asset_summary as
 select
   tenant_id,
   status,
@@ -1385,13 +1418,13 @@ group by tenant_id, status, location_id;
 comment on materialized view public.mv_asset_summary is 
   'Pre-computed asset statistics by tenant, status, and location. Aggregated counts and status distribution. Updated via refresh functions.';
 
-create unique index if not exists mv_asset_summary_pkey 
+create unique index mv_asset_summary_pkey 
   on public.mv_asset_summary (tenant_id, status, location_id);
 
-create index if not exists mv_asset_summary_tenant_idx 
+create index mv_asset_summary_tenant_idx 
   on public.mv_asset_summary (tenant_id);
 
-create materialized view if not exists public.mv_location_summary as
+create materialized view public.mv_location_summary as
 select
   l.tenant_id,
   l.id as location_id,
@@ -1412,17 +1445,17 @@ group by l.tenant_id, l.id, l.name, l.parent_location_id;
 comment on materialized view public.mv_location_summary is 
   'Pre-computed location statistics including asset and work order counts per location. Hierarchy-aware aggregations. Updated via refresh functions.';
 
-create unique index if not exists mv_location_summary_pkey 
+create unique index mv_location_summary_pkey 
   on public.mv_location_summary (location_id);
 
-create index if not exists mv_location_summary_tenant_idx 
+create index mv_location_summary_tenant_idx 
   on public.mv_location_summary (tenant_id);
 
-create index if not exists mv_location_summary_parent_idx 
+create index mv_location_summary_parent_idx 
   on public.mv_location_summary (parent_location_id) 
   where parent_location_id is not null;
 
-create materialized view if not exists public.mv_tenant_overview as
+create materialized view public.mv_tenant_overview as
 select
   t.id as tenant_id,
   t.name as tenant_name,
@@ -1446,7 +1479,7 @@ group by t.id, t.name, t.slug, t.created_at;
 comment on materialized view public.mv_tenant_overview is 
   'Pre-computed tenant-level statistics and overview. High-level metrics per tenant including member count, asset count, work order counts, and activity timestamps. Updated via refresh functions.';
 
-create unique index if not exists mv_tenant_overview_pkey 
+create unique index mv_tenant_overview_pkey 
   on public.mv_tenant_overview (tenant_id);
 
 create or replace function public.refresh_analytics_views()
@@ -1488,31 +1521,48 @@ comment on function public.refresh_tenant_analytics(uuid) is
 revoke all on function public.refresh_tenant_analytics(uuid) from public;
 grant execute on function public.refresh_tenant_analytics(uuid) to authenticated;
 
-create or replace view public.v_work_orders_summary as
+create or replace view public.v_work_orders_summary
+with (security_invoker = true)
+as
 select *
 from public.mv_work_order_summary
 where tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_work_orders_summary is 
-  'Tenant-scoped work orders summary. Returns data for current tenant context only. Filters materialized view by tenant.';
+  'Tenant-scoped work orders summary. Returns data for current tenant context only. Filters materialized view by tenant. Uses SECURITY INVOKER to enforce RLS policies correctly.';
 
-create or replace view public.v_assets_summary as
+grant select on public.v_work_orders_summary to authenticated;
+grant select on public.v_work_orders_summary to anon;
+
+create or replace view public.v_assets_summary
+with (security_invoker = true)
+as
 select *
 from public.mv_asset_summary
 where tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_assets_summary is 
-  'Tenant-scoped assets summary. Returns data for current tenant context only. Filters materialized view by tenant.';
+  'Tenant-scoped assets summary. Returns data for current tenant context only. Filters materialized view by tenant. Uses SECURITY INVOKER to enforce RLS policies correctly.';
 
-create or replace view public.v_locations_summary as
+grant select on public.v_assets_summary to authenticated;
+grant select on public.v_assets_summary to anon;
+
+create or replace view public.v_locations_summary
+with (security_invoker = true)
+as
 select *
 from public.mv_location_summary
 where tenant_id = authz.get_current_tenant_id();
 
 comment on view public.v_locations_summary is 
-  'Tenant-scoped locations summary. Returns data for current tenant context only. Filters materialized view by tenant.';
+  'Tenant-scoped locations summary. Returns data for current tenant context only. Filters materialized view by tenant. Uses SECURITY INVOKER to enforce RLS policies correctly.';
 
-create or replace view public.v_tenants_overview as
+grant select on public.v_locations_summary to authenticated;
+grant select on public.v_locations_summary to anon;
+
+create or replace view public.v_tenants_overview
+with (security_invoker = true)
+as
 select *
 from public.mv_tenant_overview
 where tenant_id = authz.get_current_tenant_id()
@@ -1524,6 +1574,20 @@ where tenant_id = authz.get_current_tenant_id()
   );
 
 comment on view public.v_tenants_overview is 
-  'Tenant overview for current tenant. Only accessible to tenant members. Filters materialized view by tenant and membership.';
+  'Tenant overview for current tenant. Only accessible to tenant members. Filters materialized view by tenant and membership. Uses SECURITY INVOKER to enforce RLS policies correctly.';
 
-select public.refresh_analytics_views();
+grant select on public.v_tenants_overview to authenticated;
+grant select on public.v_tenants_overview to anon;
+
+-- ============================================================================
+-- Grants for Enterprise Features
+-- ============================================================================
+
+grant select on audit.entity_changes to authenticated;
+grant select on audit.permission_changes to authenticated;
+
+grant select on int.plugins to authenticated;
+grant select on int.plugin_installations to authenticated;
+
+grant select on cfg.rate_limit_configs to authenticated;
+grant select on cfg.audit_retention_configs to authenticated;

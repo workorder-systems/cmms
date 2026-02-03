@@ -48,6 +48,14 @@ function getSupabaseConfig(): { url: string; anonKey: string } {
  * Get Supabase service role key from environment or default
  */
 function getServiceRoleKeyForUrl(url: string): string {
+  // Always check env var first (highest priority)
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY.trim();
+    if (key.length > 0) {
+      return key;
+    }
+  }
+
   const isLocal =
     url.includes('127.0.0.1') ||
     url.includes('localhost') ||
@@ -59,24 +67,28 @@ function getServiceRoleKeyForUrl(url: string): string {
     try {
       const statusOutput = execSync('supabase status --output json', {
         encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'ignore'],
       });
       const status = JSON.parse(statusOutput) as Record<string, unknown>;
-      const key = status.SERVICE_ROLE_KEY;
+      const key = status.service_role_key || status.SERVICE_ROLE_KEY;
       if (typeof key === 'string' && key.length > 0) {
         return key;
       }
     } catch {
-      // fall through
+      // fall through to default
     }
   }
 
-  // Hosted / CI: prefer env var
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return process.env.SUPABASE_SERVICE_ROLE_KEY;
-  }
-
   // Fallback to the historical local default key (may not match if keys were regenerated).
-  return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwgnWNReilDMblYTn_I0';
+  // This should only be used if Supabase CLI is not available and env var is not set.
+  const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwgnWNReilDMblYTn_I0';
+  
+  // Log warning if using default key (helps debug env issues)
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[getServiceRoleKeyForUrl] Using default service role key. Set SUPABASE_SERVICE_ROLE_KEY env var or ensure supabase status works.');
+  }
+  
+  return defaultKey;
 }
 
 /**
@@ -101,6 +113,14 @@ export function createTestClient(): SupabaseClient {
 export function createServiceRoleClient(): SupabaseClient {
   const { url } = getSupabaseConfig();
   const serviceRoleKey = getServiceRoleKeyForUrl(url);
+  
+  // Validate key format (basic check - should be a JWT)
+  if (!serviceRoleKey || serviceRoleKey.length < 50) {
+    throw new Error(
+      `Invalid service role key: length=${serviceRoleKey?.length || 0}. ` +
+      `Set SUPABASE_SERVICE_ROLE_KEY env var or ensure 'supabase status' works.`
+    );
+  }
   
   return createClient(url, serviceRoleKey, {
     auth: {

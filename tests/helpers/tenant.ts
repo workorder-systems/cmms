@@ -21,13 +21,22 @@ export async function createTestTenant(
   });
 
   if (!error) {
-    return data as string;
+    const tenantId = data as string;
+    
+    // rpc_create_tenant now automatically sets tenant context (user metadata + session variable)
+    // However, for PostgREST view queries, we need to refresh the JWT to include tenant_id in claims
+    // This call is idempotent - it just refreshes the JWT since context is already set
+    await setTenantContext(client, tenantId);
+    
+    return tenantId;
   }
 
   // If a tenant with this slug already exists for the current user (e.g. from a previous
   // test run), reuse it instead of failing. This keeps tests idempotent across runs without
   // requiring a full database reset.
   if (error.code === '23505' && error.message?.includes('tenants_slug_unique')) {
+    // v_tenants shows all tenants the user is a member of (no tenant context required)
+    // Query to find the existing tenant by slug
     const { data: existing, error: viewError } = await client
       .from('v_tenants')
       .select('id')
@@ -35,7 +44,10 @@ export async function createTestTenant(
       .single();
 
     if (!viewError && existing) {
-      return existing.id as string;
+      const tenantId = existing.id as string;
+      // Set tenant context so views work immediately
+      await setTenantContext(client, tenantId);
+      return tenantId;
     }
   }
 
@@ -136,6 +148,49 @@ export async function setTenantContext(
 
   if (signInError) {
     throw new Error(`Failed to sign in after setting tenant context: ${signInError.message}. Make sure test user was created with TEST_PASSWORD.`);
+  }
+
+  // Verify session was created with new token
+  if (!signInData?.session) {
+    throw new Error('Failed to get session after sign in - no session returned');
+  }
+}
+
+/**
+ * Clear tenant context from user metadata and refresh JWT
+ * Useful for testing scenarios where tenant context should not be set
+ */
+export async function clearTenantContext(
+  client: SupabaseClient
+): Promise<void> {
+  // Get current user email before signing out
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError || !userData?.user?.email) {
+    throw new Error(`Failed to get current user: ${userError?.message ?? 'No user email'}`);
+  }
+  const userEmail = userData.user.email;
+
+  // Clear tenant context (updates user metadata)
+  const { error } = await client.rpc('rpc_clear_tenant_context');
+
+  if (error) {
+    throw new Error(`Failed to clear tenant context: ${error.message}`);
+  }
+
+  // Sign out to invalidate current token (ignore errors - session might already be invalid)
+  await client.auth.signOut().catch(() => {
+    // Ignore sign out errors - session might already be invalid
+  });
+
+  // Sign back in to force a new token (this triggers custom_access_token_hook)
+  // All test users use TEST_PASSWORD (from faker.makeUser())
+  const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+    email: userEmail,
+    password: TEST_PASSWORD,
+  });
+
+  if (signInError) {
+    throw new Error(`Failed to sign in after clearing tenant context: ${signInError.message}. Make sure test user was created with TEST_PASSWORD.`);
   }
 
   // Verify session was created with new token
