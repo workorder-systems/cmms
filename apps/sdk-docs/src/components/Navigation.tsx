@@ -254,6 +254,11 @@ export const navigation: Array<NavGroup> = [
       { title: 'Locations', href: '/locations' },
       { title: 'Departments', href: '/departments' },
       { title: 'Meters', href: '/meters' },
+      { title: 'Plugins', href: '/plugins' },
+      { title: 'Catalogs', href: '/catalogs' },
+      { title: 'PM (preventive maintenance)', href: '/pm' },
+      { title: 'Dashboard', href: '/dashboard' },
+      { title: 'Audit', href: '/audit' },
     ],
   },
 ]

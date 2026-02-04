@@ -8,6 +8,12 @@ import { createAssetsResource } from './resources/assets.js';
 import { createLocationsResource } from './resources/locations.js';
 import { createDepartmentsResource } from './resources/departments.js';
 import { createMetersResource } from './resources/meters.js';
+import { createPluginsResource } from './resources/plugins.js';
+import { createAuthorizationResource } from './resources/authorization.js';
+import { createCatalogsResource } from './resources/catalogs.js';
+import { createPmResource } from './resources/pm.js';
+import { createDashboardResource } from './resources/dashboard.js';
+import { createAuditResource } from './resources/audit.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -46,6 +52,12 @@ export function createDbClient(
     locations: createLocationsResource(supabase),
     departments: createDepartmentsResource(supabase),
     meters: createMetersResource(supabase),
+    plugins: createPluginsResource(supabase),
+    authorization: createAuthorizationResource(supabase),
+    catalogs: createCatalogsResource(supabase),
+    pm: createPmResource(supabase),
+    dashboard: createDashboardResource(supabase),
+    audit: createAuditResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',

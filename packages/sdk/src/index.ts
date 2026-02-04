@@ -20,11 +20,12 @@ export type {
 } from './resources/tenants.js';
 export type {
   WorkOrderRow,
+  WorkOrderAttachmentRow,
   CreateWorkOrderParams,
   TransitionStatusParams,
   CompleteWorkOrderParams,
   LogTimeParams,
-  AddAttachmentParams,
+  UpdateAttachmentMetadataParams,
   WorkOrdersResource,
 } from './resources/work-orders.js';
 export type {
@@ -53,3 +54,73 @@ export type {
   RecordMeterReadingParams,
   MetersResource,
 } from './resources/meters.js';
+export type {
+  PluginRow,
+  PluginInstallationRow,
+  InstallPluginParams,
+  UpdatePluginInstallationParams,
+  UninstallPluginParams,
+  PluginsResource,
+} from './resources/plugins.js';
+export type {
+  PermissionRow,
+  RolePermissionRow,
+  TenantRoleRow,
+  UserTenantRoleRow,
+  ProfileRow,
+  AssignPermissionToRoleParams,
+  GrantScopeParams,
+  RevokeScopeParams,
+  HasPermissionParams,
+  GetUserPermissionsParams,
+  AuthorizationResource,
+} from './resources/authorization.js';
+export type {
+  StatusCatalogRow,
+  PriorityCatalogRow,
+  MaintenanceTypeCatalogRow,
+  StatusTransitionRow,
+  WorkflowGraph,
+  CreateStatusParams,
+  CreateStatusTransitionParams,
+  CreatePriorityParams,
+  CreateMaintenanceTypeParams,
+  CatalogsResource,
+} from './resources/catalogs.js';
+export type {
+  PmTemplateRow,
+  PmTemplateChecklistItemRow,
+  PmScheduleRow,
+  DuePmRow,
+  OverduePmRow,
+  UpcomingPmRow,
+  PmHistoryRow,
+  CreatePmTemplateParams,
+  UpdatePmTemplateParams,
+  CreatePmScheduleParams,
+  UpdatePmScheduleParams,
+  DeletePmScheduleParams,
+  CreatePmDependencyParams,
+  GenerateDuePmsParams,
+  TriggerManualPmParams,
+  PmResource,
+} from './resources/pm.js';
+export type {
+  DashboardMetricsRow,
+  DashboardMttrMetricsRow,
+  DashboardOpenWorkOrdersRow,
+  DashboardOverdueWorkOrdersRow,
+  DashboardWorkOrdersByStatusRow,
+  DashboardWorkOrdersByMaintenanceTypeRow,
+  WorkOrdersSummaryRow,
+  AssetsSummaryRow,
+  LocationsSummaryRow,
+  TenantsOverviewRow,
+  DashboardResource,
+} from './resources/dashboard.js';
+export type {
+  AuditEntityChangeRow,
+  AuditPermissionChangeRow,
+  AuditRetentionConfigRow,
+  AuditResource,
+} from './resources/audit.js';

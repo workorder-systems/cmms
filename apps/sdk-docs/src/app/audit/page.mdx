@@ -1,0 +1,58 @@
+export const metadata = {
+  title: 'Audit',
+  description: 'Read audit logs for entity and permission changes; inspect audit retention config.',
+}
+
+export const sections = [
+  { title: 'Entity changes', id: 'entity-changes' },
+  { title: 'Permission changes', id: 'permission-changes' },
+  { title: 'Retention configuration', id: 'retention-configuration' },
+]
+
+# Audit
+
+Read audit logs for entity changes and permission changes, and inspect audit retention configuration per tenant. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## Entity changes
+
+List entity changes for the current tenant.
+
+<CodeGroup title="client.audit.listEntityChanges()">
+
+```ts
+await client.setTenant(tenantId)
+
+const changes = await client.audit.listEntityChanges()
+// AuditEntityChangeRow[]
+```
+
+</CodeGroup>
+
+## Permission changes
+
+List permission changes (e.g. role assignments, scope changes) for the current tenant.
+
+<CodeGroup title="client.audit.listPermissionChanges()">
+
+```ts
+const permissionChanges = await client.audit.listPermissionChanges()
+// AuditPermissionChangeRow[]
+```
+
+</CodeGroup>
+
+## Retention configuration
+
+Read audit retention configuration.
+
+<CodeGroup title="client.audit.listRetentionConfigs()">
+
+```ts
+await client.setTenant(tenantId)
+
+const configs = await client.audit.listRetentionConfigs()
+// AuditRetentionConfigRow[]
+```
+
+</CodeGroup>
+

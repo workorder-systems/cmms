@@ -1,0 +1,88 @@
+export const metadata = {
+  title: 'Dashboard and summaries',
+  description: 'Read dashboard metrics, MTTR, open/overdue work orders, and summary views.',
+}
+
+export const sections = [
+  { title: 'Dashboard metrics', id: 'dashboard-metrics' },
+  { title: 'Open and overdue work orders', id: 'open-overdue-work-orders' },
+  { title: 'Work orders by status and maintenance type', id: 'by-status-and-maintenance-type' },
+  { title: 'Summaries and tenant overview', id: 'summaries-and-tenant-overview' },
+]
+
+# Dashboard and summaries
+
+Read dashboard metrics, MTTR, open/overdue work orders, grouped metrics, and summary views. These are read-only views for analytics and reporting. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## Dashboard metrics
+
+Get the main dashboard metrics and MTTR metrics for the current tenant.
+
+<CodeGroup title="client.dashboard.getMetrics() and getMttrMetrics()">
+
+```ts
+await client.setTenant(tenantId)
+
+const metrics = await client.dashboard.getMetrics()
+// DashboardMetricsRow[]
+
+const mttr = await client.dashboard.getMttrMetrics()
+// DashboardMttrMetricsRow[]
+```
+
+</CodeGroup>
+
+## Open and overdue work orders
+
+List open and overdue work orders as seen on the dashboard.
+
+<CodeGroup title="client.dashboard.listOpenWorkOrders() / listOverdueWorkOrders()">
+
+```ts
+const open = await client.dashboard.listOpenWorkOrders()
+// DashboardOpenWorkOrdersRow[]
+
+const overdue = await client.dashboard.listOverdueWorkOrders()
+// DashboardOverdueWorkOrdersRow[]
+```
+
+</CodeGroup>
+
+## Work orders by status and maintenance type
+
+Get aggregated counts by status and by maintenance type.
+
+<CodeGroup title="client.dashboard.listWorkOrdersByStatus() / listWorkOrdersByMaintenanceType()">
+
+```ts
+const byStatus = await client.dashboard.listWorkOrdersByStatus()
+// DashboardWorkOrdersByStatusRow[]
+
+const byMaintenanceType = await client.dashboard.listWorkOrdersByMaintenanceType()
+// DashboardWorkOrdersByMaintenanceTypeRow[]
+```
+
+</CodeGroup>
+
+## Summaries and tenant overview
+
+Read summary views for work orders, assets, locations, and tenants.
+
+<CodeGroup title="Summary views">
+
+```ts
+const workOrdersSummary = await client.dashboard.getWorkOrdersSummary()
+// WorkOrdersSummaryRow[]
+
+const assetsSummary = await client.dashboard.getAssetsSummary()
+// AssetsSummaryRow[]
+
+const locationsSummary = await client.dashboard.getLocationsSummary()
+// LocationsSummaryRow[]
+
+const tenantsOverview = await client.dashboard.getTenantsOverview()
+// TenantsOverviewRow[]
+```
+
+</CodeGroup>
+

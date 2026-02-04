@@ -13,9 +13,13 @@ import { Heading } from '@/components/Heading'
 import { BoltIcon } from '@/components/icons/BoltIcon'
 import { CogIcon } from '@/components/icons/CogIcon'
 import { FolderIcon } from '@/components/icons/FolderIcon'
+import { SquaresPlusIcon } from '@/components/icons/SquaresPlusIcon'
 import { MapPinIcon } from '@/components/icons/MapPinIcon'
 import { PackageIcon } from '@/components/icons/PackageIcon'
 import { UsersIcon } from '@/components/icons/UsersIcon'
+import { ListIcon } from '@/components/icons/ListIcon'
+import { CalendarIcon } from '@/components/icons/CalendarIcon'
+import { DocumentIcon } from '@/components/icons/DocumentIcon'
 
 interface Resource {
   href: string
@@ -47,7 +51,7 @@ const resources: Array<Resource> = [
     href: '/work-orders',
     name: 'Work orders',
     description:
-      'List, create, transition, complete, log time, add attachments.',
+      'List, create, transition, complete, log time; list attachments, update attachment metadata.',
     icon: BoltIcon,
     pattern: {
       y: -6,
@@ -106,6 +110,76 @@ const resources: Array<Resource> = [
       y: -6,
       squares: [
         [-1, 2],
+        [1, 3],
+      ],
+    },
+  },
+  {
+    href: '/plugins',
+    name: 'Plugins',
+    description:
+      'List catalog and tenant installations; install, update, uninstall (tenant.admin).',
+    icon: SquaresPlusIcon,
+    pattern: {
+      y: 16,
+      squares: [
+        [0, 2],
+        [1, 4],
+      ],
+    },
+  },
+  {
+    href: '/catalogs',
+    name: 'Catalogs',
+    description:
+      'List and manage statuses, priorities, maintenance types, and workflow graph.',
+    icon: ListIcon,
+    pattern: {
+      y: 8,
+      squares: [
+        [0, 1],
+        [1, 3],
+      ],
+    },
+  },
+  {
+    href: '/pm',
+    name: 'Preventive maintenance',
+    description:
+      'Manage PM templates and schedules; list due, overdue, upcoming, and history.',
+    icon: CalendarIcon,
+    pattern: {
+      y: 24,
+      squares: [
+        [0, 2],
+        [1, 4],
+      ],
+    },
+  },
+  {
+    href: '/dashboard',
+    name: 'Dashboard',
+    description:
+      'Read dashboard metrics, MTTR, open/overdue work orders, and summaries.',
+    icon: BoltIcon,
+    pattern: {
+      y: -8,
+      squares: [
+        [-1, 1],
+        [1, 3],
+      ],
+    },
+  },
+  {
+    href: '/audit',
+    name: 'Audit',
+    description:
+      'Read entity and permission change logs; manage audit retention config.',
+    icon: DocumentIcon,
+    pattern: {
+      y: 18,
+      squares: [
+        [0, 1],
         [1, 3],
       ],
     },

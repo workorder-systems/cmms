@@ -6,6 +6,12 @@ import type { AssetsResource } from './resources/assets.js';
 import type { LocationsResource } from './resources/locations.js';
 import type { DepartmentsResource } from './resources/departments.js';
 import type { MetersResource } from './resources/meters.js';
+import type { PluginsResource } from './resources/plugins.js';
+import type { AuthorizationResource } from './resources/authorization.js';
+import type { CatalogsResource } from './resources/catalogs.js';
+import type { PmResource } from './resources/pm.js';
+import type { DashboardResource } from './resources/dashboard.js';
+import type { AuditResource } from './resources/audit.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -37,7 +43,7 @@ export type DbClient = {
   clearTenant(): Promise<void>;
   /** Tenants: list, create, invite, assign role. */
   tenants: TenantsResource;
-  /** Work orders: list, get, create, transition status, complete, log time, add attachment. */
+  /** Work orders: list, get, create, transition status, complete, log time, list/update attachments. */
   workOrders: WorkOrdersResource;
   /** Assets: list, get, create, update, delete. */
   assets: AssetsResource;
@@ -47,4 +53,16 @@ export type DbClient = {
   departments: DepartmentsResource;
   /** Meters: list, get readings, create, update, record reading, delete. */
   meters: MetersResource;
+  /** Plugins: list catalog, list installations, install, update, uninstall. Requires tenant.admin for installations. */
+  plugins: PluginsResource;
+  /** Authorization: permissions, roles, scopes, and permission checks. */
+  authorization: AuthorizationResource;
+  /** Catalogs: statuses, priorities, maintenance types, and status transitions. */
+  catalogs: CatalogsResource;
+  /** Preventive maintenance: templates, schedules, due/overdue/upcoming PMs, history, and actions. */
+  pm: PmResource;
+  /** Dashboard: tenant metrics, summaries, and analytics refresh. */
+  dashboard: DashboardResource;
+  /** Audit: entity and permission changes, retention configuration. */
+  audit: AuditResource;
 };

@@ -9,12 +9,11 @@ export const sections = [
   { title: 'Checking permissions', id: 'checking-permissions' },
   { title: 'ABAC: scopes', id: 'abac-scopes' },
   { title: 'How RPCs enforce access', id: 'how-rpcs-enforce' },
-  { title: 'Further reading', id: 'further-reading' },
 ]
 
 # Authorization (RBAC & ABAC)
 
-The Work Order Systems API uses **RBAC** (role-based access control) and **ABAC** (attribute-based access control) on top of tenant isolation. RLS enforces tenant membership; permissions gate what you can do; scopes gate where you can do it (e.g. by location or department). {{ className: 'lead' }}
+The Work Order Systems API uses **RBAC** (role-based access control) and **ABAC** (attribute-based access control) on top of tenant isolation. RLS enforces tenant membership; permissions gate what you can do; scopes gate where you can do it (e.g. by location or department). The SDK exposes `client.authorization` helpers for working with permissions, roles, and scopes. {{ className: 'lead' }}
 
 ## Overview
 
@@ -22,7 +21,7 @@ The Work Order Systems API uses **RBAC** (role-based access control) and **ABAC*
 - **RBAC:** Each tenant has roles (e.g. `admin`, `member`, `technician`, `manager`). Roles have permissions (e.g. `tenant.admin`, `workorder.edit`, `workorder.assign`). Users are assigned roles per tenant.
 - **ABAC:** Users can have **scopes** (location or department). Some operations require not only a permission but also a scope (e.g. “can edit work orders in this location”). Scopes are stored in `app.membership_scopes` and checked by RPCs via `authz.check_abac_scope`.
 
-Permissions are enforced inside RPCs (e.g. `authz.validate_permission`). The SDK does not expose a dedicated “permissions resource”; you use the raw Supabase client for permission and scope RPCs.
+Permissions are enforced inside RPCs (e.g. `authz.validate_permission`). The SDK exposes a dedicated `authorization` resource (`client.authorization`) for permission, role, and scope operations; you can still use the raw Supabase client for advanced queries when needed.
 
 ## RBAC: roles and permissions
 
@@ -30,15 +29,17 @@ Permissions are enforced inside RPCs (e.g. `authz.validate_permission`). The SDK
 - **Permissions** are global (`cfg.permissions`). Tenants assign permissions to their roles via `cfg.tenant_role_permissions`.
 - **User–role assignment** is per tenant: `app.user_tenant_roles`. You assign roles with `client.tenants.assignRole()` and invite users with `client.tenants.inviteUser()` (see [Tenants](/tenants)).
 
-To **assign a permission to a role** (e.g. give `member` the `workorder.create` permission), use the public RPC. Requires `tenant.admin` permission.
+To **assign a permission to a role** (e.g. give `member` the `workorder.create` permission), use the SDK helper. Requires `tenant.admin` permission.
 
-<CodeGroup title="Assign permission to role">
+<CodeGroup title="client.authorization.assignPermissionToRole(params)">
 
 ```ts
-await client.supabase.rpc('rpc_assign_permission_to_role', {
-  p_tenant_id: tenantId,
-  p_role_key: 'member',
-  p_permission_key: 'workorder.create',
+await client.setTenant(tenantId)
+
+await client.authorization.assignPermissionToRole({
+  tenantId,
+  roleKey: 'member',
+  permissionKey: 'workorder.create',
 })
 ```
 
@@ -48,30 +49,30 @@ Common permission keys include `tenant.admin`, `workorder.create`, `workorder.ed
 
 ## Checking permissions
 
-To check whether the current user has a permission in the current tenant, call `rpc_has_permission`. Set tenant context first.
+To check whether the current user has a permission in the current tenant, call `client.authorization.hasPermission`. Set tenant context first.
 
-<CodeGroup title="Check if user has permission">
+<CodeGroup title="client.authorization.hasPermission(params)">
 
 ```ts
 await client.setTenant(tenantId)
 // Refresh session so JWT carries tenant_id, then:
 
-const { data: hasEdit } = await client.supabase.rpc('rpc_has_permission', {
-  p_tenant_id: tenantId,
-  p_permission_key: 'workorder.edit',
+const hasEdit = await client.authorization.hasPermission({
+  tenantId,
+  permissionKey: 'workorder.edit',
 })
-// Returns boolean
+// hasEdit is boolean
 ```
 
 </CodeGroup>
 
-To list all permission keys the current user has in the tenant, use `rpc_get_user_permissions`:
+To list all permission keys the current user has in the tenant, use `client.authorization.getUserPermissions`:
 
-<CodeGroup title="List user permissions">
+<CodeGroup title="client.authorization.getUserPermissions(params)">
 
 ```ts
-const { data: permissionKeys } = await client.supabase.rpc('rpc_get_user_permissions', {
-  p_tenant_id: tenantId,
+const permissionKeys = await client.authorization.getUserPermissions({
+  tenantId,
 })
 // Returns string[] (e.g. ['workorder.view', 'workorder.create'])
 ```
@@ -84,31 +85,31 @@ Use these to drive UI (e.g. show/hide “Edit” or “Assign”) or to decide w
 
 Scopes restrict access by **location** or **department**. For example, a user might be allowed to edit work orders only in a specific location. Scopes are stored in `app.membership_scopes` and checked by RPCs via `authz.check_abac_scope` (and helpers like `authz.has_location_scope`, `authz.has_department_scope`).
 
-To **grant** a scope to a user (e.g. “can act in this location”), use `rpc_grant_scope`. Requires `tenant.admin` permission.
+To **grant** a scope to a user (e.g. “can act in this location”), use `client.authorization.grantScope`. Requires `tenant.admin` permission.
 
-<CodeGroup title="Grant scope">
+<CodeGroup title="client.authorization.grantScope(params)">
 
 ```ts
-await client.supabase.rpc('rpc_grant_scope', {
-  p_tenant_id: tenantId,
-  p_user_id: userId,
-  p_scope_type: 'location',
-  p_scope_value: locationId,
+await client.authorization.grantScope({
+  tenantId,
+  userId,
+  scopeType: 'location',
+  scopeValue: locationId,
 })
 ```
 
 </CodeGroup>
 
-To **revoke** a scope, use `rpc_revoke_scope`:
+To **revoke** a scope, use `client.authorization.revokeScope`:
 
-<CodeGroup title="Revoke scope">
+<CodeGroup title="client.authorization.revokeScope(params)">
 
 ```ts
-await client.supabase.rpc('rpc_revoke_scope', {
-  p_tenant_id: tenantId,
-  p_user_id: userId,
-  p_scope_type: 'location',
-  p_scope_value: locationId,
+await client.authorization.revokeScope({
+  tenantId,
+  userId,
+  scopeType: 'location',
+  scopeValue: locationId,
 })
 ```
 
@@ -124,11 +125,6 @@ Scope types are typically `location` or `department`; `p_scope_value` is the UUI
 - **Workflow transitions:** Status transitions can have a `required_permission` (and optional guard). The workflow engine checks the user’s permissions before allowing the transition (e.g. `draft` → `assigned` may require `workorder.assign`).
 
 So: **RLS** = tenant boundary; **RBAC** = what you’re allowed to do; **ABAC** = where you’re allowed to do it (when the RPC enforces scopes).
-
-## Further reading
-
-- **ADR 0006: Permissions and ABAC model** (`docs/adr/0006-permissions-and-abac-model.md`) — Global permission catalog, tenant roles, role–permission mapping, ABAC scopes, and enforcement in RPCs.
-- **ADR 0003: RLS and tenant isolation** (`docs/adr/0003-rls-tenant-isolation.md`) — How RLS and tenant membership work; tenant context as a convenience, not a security boundary.
 
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/tenants" variant="text" arrow="right">

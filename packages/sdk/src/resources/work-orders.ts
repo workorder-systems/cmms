@@ -6,6 +6,9 @@ import { callRpc } from '../unwrap.js';
 /** Row from v_work_orders view. */
 export type WorkOrderRow = Database['public']['Views']['v_work_orders'] extends { Row: infer R } ? R : Record<string, unknown>;
 
+/** Row from v_work_order_attachments view (file_id, bucket_id, storage_path for signed URLs). */
+export type WorkOrderAttachmentRow = Database['public']['Views']['v_work_order_attachments'] extends { Row: infer R } ? R : Record<string, unknown>;
+
 /** Params for creating a work order. */
 export interface CreateWorkOrderParams {
   tenantId: string;
@@ -43,11 +46,9 @@ export interface LogTimeParams {
   description?: string | null;
 }
 
-/** Params for adding an attachment to a work order. */
-export interface AddAttachmentParams {
-  tenantId: string;
-  workOrderId: string;
-  fileRef: string;
+/** Params for updating work order attachment metadata (label/kind). Create attachments via Storage upload to bucket "attachments"; see docs/attachments-client-flow.md. */
+export interface UpdateAttachmentMetadataParams {
+  attachmentId: string;
   label?: string | null;
   kind?: string | null;
 }
@@ -120,15 +121,23 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
       });
     },
 
-    /** Add an attachment to a work order. Returns the attachment UUID. */
-    async addAttachment(params: AddAttachmentParams): Promise<string> {
-      return callRpc(rpc(supabase), 'rpc_add_work_order_attachment', {
-        p_tenant_id: params.tenantId,
-        p_work_order_id: params.workOrderId,
-        p_file_ref: params.fileRef,
+    /** Update label and/or kind for a work order attachment. Attachments are created by uploading to Storage bucket "attachments"; use listAttachments to get ids. */
+    async updateAttachmentMetadata(params: UpdateAttachmentMetadataParams): Promise<void> {
+      return callRpc(rpc(supabase), 'rpc_update_work_order_attachment_metadata', {
+        p_attachment_id: params.attachmentId,
         p_label: params.label ?? null,
         p_kind: params.kind ?? null,
       });
+    },
+
+    /** List attachments for a work order (v_work_order_attachments). Use bucket_id and storage_path with supabase.storage.from(bucket_id).createSignedUrl(storage_path) for download. */
+    async listAttachments(workOrderId: string): Promise<WorkOrderAttachmentRow[]> {
+      const { data, error } = await supabase
+        .from('v_work_order_attachments')
+        .select('*')
+        .eq('work_order_id', workOrderId);
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderAttachmentRow[];
     },
   };
 }

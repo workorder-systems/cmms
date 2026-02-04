@@ -12,7 +12,7 @@ export const sections = [
 
 # Tenant context
 
-The API is multi-tenant. Tenant-scoped resources (work orders, assets, locations, departments, meters) only return and modify data for the current tenant. Set tenant context before calling tenant-scoped resources. {{ className: 'lead' }}
+The API is multi-tenant. Tenant-scoped resources (work orders, assets, locations, departments, meters, plugins, authorization, catalogs, PM, dashboard, audit) only return and modify data for the current tenant. Set tenant context before calling tenant-scoped resources. {{ className: 'lead' }}
 
 ## Why tenant context?
 
@@ -59,7 +59,7 @@ Then set the new tenant and refresh the session, or sign out via `client.supabas
 ## Which resources are tenant-scoped?
 
 - **Not tenant-scoped:** `client.tenants.list()` and `client.tenants.getById(id)` — they return tenants the user is a member of and do not require tenant context.
-- **Tenant-scoped:** `workOrders`, `assets`, `locations`, `departments`, `meters`. Always call `setTenant(tenantId)` and refresh the session before using these.
+- **Tenant-scoped:** `workOrders`, `assets`, `locations`, `departments`, `meters`, `plugins`, `authorization`, `catalogs`, `pm`, `dashboard`, `audit`. Always call `setTenant(tenantId)` and refresh the session before using these.
 
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/tenants" variant="text" arrow="right">

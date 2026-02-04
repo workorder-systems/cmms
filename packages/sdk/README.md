@@ -45,13 +45,14 @@ const id = await client.workOrders.create({
 | Resource      | Reads              | Writes                                                                 |
 |---------------|--------------------|------------------------------------------------------------------------|
 | `tenants`     | `list()`, `getById()` | `create()`, `inviteUser()`, `assignRole()`                            |
-| `workOrders`  | `list()`, `getById()` | `create()`, `transitionStatus()`, `complete()`, `logTime()`, `addAttachment()` |
+| `workOrders`  | `list()`, `getById()`, `listAttachments(workOrderId)` | `create()`, `transitionStatus()`, `complete()`, `logTime()`, `updateAttachmentMetadata()` |
 | `assets`      | `list()`, `getById()` | `create()`, `update()`, `delete()`                                   |
 | `locations`   | `list()`, `getById()` | `create()`, `update()`, `delete()`                                    |
 | `departments` | `list()`, `getById()` | `create()`, `update()`, `delete()`                                   |
 | `meters`      | `list()`, `getReadings()` | `create()`, `update()`, `recordReading()`, `delete()`              |
+| `plugins`     | `list()`, `getById()`, `listInstallations()` | `install()`, `updateInstallation()`, `uninstall()` (tenant.admin) |
 
-For **PM** (templates, schedules, due/overdue pms), **permissions** (grant, revoke, hasPermission), **workflow** (status/priority/maintenance type catalogs), **plugins**, **audit**, and **dashboard** views, use `client.supabase.from('v_*')` and `client.supabase.rpc('rpc_*', params)` until dedicated resource methods are added. All public views and RPCs are typed via the SDK’s `Database` type.
+For **PM** (templates, schedules, due/overdue pms), **permissions** (grant, revoke, hasPermission), **workflow** (status/priority/maintenance type catalogs), **audit**, and **dashboard** views, use `client.supabase.from('v_*')` and `client.supabase.rpc('rpc_*', params)` until dedicated resource methods are added. All public views and RPCs are typed via the SDK’s `Database` type.
 
 All resource methods throw `SdkError` (with `code`, `message`, `details`, `hint`) on failure. Success returns typed data.
 

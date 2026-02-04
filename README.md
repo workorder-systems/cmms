@@ -34,7 +34,7 @@ npm test
 - `supabase/` - schema, migrations, and config
 - `packages/sdk/` - TypeScript SDK for the public API
 - `tests/` - Vitest integration tests
-- `docs/adr/` - architecture decision records
+- `docs/` - client flows ([attachments](docs/attachments-client-flow.md)), [SDK full-coverage plan](docs/sdk-full-coverage-plan.md), and `docs/adr/` - architecture decision records
 
 ## Architecture and rules
 Detailed architecture and database rules live in:

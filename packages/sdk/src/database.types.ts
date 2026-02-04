@@ -2389,13 +2389,17 @@ export type Database = {
       }
       v_work_order_attachments: {
         Row: {
+          bucket_id: string | null
+          content_type: string | null
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
-          file_ref: string | null
+          file_id: string | null
+          filename: string | null
           id: string | null
           kind: string | null
           label: string | null
+          storage_path: string | null
           tenant_id: string | null
           updated_at: string | null
           work_order_id: string | null
@@ -2681,16 +2685,6 @@ export type Database = {
       refresh_tenant_analytics: {
         Args: { p_tenant_id: string }
         Returns: undefined
-      }
-      rpc_add_work_order_attachment: {
-        Args: {
-          p_file_ref: string
-          p_kind?: string
-          p_label?: string
-          p_tenant_id: string
-          p_work_order_id: string
-        }
-        Returns: string
       }
       rpc_assign_permission_to_role: {
         Args: {
@@ -3082,6 +3076,10 @@ export type Database = {
           p_wo_priority?: string
           p_wo_title?: string
         }
+        Returns: undefined
+      }
+      rpc_update_work_order_attachment_metadata: {
+        Args: { p_attachment_id: string; p_kind?: string; p_label?: string }
         Returns: undefined
       }
     }
