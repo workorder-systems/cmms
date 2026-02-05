@@ -32,6 +32,11 @@ const guides = [
     name: 'Errors',
     description: 'SdkError and common PostgREST/Supabase error codes.',
   },
+  {
+    href: '/plugins-building',
+    name: 'Building plugins',
+    description: 'Architecture and steps for building plugins and integrations on top of the API.',
+  },
 ]
 
 export function Guides() {

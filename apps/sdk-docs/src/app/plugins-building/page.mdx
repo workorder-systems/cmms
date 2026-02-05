@@ -1,0 +1,110 @@
+export const metadata = {
+  title: 'Building plugins',
+  description: 'Architecture and steps for building a plugin that uses the Work Order Systems API.',
+}
+
+export const sections = [
+  { title: 'What is a plugin?', id: 'what-is-a-plugin' },
+  { title: 'Plugin lifecycle', id: 'plugin-lifecycle' },
+  { title: 'Register plugin in the catalog', id: 'register-plugin' },
+  { title: 'Install plugin for a tenant', id: 'install-plugin' },
+  { title: 'Use the public API from your plugin', id: 'use-public-api' },
+]
+
+# Building plugins
+
+This guide is for **plugin authors**: backend or full‑stack developers who want to build an optional extension or integration that uses the Work Order Systems API. Plugins are separate services or UIs that call the public API; they do **not** change the database schema. {{ className: 'lead' }}
+
+## What is a plugin?
+
+- **Module:** First‑party core capability that owns schema and migrations.
+- **Plugin:** Optional behavior or UI around existing modules. Uses the public API (views for reads, RPCs for writes). No schema changes.
+- **Integration:** A plugin subtype that connects to external systems (e.g. ticketing, messaging, CMMS, BI tools).
+
+Your plugin:
+
+- Runs as its own app or service (serverless function, worker, backend, etc.).
+- Authenticates with Supabase using a **service role** key (server‑side only) for catalog/administrative operations, and with end‑user sessions for tenant‑scoped actions where appropriate.
+- Calls the **public API** (views + RPCs) defined by this project.
+
+## Plugin lifecycle
+
+1. **Define your plugin** (key, name, description, whether it is an integration).
+2. **Register it in the catalog** using `rpc_register_plugin` from a trusted backend (service role).
+3. **Expose UI** for tenant admins to install and configure the plugin (using `client.plugins` from their browser or your own admin app).
+4. **Run plugin logic** in your service, using the public views and RPCs to read and write data.
+
+## Register plugin in the catalog
+
+Catalog registration is a **backend‑only** operation. It must use a **service role** key and **not** the `@workorder-systems/db` SDK.
+
+<Note>
+  Do not use the browser SDK or anon key to register plugins. Registration must happen from a secure backend environment with a service role key.
+</Note>
+
+<CodeGroup title="Register or update plugin in catalog (backend)">
+
+```ts
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // server-side only
+)
+
+// idempotent: insert or update plugin in catalog
+const { data, error } = await supabase.rpc('rpc_register_plugin', {
+  p_key: 'my-integration',
+  p_name: 'My Integration',
+  p_description: 'Sync work orders with an external system',
+  p_is_integration: true,
+  p_is_active: true,
+})
+
+if (error) throw error
+const pluginId = data as string
+```
+
+</CodeGroup>
+
+## Install plugin for a tenant
+
+Installation is a **tenant‑admin** operation. Use the public SDK from your frontend or admin app:
+
+<CodeGroup title="Install plugin for tenant with client.plugins.install(params)">
+
+```ts
+// In your admin UI after sign-in and setTenant(tenantId)
+const installationId = await client.plugins.install({
+  tenantId,
+  pluginKey: 'my-integration',
+  secretRef: 'vault-ref-123', // optional opaque reference to secret storage
+  config: {
+    apiEndpoint: 'https://api.example.com',
+  },
+})
+```
+
+</CodeGroup>
+
+You can list and update installations via `client.plugins.listInstallations()` and `client.plugins.updateInstallation(params)` (see [Plugins](/plugins)).
+
+## Use the public API from your plugin
+
+Your plugin service should treat the Work Order Systems API as its backend:
+
+- **Reads:** query public views such as `v_work_orders`, `v_assets`, `v_work_order_attachments`, `v_pm_*`, `v_dashboard_*`, etc.
+- **Writes:** call public RPCs such as `rpc_create_work_order`, `rpc_log_work_order_time`, `rpc_install_plugin`, `rpc_update_plugin_installation`, `rpc_create_pm_schedule`, and others, depending on your use case.
+
+You can:
+
+- Use `@supabase/supabase-js` directly in your backend (with a service role key) for tenant‑admin or system operations.
+- Use end‑user JWTs (e.g. via row‑level or delegated auth) when acting on behalf of a specific user.
+
+The **public contract** is:
+
+- Views: `v_*` for reads.
+- RPCs: `rpc_*` for writes and actions.
+
+For details on the available views and RPCs and their semantics, see the resource pages in this SDK docs site (Work orders, Assets, PM, Dashboard, Plugins, Authorization, etc.).
+
