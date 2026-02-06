@@ -246,6 +246,10 @@ export const navigation: Array<NavGroup> = [
     ],
   },
   {
+    title: 'Architecture',
+    links: [{ title: 'ADRs', href: '/adr' }],
+  },
+  {
     title: 'Resources',
     links: [
       { title: 'Tenants', href: '/tenants' },

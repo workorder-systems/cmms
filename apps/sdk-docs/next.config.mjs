@@ -18,6 +18,7 @@ const nextConfig = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
   outputFileTracingIncludes: {
     '/**/*': ['./src/app/**/*.mdx'],
+    '/adr/*': ['../../docs/adr/*.md'],
   },
   async redirects() {
     return [
