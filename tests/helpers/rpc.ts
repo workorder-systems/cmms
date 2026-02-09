@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { formatPostgrestError } from './errors.js';
 
 /**
  * Call an RPC function with error handling
@@ -12,9 +13,7 @@ export async function callRPC<T = any>(
   const { data, error } = await client.rpc(functionName, params);
 
   if (error) {
-    throw new Error(
-      `RPC ${functionName} failed: ${error.message} (code: ${error.code})`
-    );
+    throw new Error(formatPostgrestError(`RPC ${functionName} failed`, error));
   }
 
   return data as T;

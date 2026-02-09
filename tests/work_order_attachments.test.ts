@@ -1,10 +1,16 @@
+/**
+ * Work order attachments: tests follow the architecture in docs/attachments-client-flow.md
+ * - Create = upload to Storage (path tenant_id/work_order_id/uuid_filename) → trigger creates app.files + work_order_attachments (no RPC)
+ * - Update label/kind = optional rpc_update_work_order_attachment_metadata after upload
+ * - List = query v_work_order_attachments (tenant context)
+ * - Get file URL = storage.from(bucket_id).createSignedUrl(storage_path, expiresIn)
+ */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import {
   createTestTenant,
   addUserToTenant,
-  assignRoleToUser,
   setTenantContext,
 } from './helpers/tenant';
 import {
@@ -22,8 +28,8 @@ describe('Work Order Attachments', () => {
     client = createTestClient();
   });
 
-  describe('Creating attachments', () => {
-    it('should create an attachment via rpc_add_work_order_attachment', async () => {
+  describe('Upload (trigger creates app.files + work_order_attachments)', () => {
+    it('upload to attachments bucket creates attachment row via trigger', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -32,9 +38,7 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/path/to/file.jpg',
-        'Before photo',
-        'photo'
+        'path/to/file.jpg'
       );
 
       expect(attachmentId).toBeDefined();
@@ -44,14 +48,16 @@ describe('Work Order Attachments', () => {
       const attachment = await getAttachment(client, attachmentId);
 
       expect(attachment).toBeDefined();
-      expect(attachment.file_ref).toBe('storage://bucket/path/to/file.jpg');
-      expect(attachment.label).toBe('Before photo');
-      expect(attachment.kind).toBe('photo');
+      expect(attachment.file_id).toBeDefined();
+      expect(attachment.bucket_id).toBe('attachments');
+      expect(attachment.storage_path).toContain(tenantId);
+      expect(attachment.storage_path).toContain(workOrderId);
+      expect(attachment.filename).toContain('file.jpg');
       expect(attachment.work_order_id).toBe(workOrderId);
       expect(attachment.created_by).toBe(user.id);
     });
 
-    it('should accept attachment without label and kind', async () => {
+    it('upload without label/kind yields null label and kind', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -60,98 +66,21 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file.pdf'
+        'file.pdf'
       );
 
       await setTenantContext(client, tenantId);
       const attachment = await getAttachment(client, attachmentId);
 
-      expect(attachment.file_ref).toBe('storage://bucket/file.pdf');
+      expect(attachment.bucket_id).toBe('attachments');
+      expect(attachment.filename).toContain('file.pdf');
       expect(attachment.label).toBeNull();
       expect(attachment.kind).toBeNull();
     });
+  });
 
-    it('should reject if file_ref length < 1', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
-
-      const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId,
-        p_work_order_id: workOrderId,
-        p_file_ref: '',
-      });
-
-      expect(error).toBeDefined();
-      expect(error?.message).toContain('work_order_attachments_file_ref_length_check');
-    });
-
-    it('should reject if file_ref length > 500', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
-
-      const longFileRef = 'a'.repeat(501);
-
-      const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId,
-        p_work_order_id: workOrderId,
-        p_file_ref: longFileRef,
-      });
-
-      expect(error).toBeDefined();
-      expect(error?.message).toContain('work_order_attachments_file_ref_length_check');
-    });
-
-    it('should reject if work_order does not belong to tenant', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId1 = await createTestTenant(client);
-      const tenantId2 = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId1, 'Test WO');
-
-      const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId2,
-        p_work_order_id: workOrderId,
-        p_file_ref: 'storage://bucket/file.jpg',
-      });
-
-      expect(error).toBeDefined();
-      expect(error?.message).toContain('not found or does not belong');
-    });
-
-    it('should reject if label length > 255', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
-
-      const longLabel = 'a'.repeat(256);
-
-      const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId,
-        p_work_order_id: workOrderId,
-        p_file_ref: 'storage://bucket/file.jpg',
-        p_label: longLabel,
-      });
-
-      expect(error).toBeDefined();
-    });
-
-    it('should reject if kind does not match format', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
-
-      const { data, error } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId,
-        p_work_order_id: workOrderId,
-        p_file_ref: 'storage://bucket/file.jpg',
-        p_kind: 'invalid-kind!',
-      });
-
-      expect(error).toBeDefined();
-    });
-
-    it('should accept valid kind format (a-z0-9_)', async () => {
+  describe('Update label/kind (rpc_update_work_order_attachment_metadata)', () => {
+    it('sets label and kind after upload', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -160,20 +89,44 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg',
-        undefined,
-        'photo_123'
+        'file.jpg'
       );
 
       await setTenantContext(client, tenantId);
+      await client.rpc('rpc_update_work_order_attachment_metadata', {
+        p_attachment_id: attachmentId,
+        p_label: 'Before photo',
+        p_kind: 'photo',
+      });
+      const attachment = await getAttachment(client, attachmentId);
+
+      expect(attachment.label).toBe('Before photo');
+      expect(attachment.kind).toBe('photo');
+    });
+
+    it('accepts valid kind format (a-z0-9_)', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+
+      const attachmentId = await createTestAttachment(
+        client,
+        tenantId,
+        workOrderId,
+        'file.jpg'
+      );
+
+      await setTenantContext(client, tenantId);
+      await client.rpc('rpc_update_work_order_attachment_metadata', {
+        p_attachment_id: attachmentId,
+        p_kind: 'photo_123',
+      });
       const attachment = await getAttachment(client, attachmentId);
 
       expect(attachment.kind).toBe('photo_123');
     });
-  });
 
-  describe('Viewing attachments', () => {
-    it('should show attachments via v_work_order_attachments', async () => {
+    it('rejects label length > 255 when updating via view', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -182,24 +135,70 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg',
-        'Test attachment'
+        'file.jpg'
+      );
+
+      await setTenantContext(client, tenantId);
+      const longLabel = 'a'.repeat(256);
+      const { error } = await client
+        .from('v_work_order_attachments')
+        .update({ label: longLabel })
+        .eq('id', attachmentId);
+
+      expect(error).toBeDefined();
+    });
+
+    it('rejects invalid kind format when updating via view', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+
+      const attachmentId = await createTestAttachment(
+        client,
+        tenantId,
+        workOrderId,
+        'file.jpg'
+      );
+
+      await setTenantContext(client, tenantId);
+      const { error } = await client
+        .from('v_work_order_attachments')
+        .update({ kind: 'invalid-kind!' })
+        .eq('id', attachmentId);
+
+      expect(error).toBeDefined();
+    });
+  });
+
+  describe('List via v_work_order_attachments', () => {
+    it('view returns bucket_id and storage_path for signed URLs', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+
+      const attachmentId = await createTestAttachment(
+        client,
+        tenantId,
+        workOrderId,
+        'file.jpg'
       );
 
       await setTenantContext(client, tenantId);
       const { data: attachments, error } = await client
         .from('v_work_order_attachments')
-        .select('*')
+        .select('id, file_id, bucket_id, storage_path, filename, label, kind')
         .eq('id', attachmentId);
 
       expect(error).toBeNull();
-      expect(attachments).toBeDefined();
-      expect(attachments.length).toBe(1);
-      expect(attachments[0].id).toBe(attachmentId);
-      expect(attachments[0].file_ref).toBe('storage://bucket/file.jpg');
+      expect(attachments?.length).toBe(1);
+      expect(attachments![0].id).toBe(attachmentId);
+      expect(attachments![0].file_id).toBeDefined();
+      expect(attachments![0].bucket_id).toBe('attachments');
+      expect(attachments![0].storage_path).toContain(tenantId);
+      expect(attachments![0].filename).toContain('file.jpg');
     });
 
-    it('should order attachments by created_at desc', async () => {
+    it('view orders by created_at desc', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -208,35 +207,55 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file1.jpg'
+        'file1.jpg'
       );
-
-      // Small delay to ensure different timestamps
       await new Promise((resolve) => setTimeout(resolve, 10));
-
       const attachmentId2 = await createTestAttachment(
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file2.jpg'
+        'file2.jpg'
       );
 
       await setTenantContext(client, tenantId);
       const { data: attachments, error } = await client
         .from('v_work_order_attachments')
-        .select('*')
+        .select('id')
         .eq('work_order_id', workOrderId);
 
       expect(error).toBeNull();
-      expect(attachments.length).toBeGreaterThanOrEqual(2);
-      // Most recent should be first
-      expect(attachments[0].id).toBe(attachmentId2);
-      expect(attachments[1].id).toBe(attachmentId1);
+      expect(attachments!.length).toBeGreaterThanOrEqual(2);
+      expect(attachments![0].id).toBe(attachmentId2);
+      expect(attachments![1].id).toBe(attachmentId1);
     });
   });
 
-  describe('RLS Policies', () => {
-    it('should allow authenticated users to view their tenant attachments', async () => {
+  describe('Signed URLs (bucket_id + storage_path)', () => {
+    it('createSignedUrl returns URL for attachment row', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+
+      const attachmentId = await createTestAttachment(
+        client,
+        tenantId,
+        workOrderId,
+        'file.jpg'
+      );
+
+      await setTenantContext(client, tenantId);
+      const attachment = await getAttachment(client, attachmentId);
+      const { data: signed, error } = await client.storage
+        .from(attachment.bucket_id)
+        .createSignedUrl(attachment.storage_path, 3600);
+
+      expect(error).toBeNull();
+      expect(signed?.signedUrl).toBeDefined();
+    });
+  });
+
+  describe('RLS', () => {
+    it('users see only attachments in their tenant', async () => {
       const user1Client = createTestClient();
       await createTestUser(user1Client);
       const tenantId1 = await createTestTenant(user1Client);
@@ -251,27 +270,27 @@ describe('Work Order Attachments', () => {
         user1Client,
         tenantId1,
         workOrderId1,
-        'storage://bucket/file1.jpg'
+        'file1.jpg'
       );
       const attachmentId2 = await createTestAttachment(
         user2Client,
         tenantId2,
         workOrderId2,
-        'storage://bucket/file2.jpg'
+        'file2.jpg'
       );
 
       await setTenantContext(user1Client, tenantId1);
       const { data: attachments, error } = await user1Client
         .from('v_work_order_attachments')
-        .select('*')
+        .select('id')
         .in('id', [attachmentId1, attachmentId2]);
 
       expect(error).toBeNull();
-      expect(attachments.length).toBe(1);
-      expect(attachments[0].id).toBe(attachmentId1);
+      expect(attachments!.length).toBe(1);
+      expect(attachments![0].id).toBe(attachmentId1);
     });
 
-    it('should allow users to insert attachments for their tenant', async () => {
+    it('users can upload when they can edit the work order (assigned or workorder.edit)', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -280,13 +299,13 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg'
+        'file.jpg'
       );
 
       expect(attachmentId).toBeDefined();
     });
 
-    it('should allow users to update their own attachments', async () => {
+    it('users can update their own attachment label via view', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -295,8 +314,7 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg',
-        'Original label'
+        'file.jpg'
       );
 
       await setTenantContext(client, tenantId);
@@ -306,27 +324,32 @@ describe('Work Order Attachments', () => {
         .eq('id', attachmentId);
 
       expect(error).toBeNull();
-
       const attachment = await getAttachment(client, attachmentId);
       expect(attachment.label).toBe('Updated label');
     });
 
-    it('should allow admins to update any attachment in tenant', async () => {
+    it('admins can update any attachment in tenant via view', async () => {
       const adminClient = createTestClient();
-      const { user: admin } = await createTestUser(adminClient);
+      await createTestUser(adminClient);
       const tenantId = await createTestTenant(adminClient);
-      // admin already has admin role from tenant creation
 
       const userClient = createTestClient();
       const { user: regularUser } = await createTestUser(userClient);
       await addUserToTenant(adminClient, regularUser.id, tenantId);
 
-      const workOrderId = await createTestWorkOrder(adminClient, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(
+        adminClient,
+        tenantId,
+        'Test WO',
+        undefined,
+        'medium',
+        regularUser.id
+      );
       const attachmentId = await createTestAttachment(
         userClient,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg'
+        'file.jpg'
       );
 
       await setTenantContext(adminClient, tenantId);
@@ -336,12 +359,11 @@ describe('Work Order Attachments', () => {
         .eq('id', attachmentId);
 
       expect(error).toBeNull();
-
       const attachment = await getAttachment(adminClient, attachmentId);
       expect(attachment.label).toBe('Admin updated this');
     });
 
-    it('should allow users to delete their own attachments', async () => {
+    it('users can delete their own attachment via view', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -350,7 +372,7 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg'
+        'file.jpg'
       );
 
       await setTenantContext(client, tenantId);
@@ -360,17 +382,15 @@ describe('Work Order Attachments', () => {
         .eq('id', attachmentId);
 
       expect(error).toBeNull();
-
       const { data: attachment } = await client
         .from('v_work_order_attachments')
-        .select('*')
+        .select('id')
         .eq('id', attachmentId)
-        .single();
-
+        .maybeSingle();
       expect(attachment).toBeNull();
     });
 
-    it('should prevent anon users from accessing attachments', async () => {
+    it('anon cannot access v_work_order_attachments', async () => {
       const ownerClient = createTestClient();
       await createTestUser(ownerClient);
       const tenantId = await createTestTenant(ownerClient);
@@ -379,22 +399,22 @@ describe('Work Order Attachments', () => {
         ownerClient,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg'
+        'file.jpg'
       );
 
       const anonClient = createTestClient();
       const { data, error } = await anonClient
         .from('v_work_order_attachments')
-        .select('*')
+        .select('id')
         .eq('id', attachmentId);
 
       expect(error).toBeNull();
-      expect(data.length).toBe(0);
+      expect(data!.length).toBe(0);
     });
   });
 
   describe('Tenant isolation', () => {
-    it('should only show attachments from current tenant', async () => {
+    it('view only returns attachments for current tenant context', async () => {
       const client1 = createTestClient();
       await createTestUser(client1);
       const tenantId1 = await createTestTenant(client1);
@@ -409,29 +429,29 @@ describe('Work Order Attachments', () => {
         client1,
         tenantId1,
         workOrderId1,
-        'storage://bucket/file1.jpg'
+        'file1.jpg'
       );
       const attachmentId2 = await createTestAttachment(
         client2,
         tenantId2,
         workOrderId2,
-        'storage://bucket/file2.jpg'
+        'file2.jpg'
       );
 
       await setTenantContext(client1, tenantId1);
       const { data: attachments, error } = await client1
         .from('v_work_order_attachments')
-        .select('*')
+        .select('id')
         .in('id', [attachmentId1, attachmentId2]);
 
       expect(error).toBeNull();
-      expect(attachments.length).toBe(1);
-      expect(attachments[0].id).toBe(attachmentId1);
+      expect(attachments!.length).toBe(1);
+      expect(attachments![0].id).toBe(attachmentId1);
     });
   });
 
   describe('Audit logging', () => {
-    it('should log attachment creation events', async () => {
+    it('attachment creation (trigger insert) is audited', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
@@ -440,7 +460,7 @@ describe('Work Order Attachments', () => {
         client,
         tenantId,
         workOrderId,
-        'storage://bucket/file.jpg'
+        'file.jpg'
       );
 
       await setTenantContext(client, tenantId);
@@ -453,7 +473,7 @@ describe('Work Order Attachments', () => {
 
       expect(error).toBeNull();
       expect(audits).toBeDefined();
-      expect(audits.length).toBeGreaterThan(0);
+      expect(audits!.length).toBeGreaterThan(0);
     });
   });
 });

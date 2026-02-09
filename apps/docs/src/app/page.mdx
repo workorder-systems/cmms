@@ -1,0 +1,43 @@
+import { Guides } from '@/components/Guides'
+import { Resources } from '@/components/Resources'
+import { HeroPattern } from '@/components/HeroPattern'
+
+export const metadata = {
+  title: 'API Documentation',
+  description:
+    'Work Order Systems API and SDK. Supabase-backed views and RPCs, @workorder-systems/db client.',
+}
+
+export const sections = [
+  { title: 'Guides', id: 'guides' },
+  { title: 'Resources', id: 'resources' },
+]
+
+<HeroPattern />
+
+# API Documentation
+
+The Work Order Systems API is backed by Supabase: reads go through public views, writes through RPCs. Use the `@workorder-systems/db` TypeScript client for a type-safe, domain-focused API over tenants, work orders, assets, locations, departments, meters, plugins, authorization, catalogs, PM, dashboard, and audit. {{ className: 'lead' }}
+
+<div className="not-prose mt-6 mb-16 flex flex-wrap gap-3">
+  <Button href="/quickstart" arrow="right">
+    <>Quickstart</>
+  </Button>
+  <Button href="/installation" variant="outline">
+    <>Installation</>
+  </Button>
+</div>
+
+## Getting started {{ anchor: false }}
+
+Get your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Install `@workorder-systems/db` and create a client with `createDbClient(url, anonKey)`. Sign in with Supabase Auth so list and RPC calls run as an authenticated user; set tenant context before tenant-scoped operations. {{ className: 'lead' }}
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/installation" variant="text" arrow="right">
+    <>Get URL and anon key</>
+  </Button>
+</div>
+
+<Guides />
+
+<Resources />

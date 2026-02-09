@@ -534,35 +534,6 @@ describe('Input Validation & Security', () => {
       expect(overError?.message).toContain('work_order_time_entries_minutes_check');
     });
 
-    it('should validate file_ref length constraint (1-500 chars)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
-
-      const woId = await createTestWorkOrder(client, tenantId, 'Test WO');
-
-      // Empty file_ref
-      const { error: emptyError } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId,
-        p_work_order_id: woId,
-        p_file_ref: '',
-      });
-
-      expect(emptyError).toBeDefined();
-      expect(emptyError?.message).toContain('work_order_attachments_file_ref_length_check');
-
-      // Over 500 chars
-      const longFileRef = 'a'.repeat(501);
-      const { error: longError } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId,
-        p_work_order_id: woId,
-        p_file_ref: longFileRef,
-      });
-
-      expect(longError).toBeDefined();
-      expect(longError?.message).toContain('work_order_attachments_file_ref_length_check');
-    });
-
     it('should validate department code format (uppercase alphanumeric with underscores)', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);

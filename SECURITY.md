@@ -1,7 +1,7 @@
 # Security Policy
 
 ## Supported versions
-Security fixes are applied to the default branch and the latest release.
+Security fixes are applied to the default branch. (No formal releases yet; we are still in development.)
 
 ## Reporting a vulnerability
 Please report security issues privately using GitHub Security Advisories:

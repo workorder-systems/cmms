@@ -1,0 +1,94 @@
+export const metadata = {
+  title: 'Quickstart',
+  description: 'Set up the SDK, create a client, and make your first requests.',
+}
+
+export const sections = [
+  { title: 'Choose your client', id: 'choose-your-client' },
+  { title: 'Make your first request', id: 'making-your-first-request' },
+  { title: "What's next?", id: 'whats-next' },
+]
+
+# Quickstart
+
+Set up the SDK, create a client, and make your first requests. {{ className: 'lead' }}
+
+<Note>
+  Requires Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). For tenant-scoped operations, sign in with Supabase Auth and set tenant context.
+</Note>
+
+## Choose your client
+
+Install the SDK and its peer dependency:
+
+<CodeGroup>
+
+```bash
+npm install @workorder-systems/db @supabase/supabase-js
+```
+
+</CodeGroup>
+
+The SDK is a type-safe wrapper over the Supabase client. It exposes domain resources (tenants, work orders, assets, locations, departments, meters) and tenant context helpers.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/installation" variant="text" arrow="right">
+    <>View installation</>
+  </Button>
+</div>
+
+## Make your first request
+
+Create a client with your Supabase URL and anon key, then call the API. List tenants (no tenant context needed) or, after signing in and setting tenant context, list work orders.
+
+<CodeGroup title="Create client and list tenants">
+
+```ts
+import { createDbClient } from '@workorder-systems/db'
+
+const client = createDbClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+)
+
+// List tenants the current user is a member of (requires auth)
+const tenants = await client.tenants.list()
+```
+
+</CodeGroup>
+
+To get data from tenant-scoped resources (work orders, assets, etc.), sign in with Supabase Auth and set tenant context before calling them:
+
+<CodeGroup title="Sign in and list work orders">
+
+```ts
+// Sign in (e.g. in your app after login)
+const { data } = await client.supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'password',
+})
+
+// Set tenant context, then refresh session so JWT carries tenant_id
+await client.setTenant(tenantId)
+// In a real app you would refresh the session here (getSession → setSession)
+
+const workOrders = await client.workOrders.list()
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders API</>
+  </Button>
+</div>
+
+## What's next?
+
+- [Installation](/installation) — package details and edge/browser usage
+- [Authentication](/authentication) — Supabase Auth and the SDK
+- [Tenant context](/tenant-context) — setTenant, clearTenant, and JWT refresh
+- [Errors](/errors) — SdkError and common codes

@@ -31,8 +31,10 @@ npm test
 ```
 
 ## Repo layout
-- `supabase/` - schema, migrations, and architecture docs
+- `supabase/` - schema, migrations, and config
+- `packages/sdk/` - TypeScript SDK for the public API
 - `tests/` - Vitest integration tests
+- `docs/` - client flows ([attachments](docs/attachments-client-flow.md)), [SDK full-coverage plan](docs/sdk-full-coverage-plan.md), and `docs/adr/` - architecture decision records
 
 ## Architecture and rules
 Detailed architecture and database rules live in:

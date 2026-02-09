@@ -1,0 +1,198 @@
+export const metadata = {
+  title: 'Preventive maintenance (PM)',
+  description: 'Manage PM templates and schedules; list due/overdue/upcoming PMs and history.',
+}
+
+export const sections = [
+  { title: 'List templates and schedules', id: 'list-templates-and-schedules' },
+  { title: 'Create and update template', id: 'create-update-template' },
+  { title: 'Create and update schedule', id: 'create-update-schedule' },
+  { title: 'Delete schedule', id: 'delete-schedule' },
+  { title: 'Dependencies and generation', id: 'dependencies-and-generation' },
+  { title: 'Due, overdue, upcoming, history', id: 'due-overdue-upcoming-history' },
+]
+
+# Preventive maintenance (PM)
+
+Manage PM templates and schedules for assets; generate work orders when PMs are due. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List templates and schedules
+
+<CodeGroup title="List PM templates and schedules">
+
+```ts
+await client.setTenant(tenantId)
+
+const templates = await client.pm.listTemplates()
+// PmTemplateRow[]
+
+const checklistItems = await client.pm.listTemplateChecklistItems()
+// PmTemplateChecklistItemRow[]
+
+const schedules = await client.pm.listSchedules()
+// PmScheduleRow[]
+```
+
+</CodeGroup>
+
+## Create and update template
+
+Create a PM template that defines trigger configuration and default work order fields. Requires `tenant.admin`. Returns the template UUID.
+
+<CodeGroup title="client.pm.createTemplate(params)">
+
+```ts
+const templateId = await client.pm.createTemplate({
+  tenantId,
+  name: 'Quarterly HVAC inspection',
+  triggerType: 'calendar',
+  triggerConfig: { every: { months: 3 } },
+  description: 'Quarterly preventive inspection of HVAC units',
+  estimatedHours: 2,
+  workOrderTitle: 'Quarterly HVAC PM',
+  workOrderDescription: 'Inspect filters, belts, electrical connections',
+  workOrderPriority: 'medium',
+  checklistItems: [
+    { label: 'Inspect filters', required: true },
+    { label: 'Check belts', required: true },
+  ],
+})
+// Returns string (template UUID)
+```
+
+</CodeGroup>
+
+Update an existing template:
+
+<CodeGroup title="client.pm.updateTemplate(params)">
+
+```ts
+await client.pm.updateTemplate({
+  tenantId,
+  templateId,
+  name: 'Quarterly HVAC inspection (rooftop)',
+  description: 'Quarterly preventive inspection of rooftop HVAC units',
+})
+```
+
+</CodeGroup>
+
+## Create and update schedule
+
+Create a PM schedule for an asset. Returns the schedule UUID.
+
+<CodeGroup title="client.pm.createSchedule(params)">
+
+```ts
+const pmScheduleId = await client.pm.createSchedule({
+  tenantId,
+  assetId: 'uuid-of-asset',
+  title: 'Quarterly HVAC PM',
+  triggerType: 'calendar',
+  triggerConfig: { every: { months: 3 } },
+  description: 'Recurring quarterly inspection',
+  estimatedHours: 2,
+  autoGenerate: true,
+  workOrderTitle: 'Quarterly HVAC PM',
+  workOrderDescription: 'Inspect filters, belts, electrical connections',
+  workOrderPriority: 'medium',
+  templateId,
+})
+// Returns string (schedule UUID)
+```
+
+</CodeGroup>
+
+Update an existing schedule:
+
+<CodeGroup title="client.pm.updateSchedule(params)">
+
+```ts
+await client.pm.updateSchedule({
+  tenantId,
+  pmScheduleId,
+  title: 'Quarterly HVAC PM (rooftop)',
+  isActive: true,
+  autoGenerate: true,
+})
+```
+
+</CodeGroup>
+
+## Delete schedule
+
+Delete a PM schedule.
+
+<CodeGroup title="client.pm.deleteSchedule(params)">
+
+```ts
+await client.pm.deleteSchedule({
+  tenantId,
+  pmScheduleId,
+})
+```
+
+</CodeGroup>
+
+## Dependencies and generation
+
+Create dependencies between PM schedules and generate due PMs.
+
+<CodeGroup title="client.pm.createDependency and client.pm.generateDuePms">
+
+```ts
+// Make schedule depend on another PM
+const dependencyId = await client.pm.createDependency({
+  tenantId,
+  pmScheduleId,
+  dependsOnPmId: 'uuid-of-upstream-pm',
+  dependencyType: 'finish_to_start',
+})
+
+// Generate due PMs (returns number of generated PMs)
+const generatedCount = await client.pm.generateDuePms({
+  tenantId,
+  limit: 50,
+})
+```
+
+</CodeGroup>
+
+Trigger a manual PM for a schedule:
+
+<CodeGroup title="client.pm.triggerManualPm(params)">
+
+```ts
+const workOrderId = await client.pm.triggerManualPm({
+  tenantId,
+  pmScheduleId,
+})
+// Returns string (work order UUID)
+```
+
+</CodeGroup>
+
+## Due, overdue, upcoming, history
+
+List PM instances across different states.
+
+<CodeGroup title="List due, overdue, upcoming PMs, and history">
+
+```ts
+await client.setTenant(tenantId)
+
+const due = await client.pm.listDue()
+// DuePmRow[]
+
+const overdue = await client.pm.listOverdue()
+// OverduePmRow[]
+
+const upcoming = await client.pm.listUpcoming()
+// UpcomingPmRow[]
+
+const history = await client.pm.listHistory()
+// PmHistoryRow[]
+```
+
+</CodeGroup>
+

@@ -301,16 +301,6 @@ describe('Error Handling & Edge Cases', () => {
 
       expect(minutesError).toBeDefined();
       expect(minutesError?.message).toContain('work_order_time_entries_minutes_check');
-
-      // File ref length constraint
-      const { error: fileRefError } = await client.rpc('rpc_add_work_order_attachment', {
-        p_tenant_id: tenantId,
-        p_work_order_id: woId,
-        p_file_ref: 'a'.repeat(501),
-      });
-
-      expect(fileRefError).toBeDefined();
-      expect(fileRefError?.message).toContain('work_order_attachments_file_ref_length_check');
     });
 
     it('should identify foreign key violations', async () => {

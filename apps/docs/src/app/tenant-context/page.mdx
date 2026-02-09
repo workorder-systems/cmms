@@ -1,0 +1,71 @@
+export const metadata = {
+  title: 'Tenant context',
+  description: 'Set and clear tenant context for tenant-scoped resources.',
+}
+
+export const sections = [
+  { title: 'Why tenant context?', id: 'why-tenant-context' },
+  { title: 'Set tenant context', id: 'set-tenant-context' },
+  { title: 'Clear tenant context', id: 'clear-tenant-context' },
+  { title: 'Which resources are tenant-scoped?', id: 'which-resources' },
+]
+
+# Tenant context
+
+The API is multi-tenant. Tenant-scoped resources (work orders, assets, locations, departments, meters, plugins, authorization, catalogs, PM, dashboard, audit) only return and modify data for the current tenant. Set tenant context before calling tenant-scoped resources. {{ className: 'lead' }}
+
+## Why tenant context?
+
+Views and RPCs that are tenant-scoped filter by the current tenant. The current tenant is determined by a combination of session metadata and RPC: `rpc_set_tenant_context` sets it, and the client must refresh the session so the JWT carries the `tenant_id` claim. Until then, tenant-scoped queries may return nothing or RPCs may fail.
+
+## Set tenant context
+
+Call `setTenant(tenantId)` with a tenant ID the user is a member of. Then refresh the session so the new context is in the JWT (e.g. fetch the session and set it again).
+
+<CodeGroup title="Set tenant and refresh session">
+
+```ts
+const tenantId = 'uuid-of-tenant'
+
+await client.setTenant(tenantId)
+
+// Refresh session so JWT carries tenant_id (required for tenant-scoped views/RPCs)
+const { data } = await client.supabase.auth.getSession()
+if (data.session) {
+  await client.supabase.auth.setSession({
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token,
+  })
+}
+
+// Now tenant-scoped calls use this tenant
+const workOrders = await client.workOrders.list()
+```
+
+</CodeGroup>
+
+If you skip the refresh step, the backend may not see the new tenant context in the JWT and tenant-scoped operations can fail or return empty.
+
+## Clear tenant context
+
+When switching tenants or logging out, clear the context so the next `setTenant` or sign-in is clean:
+
+```ts
+await client.clearTenant()
+```
+
+Then set the new tenant and refresh the session, or sign out via `client.supabase.auth.signOut()`.
+
+## Which resources are tenant-scoped?
+
+- **Not tenant-scoped:** `client.tenants.list()` and `client.tenants.getById(id)` — they return tenants the user is a member of and do not require tenant context.
+- **Tenant-scoped:** `workOrders`, `assets`, `locations`, `departments`, `meters`, `plugins`, `authorization`, `catalogs`, `pm`, `dashboard`, `audit`. Always call `setTenant(tenantId)` and refresh the session before using these.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/tenants" variant="text" arrow="right">
+    <>Tenants API</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders API</>
+  </Button>
+</div>

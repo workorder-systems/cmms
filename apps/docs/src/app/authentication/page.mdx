@@ -1,0 +1,57 @@
+export const metadata = {
+  title: 'Authentication',
+  description: 'Sign in with Supabase Auth; SDK uses the same session.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Sign in', id: 'sign-in' },
+  { title: 'Using the SDK', id: 'using-the-sdk' },
+]
+
+# Authentication
+
+The API is backed by Supabase. All requests run in the context of the authenticated user. No separate “API key” header: sign in with Supabase Auth; the SDK uses that session. {{ className: 'lead' }}
+
+## Overview
+
+- **Auth provider:** Supabase Auth (JWT).
+- **No API key:** Use the Supabase project URL and **anon** key to create the client. The anon key is safe to use in the browser; Row Level Security (RLS) and RPC permission checks enforce what each user can do.
+- **Session:** Sign in with `client.supabase.auth.signInWithPassword()` (or OAuth, magic link, etc.). The SDK’s `tenants`, `workOrders`, and other resources use the same Supabase client, so they automatically use the current session.
+
+## Sign in
+
+Get your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Create the client and sign in:
+
+<CodeGroup title="Sign in with email and password">
+
+```ts
+import { createDbClient } from '@workorder-systems/db'
+
+const client = createDbClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+)
+
+const { data, error } = await client.supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'your-password',
+})
+```
+
+</CodeGroup>
+
+After sign-in, the JWT is stored in the session (or in the storage you configured). All subsequent calls to `client.tenants.list()`, `client.workOrders.list()`, etc., use this session.
+
+## Using the SDK
+
+You do not pass a token into each request. The SDK wraps the Supabase client; once the user is signed in via `client.supabase.auth`, all resource methods run as that user. For tenant-scoped operations you must also call `client.setTenant(tenantId)` and refresh the session so the JWT carries the tenant context — see [Tenant context](/tenant-context).
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/quickstart" variant="text" arrow="right">
+    <>Quickstart</>
+  </Button>
+</div>

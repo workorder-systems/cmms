@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { makeTenant } from './faker';
 import { TEST_PASSWORD } from './auth';
+import { formatPostgrestError } from './errors.js';
 
 /**
  * Create a test tenant using the RPC function.
@@ -51,7 +52,7 @@ export async function createTestTenant(
     }
   }
 
-  throw new Error(`Failed to create tenant: ${error.message}`);
+  throw new Error(formatPostgrestError('Failed to create tenant', error));
 }
 
 /**
@@ -82,7 +83,7 @@ export async function assignRoleToUser(
   });
 
   if (error) {
-    throw new Error(`Failed to assign role: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to assign role', error));
   }
 }
 
@@ -103,7 +104,7 @@ export async function getTenantBySlug(
     if (error.code === 'PGRST116') {
       return null; // Not found
     }
-    throw new Error(`Failed to get tenant: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to get tenant', error));
   }
 
   return data;
@@ -121,7 +122,9 @@ export async function setTenantContext(
   // Get current user email before signing out
   const { data: userData, error: userError } = await client.auth.getUser();
   if (userError || !userData?.user?.email) {
-    throw new Error(`Failed to get current user: ${userError?.message ?? 'No user email'}`);
+    throw new Error(
+      userError ? formatPostgrestError('Failed to get current user', userError) : 'No user email'
+    );
   }
   const userEmail = userData.user.email;
 
@@ -131,7 +134,7 @@ export async function setTenantContext(
   });
 
   if (error) {
-    throw new Error(`Failed to set tenant context: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to set tenant context', error));
   }
 
   // Sign out to invalidate current token (ignore errors - session might already be invalid)
@@ -147,7 +150,10 @@ export async function setTenantContext(
   });
 
   if (signInError) {
-    throw new Error(`Failed to sign in after setting tenant context: ${signInError.message}. Make sure test user was created with TEST_PASSWORD.`);
+    throw new Error(
+      formatPostgrestError('Failed to sign in after setting tenant context', signInError) +
+        '. Make sure test user was created with TEST_PASSWORD.'
+    );
   }
 
   // Verify session was created with new token
@@ -166,7 +172,9 @@ export async function clearTenantContext(
   // Get current user email before signing out
   const { data: userData, error: userError } = await client.auth.getUser();
   if (userError || !userData?.user?.email) {
-    throw new Error(`Failed to get current user: ${userError?.message ?? 'No user email'}`);
+    throw new Error(
+      userError ? formatPostgrestError('Failed to get current user', userError) : 'No user email'
+    );
   }
   const userEmail = userData.user.email;
 
@@ -174,7 +182,7 @@ export async function clearTenantContext(
   const { error } = await client.rpc('rpc_clear_tenant_context');
 
   if (error) {
-    throw new Error(`Failed to clear tenant context: ${error.message}`);
+    throw new Error(formatPostgrestError('Failed to clear tenant context', error));
   }
 
   // Sign out to invalidate current token (ignore errors - session might already be invalid)
@@ -190,7 +198,10 @@ export async function clearTenantContext(
   });
 
   if (signInError) {
-    throw new Error(`Failed to sign in after clearing tenant context: ${signInError.message}. Make sure test user was created with TEST_PASSWORD.`);
+    throw new Error(
+      formatPostgrestError('Failed to sign in after clearing tenant context', signInError) +
+        '. Make sure test user was created with TEST_PASSWORD.'
+    );
   }
 
   // Verify session was created with new token

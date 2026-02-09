@@ -1,0 +1,114 @@
+export const metadata = {
+  title: 'Locations',
+  description: 'List, create, update, and delete locations.',
+}
+
+export const sections = [
+  { title: 'List locations', id: 'list-locations' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Create location', id: 'create-location' },
+  { title: 'Update location', id: 'update-location' },
+  { title: 'Delete location', id: 'delete-location' },
+]
+
+# Locations
+
+Lists and gets locations for the current tenant; create, update, delete. Locations can have a parent for hierarchy. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List locations
+
+List all locations for the current tenant (from `v_locations`).
+
+<CodeGroup title="client.locations.list()">
+
+```ts
+const locations = await client.locations.list()
+// Returns LocationRow[]
+```
+
+</CodeGroup>
+
+## Get by ID
+
+Fetch a single location by ID.
+
+<CodeGroup title="client.locations.getById(id)">
+
+```ts
+const location = await client.locations.getById('uuid-of-location')
+// Returns LocationRow | null
+```
+
+</CodeGroup>
+
+## Create location
+
+Create a new location. Returns the new location UUID.
+
+<CodeGroup title="client.locations.create(params)">
+
+```ts
+const locationId = await client.locations.create({
+  tenantId: 'uuid-of-tenant',
+  name: 'Building A',
+  description: 'Main building',
+  parentLocationId: null,
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="name">
+    Required. Location display name.
+  </Property>
+  <Property name="description">
+    Optional. Description.
+  </Property>
+  <Property name="parentLocationId">
+    Optional. Parent location UUID.
+  </Property>
+</Properties>
+
+## Update location
+
+Update an existing location. All fields except `tenantId` and `locationId` are optional.
+
+<CodeGroup title="client.locations.update(params)">
+
+```ts
+await client.locations.update({
+  tenantId: 'uuid-of-tenant',
+  locationId: 'uuid-of-location',
+  name: 'Building A (North)',
+  description: null,
+  parentLocationId: null,
+})
+```
+
+</CodeGroup>
+
+## Delete location
+
+Delete a location by tenant and location ID.
+
+<CodeGroup title="client.locations.delete(tenantId, locationId)">
+
+```ts
+await client.locations.delete('uuid-of-tenant', 'uuid-of-location')
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+  <Button href="/departments" variant="text" arrow="right">
+    <>Departments</>
+  </Button>
+</div>

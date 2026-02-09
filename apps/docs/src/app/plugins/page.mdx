@@ -1,0 +1,163 @@
+export const metadata = {
+  title: 'Plugins',
+  description: 'List available plugins and tenant installations; install, update, uninstall. Requires tenant.admin for installations.',
+}
+
+export const sections = [
+  { title: 'List plugins (catalog)', id: 'list-plugins' },
+  { title: 'Get plugin by ID', id: 'get-plugin-by-id' },
+  { title: 'List installations', id: 'list-installations' },
+  { title: 'Install plugin', id: 'install-plugin' },
+  { title: 'Update installation', id: 'update-installation' },
+  { title: 'Uninstall plugin', id: 'uninstall-plugin' },
+]
+
+# Plugins
+
+Lists the catalog of available plugins (`v_plugins`) and tenant plugin installations (`v_plugin_installations`). Install, update, and uninstall plugins for a tenant. **Installing and managing installations requires `tenant.admin` permission.** Set tenant context before listing or managing installations. For plugin authors, see [Building plugins](/plugins-building). {{ className: 'lead' }}
+
+## List plugins (catalog)
+
+List all available plugins (from `v_plugins`). No tenant context required.
+
+<CodeGroup title="client.plugins.list()">
+
+```ts
+const plugins = await client.plugins.list()
+// Returns PluginRow[] (id, key, name, description, is_active, is_integration, created_at, updated_at)
+```
+
+</CodeGroup>
+
+## Get plugin by ID
+
+Fetch a single plugin from the catalog by ID.
+
+<CodeGroup title="client.plugins.getById(id)">
+
+```ts
+const plugin = await client.plugins.getById('uuid-of-plugin')
+// Returns PluginRow | null
+```
+
+</CodeGroup>
+
+## List installations
+
+List plugin installations for the current tenant (from `v_plugin_installations`). Requires tenant context and **tenant.admin** permission.
+
+<CodeGroup title="client.plugins.listInstallations()">
+
+```ts
+await client.setTenant(tenantId)
+
+const installations = await client.plugins.listInstallations()
+// Returns PluginInstallationRow[] (id, plugin_id, plugin_key, plugin_name, tenant_id, status, config, secret_ref, installed_at, installed_by, updated_at, is_integration)
+```
+
+</CodeGroup>
+
+## Install plugin
+
+Install a plugin for a tenant. Returns the installation UUID. Requires **tenant.admin** permission. Rate limited (e.g. 10 requests per minute per user).
+
+<CodeGroup title="client.plugins.install(params)">
+
+```ts
+const installationId = await client.plugins.install({
+  tenantId: 'uuid-of-tenant',
+  pluginKey: 'my-integration',
+  secretRef: null,
+  config: { apiEndpoint: 'https://example.com' },
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="pluginKey">
+    Required. Plugin key (from catalog).
+  </Property>
+  <Property name="secretRef">
+    Optional. Opaque reference to stored secret (e.g. API key); not the secret value.
+  </Property>
+  <Property name="config">
+    Optional. Installation config (JSON object).
+  </Property>
+</Properties>
+
+## Update installation
+
+Update a plugin installation (status, secret_ref, config). Requires **tenant.admin** permission.
+
+<CodeGroup title="client.plugins.updateInstallation(params)">
+
+```ts
+await client.plugins.updateInstallation({
+  tenantId: 'uuid-of-tenant',
+  installationId: 'uuid-of-installation',
+  status: 'active',
+  secretRef: 'vault-ref-123',
+  config: { apiEndpoint: 'https://api.example.com' },
+})
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="installationId">
+    Required. Installation UUID (from listInstallations).
+  </Property>
+  <Property name="status">
+    Optional. Status (e.g. active, paused).
+  </Property>
+  <Property name="secretRef">
+    Optional. Opaque reference to stored secret.
+  </Property>
+  <Property name="config">
+    Optional. Installation config (JSON object).
+  </Property>
+</Properties>
+
+## Uninstall plugin
+
+Uninstall a plugin for a tenant. Requires **tenant.admin** permission. Rate limited.
+
+<CodeGroup title="client.plugins.uninstall(params)">
+
+```ts
+await client.plugins.uninstall({
+  tenantId: 'uuid-of-tenant',
+  installationId: 'uuid-of-installation',
+})
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="installationId">
+    Required. Installation UUID.
+  </Property>
+</Properties>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/authorization" variant="text" arrow="right">
+    <>Authorization</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+</div>

@@ -1,0 +1,142 @@
+export const metadata = {
+  title: 'Catalogs (statuses, priorities, maintenance types)',
+  description: 'List and manage status, priority, and maintenance type catalogs; fetch workflow graph.',
+}
+
+export const sections = [
+  { title: 'List catalogs', id: 'list-catalogs' },
+  { title: 'Create status', id: 'create-status' },
+  { title: 'Create status transition', id: 'create-status-transition' },
+  { title: 'Create priority', id: 'create-priority' },
+  { title: 'Create maintenance type', id: 'create-maintenance-type' },
+  { title: 'Get workflow graph', id: 'get-workflow-graph' },
+]
+
+# Catalogs
+
+Manage status, priority, and maintenance type catalogs per tenant. These catalogs power workflows and dashboards. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List catalogs
+
+List catalogs for the current tenant.
+
+<CodeGroup title="List status, priority, and maintenance type catalogs">
+
+```ts
+await client.setTenant(tenantId)
+
+const statuses = await client.catalogs.listStatuses()
+// StatusCatalogRow[]
+
+const priorities = await client.catalogs.listPriorities()
+// PriorityCatalogRow[]
+
+const maintenanceTypes = await client.catalogs.listMaintenanceTypes()
+// MaintenanceTypeCatalogRow[]
+
+const transitions = await client.catalogs.listStatusTransitions()
+// StatusTransitionRow[]
+```
+
+</CodeGroup>
+
+## Create status
+
+Create a status for an entity type (e.g. work order). Requires `tenant.admin`. Returns the status key.
+
+<CodeGroup title="client.catalogs.createStatus(params)">
+
+```ts
+const statusKey = await client.catalogs.createStatus({
+  tenantId,
+  entityType: 'work_order',
+  key: 'in_progress',
+  name: 'In progress',
+  category: 'active',
+  color: '#fbbf24',
+  displayOrder: 20,
+  icon: 'play',
+})
+// Returns string (status key)
+```
+
+</CodeGroup>
+
+## Create status transition
+
+Create an allowed transition between two statuses. Requires `tenant.admin`. Returns the transition ID.
+
+<CodeGroup title="client.catalogs.createStatusTransition(params)">
+
+```ts
+const transitionId = await client.catalogs.createStatusTransition({
+  tenantId,
+  entityType: 'work_order',
+  fromStatusKey: 'open',
+  toStatusKey: 'in_progress',
+  requiredPermission: 'workorder.edit',
+  guardCondition: null,
+})
+// Returns string (transition id)
+```
+
+</CodeGroup>
+
+## Create priority
+
+Create a priority definition. Requires `tenant.admin`. Returns the priority key.
+
+<CodeGroup title="client.catalogs.createPriority(params)">
+
+```ts
+const priorityKey = await client.catalogs.createPriority({
+  tenantId,
+  entityType: 'work_order',
+  key: 'high',
+  name: 'High',
+  weight: 100,
+  displayOrder: 10,
+  color: '#ef4444',
+})
+// Returns string (priority key)
+```
+
+</CodeGroup>
+
+## Create maintenance type
+
+Create a maintenance type. Requires `tenant.admin`. Returns the maintenance type key.
+
+<CodeGroup title="client.catalogs.createMaintenanceType(params)">
+
+```ts
+const maintenanceTypeKey = await client.catalogs.createMaintenanceType({
+  tenantId,
+  key: 'pm_inspection',
+  name: 'PM inspection',
+  category: 'preventive',
+  description: 'Scheduled preventive maintenance inspection',
+  displayOrder: 10,
+  color: '#22c55e',
+  icon: 'clipboard',
+})
+// Returns string (maintenance type key)
+```
+
+</CodeGroup>
+
+## Get workflow graph
+
+Fetch the workflow graph for an entity type as JSON. This is useful for building UI around allowed status transitions.
+
+<CodeGroup title="client.catalogs.getWorkflowGraph(tenantId, entityType)">
+
+```ts
+await client.setTenant(tenantId)
+
+const graph = await client.catalogs.getWorkflowGraph(tenantId, 'work_order')
+// WorkflowGraph (JSONB) with entity_type, tenant_id, and transitions[]
+```
+
+</CodeGroup>
+
