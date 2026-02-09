@@ -4,12 +4,19 @@
   "description": "Supabase database with TypeScript tests",
   "type": "module",
   "private": true,
-  "workspaces": ["packages/sdk"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "dependencies": {
-    "@db/sdk": "workspace:*"
+    "@workorder-systems/sdk": "workspace:*"
   },
   "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
     "test": "vitest run",
+    "test:all": "turbo run test",
     "test:db": "vitest run --exclude tests/sdk.test.ts",
     "test:sdk": "vitest run tests/sdk.test.ts",
     "test:watch": "vitest",
@@ -22,7 +29,14 @@
     "test:teardown": "supabase stop",
     "gen-types": "bash packages/sdk/scripts/gen-types.sh"
   },
-  "keywords": ["supabase", "postgres", "cmms", "work-orders", "multi-tenant", "rls"],
+  "keywords": [
+    "supabase",
+    "postgres",
+    "cmms",
+    "work-orders",
+    "multi-tenant",
+    "rls"
+  ],
   "author": "",
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
@@ -30,7 +44,9 @@
     "@supabase/supabase-js": "^2.39.3",
     "@types/node": "^20.11.5",
     "dotenv": "^16.4.5",
+    "turbo": "^2.7.5",
     "typescript": "^5.3.3",
     "vitest": "^1.2.1"
-  }
+  },
+  "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"
 }

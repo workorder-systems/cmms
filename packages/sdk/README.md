@@ -1,11 +1,11 @@
-# @db/sdk
+# @workorder-systems/sdk
 
 Type-safe domain SDK for the database public API. Exposes only **public views** (reads) and **RPCs** (writes). Works in browser, Node.js, and edge runtimes (Cloudflare Workers, Vercel Edge).
 
 ## Install
 
 ```bash
-npm install @db/sdk @supabase/supabase-js
+npm install @workorder-systems/sdk @supabase/supabase-js
 ```
 
 Peer dependency: `@supabase/supabase-js` ^2.39.0.
@@ -13,7 +13,7 @@ Peer dependency: `@supabase/supabase-js` ^2.39.0.
 ## Quick start
 
 ```ts
-import { createDbClient } from '@db/sdk';
+import { createDbClient } from '@workorder-systems/sdk';
 
 const client = createDbClient(
   process.env.SUPABASE_URL!,

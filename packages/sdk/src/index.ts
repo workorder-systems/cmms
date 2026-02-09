@@ -1,5 +1,5 @@
 /**
- * @db/sdk – Type-safe domain SDK for the database public API.
+ * @workorder-systems/sdk – Type-safe domain SDK for the database public API.
  *
  * Exposes only public views (reads) and RPCs (writes). Use createDbClient()
  * to get a typed client; set tenant context before tenant-scoped operations.

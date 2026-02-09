@@ -1,4 +1,4 @@
-import { createDbClient } from '@db/sdk';
+import { createDbClient } from '@workorder-systems/sdk';
 import { getSupabaseConfig } from './supabase.js';
 import { createTestUser } from './auth.js';
 import { makeTenant, shortSlug } from './faker.js';

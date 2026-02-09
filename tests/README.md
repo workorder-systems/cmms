@@ -3,7 +3,7 @@
 ## What we test
 
 - **DB contract (Supabase direct):** All `*.test.ts` files **except** `sdk.test.ts`. They use the Supabase client directly (`createTestClient`, `createServiceRoleClient`) and hit public views (`v_*`) and RPCs (`rpc_*`). These tests validate RLS, permissions, RPC behavior, and view content.
-- **SDK:** Only `sdk.test.ts`. It uses `createDbClient()` from `@db/sdk` to validate that the SDK wraps the public API correctly.
+- **SDK:** Only `sdk.test.ts`. It uses `createDbClient()` from `@workorder-systems/sdk` to validate that the SDK wraps the public API correctly.
 
 ## How to run
 

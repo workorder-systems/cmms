@@ -1,5 +1,5 @@
 {
-  "name": "@db/sdk",
+  "name": "@workorder-systems/sdk",
   "version": "0.1.0",
   "description": "Type-safe domain SDK for the database public API (views + RPCs). Works in browser, Node.js, and edge runtimes.",
   "type": "module",

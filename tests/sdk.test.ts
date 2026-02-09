@@ -3,7 +3,7 @@
  * DB contract is tested in other suites.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createDbClient, SdkError } from '@db/sdk';
+import { createDbClient, SdkError } from '@workorder-systems/sdk';
 import { waitForSupabase } from './helpers/supabase';
 import { createTestSdkClient, withAuthenticatedTenant } from './helpers/sdk';
 import { shortSlug } from './helpers/faker';
