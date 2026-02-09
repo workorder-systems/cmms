@@ -30,3 +30,6 @@ Thumbs.db
 
 # Supabase
 .supabase/
+
+# Turborepo cache
+.turbo/
