@@ -5,11 +5,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 OUTPUT="$SCRIPT_DIR/../src/database.types.ts"
+
 cd "$REPO_ROOT"
-if ! command -v supabase &>/dev/null; then
-  echo "supabase CLI not found. Install: npm i -g supabase or npx supabase" >&2
-  exit 1
+
+# Prefer an already-installed Supabase CLI (e.g. via supabase/setup-cli in CI),
+# and only fall back to npx if it's not available. This avoids on-the-fly
+# npm installs like:
+#   npm warn exec The following package was not found and will be installed: supabase@...
+if command -v supabase &>/dev/null; then
+  SUPABASE_CMD="supabase"
+else
+  echo "supabase CLI not found on PATH, falling back to npx (this may install supabase locally)..." >&2
+  SUPABASE_CMD="npx supabase"
 fi
+
 echo "Generating types from local DB (schema: public) into $OUTPUT ..."
-npx supabase gen types typescript --local -s public > "$OUTPUT"
+"$SUPABASE_CMD" gen types typescript --local -s public > "$OUTPUT"
 echo "Done. Update packages/sdk if you added views or RPCs."

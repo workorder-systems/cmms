@@ -2931,6 +2931,15 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_plugin_installations_by_key: {
+        Args: { p_plugin_key: string }
+        Returns: {
+          config: Json
+          installation_id: string
+          plugin_id: string
+          tenant_id: string
+        }[]
+      }
       rpc_record_meter_reading: {
         Args: {
           p_meter_id: string
