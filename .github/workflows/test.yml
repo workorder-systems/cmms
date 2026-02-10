@@ -8,6 +8,7 @@ on:
       - 'tests/**'
       - 'packages/sdk/**'
       - '.github/workflows/test.yml'
+      - 'pnpm-lock.yaml'
   pull_request:
     branches: [main, master, testing]
     paths:
