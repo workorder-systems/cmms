@@ -8,12 +8,14 @@ import {
   Card,
   CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
 import { Sparkline, type SparklineProps } from "@workspace/ui/components/sparkline"
+
+const TITLE_CLASS =
+  "text-2xl font-semibold tabular-nums tracking-tight @[250px]/card:text-3xl"
 
 export interface StatCardBackgroundChartProps {
   data: number[]
@@ -22,42 +24,38 @@ export interface StatCardBackgroundChartProps {
   className?: string
 }
 
-/**
- * Renders a faint background chart that fills the card.
- */
 function StatCardBackgroundChart({
   data,
   variant = "area",
   color = "var(--muted-foreground)",
   className,
 }: StatCardBackgroundChartProps) {
-  if (!data?.length) return null
-
+  const gradientId = `stat-card-bg-${React.useId().replace(/:/g, "")}`
   const width = 200
   const height = 80
-  const min = Math.min(...data)
-  const max = Math.max(...data)
-  const range = max - min || 1
-  const normalized = data.map((value) => (value - min) / range)
-  const points = normalized.map((y, i) => {
-    const x = (i / (data.length - 1)) * width
-    const yPos = height - y * height
-    return { x, y: yPos }
-  })
+  const points = React.useMemo(() => {
+    if (!data?.length) return []
+    const min = Math.min(...data)
+    const max = Math.max(...data)
+    const range = max - min || 1
+    const normalized = data.map((v) => (v - min) / range)
+    return normalized.map((y, i) => ({
+      x: (i / (data.length - 1)) * width,
+      y: height - y * height,
+    }))
+  }, [data])
 
   const pathData = React.useMemo(() => {
     if (points.length === 0) return ""
-    let path = `M ${points[0].x} ${points[0].y}`
+    let path = `M ${points[0]!.x} ${points[0]!.y}`
     for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1]
-      const curr = points[i]
+      const prev = points[i - 1]!
+      const curr = points[i]!
       const next = points[i + 1]
-      if (next) {
+      if (next !== undefined) {
         const cp1x = prev.x + (curr.x - prev.x) / 2
-        const cp1y = prev.y
         const cp2x = curr.x - (next.x - curr.x) / 2
-        const cp2y = curr.y
-        path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`
+        path += ` C ${cp1x} ${prev.y}, ${cp2x} ${curr.y}, ${curr.x} ${curr.y}`
       } else {
         path += ` L ${curr.x} ${curr.y}`
       }
@@ -68,9 +66,9 @@ function StatCardBackgroundChart({
   const areaPath =
     points.length === 0
       ? ""
-      : `${pathData} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`
+      : `${pathData} L ${points[points.length - 1]!.x} ${height} L ${points[0]!.x} ${height} Z`
 
-  const gradientId = `stat-card-bg-${React.useId().replace(/:/g, "")}`
+  if (points.length === 0) return null
 
   return (
     <div
@@ -93,11 +91,7 @@ function StatCardBackgroundChart({
           </linearGradient>
         </defs>
         {variant === "area" && (
-          <path
-            d={areaPath}
-            fill={variant === "area" ? `url(#${gradientId})` : "none"}
-            className="transition-opacity"
-          />
+          <path d={areaPath} fill={`url(#${gradientId})`} className="transition-opacity" />
         )}
         <path
           d={pathData}
@@ -121,33 +115,31 @@ export interface StatCardSparklineProps {
 export type StatCardTrendDirection = "up" | "down" | "neutral"
 
 export interface StatCardProps extends React.ComponentProps<typeof Card> {
-  /** Label above the value (e.g. "Total Revenue") */
   label?: React.ReactNode
-  /** Main metric value (e.g. "$1,250.00", "1,234") */
   value?: React.ReactNode
-  /** Trend shown in a badge; string (e.g. "+12.5%") or { value, direction } for icon */
   trend?:
     | React.ReactNode
     | { value: React.ReactNode; direction?: StatCardTrendDirection }
-  /** First line in footer (e.g. "Trending up this month") – can include an icon */
   footerSummary?: React.ReactNode
-  /** Muted line in footer (e.g. "Visitors for the last 6 months") */
   footerDescription?: React.ReactNode
-  /** Sparkline shown in the header action area (right side). Mutually exclusive with backgroundChart. */
   sparkline?: StatCardSparklineProps
-  /** Faint background chart behind a gradient for readability. Mutually exclusive with sparkline. */
   backgroundChart?: StatCardBackgroundChartProps
-  /** Card visual variant */
   variant?: "default" | "gradient"
-  /** Optional container class for responsive title (e.g. @container/card) */
   className?: string
   children?: React.ReactNode
 }
 
-/**
- * StatCard – metric card built from Card primitives. Header: label, value, and
- * action (trend badge + optional sparkline). Footer: summary and description.
- */
+function isTrendConfig(
+  trend: StatCardProps["trend"]
+): trend is { value: React.ReactNode; direction?: StatCardTrendDirection } {
+  return (
+    trend != null &&
+    typeof trend === "object" &&
+    !React.isValidElement(trend) &&
+    "value" in trend
+  )
+}
+
 export function StatCard({
   label,
   value,
@@ -161,33 +153,25 @@ export function StatCard({
   children,
   ...cardProps
 }: StatCardProps) {
-  const trendConfig =
-    trend != null &&
-    typeof trend === "object" &&
-    !React.isValidElement(trend) &&
-    "value" in trend
-
-  const trendObj = trendConfig ? (trend as { value: React.ReactNode; direction?: StatCardTrendDirection }) : null
-
+  const trendConfig = isTrendConfig(trend) ? trend : null
   const trendContent =
     trend != null &&
-    (trendObj ? (
+    (trendConfig ? (
       <Badge variant="outline" className="gap-1">
-        {trendObj.direction === "down" && <TrendingDown className="size-3.5" />}
-        {(trendObj.direction === "up" || trendObj.direction == null) && (
+        {trendConfig.direction === "down" && <TrendingDown className="size-3.5" />}
+        {(trendConfig.direction === "up" || trendConfig.direction == null) && (
           <TrendingUp className="size-3.5" />
         )}
-        {trendObj.value}
+        {trendConfig.value}
       </Badge>
     ) : (
-      <Badge variant="outline">{trend}</Badge>
+      <Badge variant="outline">{trend as React.ReactNode}</Badge>
     ))
 
   const hasSparkline = (sparkline?.data?.length ?? 0) > 0
   const hasBackgroundChart = (backgroundChart?.data?.length ?? 0) > 0
   const showSparkline = hasSparkline
   const showBackgroundChart = hasBackgroundChart && !hasSparkline
-  // Sparkline and background chart are mutually exclusive; when both set, only sparkline is shown
 
   const sparklineEl =
     showSparkline && sparkline ? (
@@ -203,8 +187,11 @@ export function StatCard({
       </div>
     ) : null
 
-  const hasAction = trendContent
-
+  const hasFooter =
+    footerSummary != null ||
+    footerDescription != null ||
+    children != null ||
+    sparklineEl
   const useCardGradient =
     variant === "gradient" || (showBackgroundChart && backgroundChart)
 
@@ -235,49 +222,54 @@ export function StatCard({
         </>
       )}
 
-      <CardHeader className="relative z-10 bg-transparent">
-        {label != null && (
-          <CardDescription data-slot="stat-card-label">{label}</CardDescription>
-        )}
-        {value != null && (
-          <CardTitle
-            data-slot="stat-card-value"
-            className="text-2xl font-semibold tabular-nums tracking-tight @[250px]/card:text-3xl"
-          >
-            {value}
-          </CardTitle>
-        )}
-        {hasAction && (
-          <CardAction>
-            {trendContent}
-          </CardAction>
-        )}
-      </CardHeader>
-
-      {(footerSummary != null || footerDescription != null || children || sparklineEl) && (
-        <CardFooter className="relative z-10 flex w-full items-end justify-between gap-4 bg-transparent text-sm">
-          <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-            {footerSummary != null && (
-              <div
-                data-slot="stat-card-footer-summary"
-                className="line-clamp-1 flex gap-2 font-medium"
-              >
-                {footerSummary}
-              </div>
+      <div className="relative z-10 flex flex-1 flex-col gap-4">
+        <CardHeader className="bg-transparent">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            {value != null && (
+              <CardTitle data-slot="stat-card-value" className={TITLE_CLASS}>
+                {value}
+              </CardTitle>
             )}
-            {footerDescription != null && (
-              <div
-                data-slot="stat-card-footer-description"
-                className="text-muted-foreground"
+            {label != null && (
+              <CardDescription
+                data-slot="stat-card-label"
+                className="text-muted-foreground text-sm"
               >
-                {footerDescription}
-              </div>
+                {label}
+              </CardDescription>
             )}
-            {children}
           </div>
-          {sparklineEl}
-        </CardFooter>
-      )}
+          {trendContent && <CardAction>{trendContent}</CardAction>}
+        </CardHeader>
+
+        {hasFooter && (
+          <footer
+            data-slot="stat-card-footer"
+            className="flex w-full items-end justify-between gap-4 border-t border-border px-6 pt-4 text-sm"
+          >
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              {footerSummary != null && (
+                <div
+                  data-slot="stat-card-footer-summary"
+                  className="line-clamp-1 flex gap-2 font-medium"
+                >
+                  {footerSummary}
+                </div>
+              )}
+              {footerDescription != null && (
+                <div
+                  data-slot="stat-card-footer-description"
+                  className="text-muted-foreground"
+                >
+                  {footerDescription}
+                </div>
+              )}
+              {children}
+            </div>
+            {sparklineEl}
+          </footer>
+        )}
+      </div>
     </Card>
   )
 }
