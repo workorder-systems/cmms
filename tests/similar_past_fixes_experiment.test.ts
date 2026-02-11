@@ -337,4 +337,49 @@ describe('Similar Past Fixes Experiment', () => {
       expect(similar![0].work_order_id).toBe(wo1);
     });
   });
+
+  describe('Index then search round-trip (synthetic embeddings)', () => {
+    /**
+     * Simulates the full index → search flow at the DB layer without calling OpenAI.
+     * Validates that indexing a work order (upsert embedding) and then searching
+     * with the same embedding returns that work order first with similarity 1.
+     */
+    it('indexing a work order and searching with same embedding returns it first', async () => {
+      const client = createTestClient();
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const title = 'Pump P-101 bearing replacement';
+      const description = 'Replace worn bearing and check alignment';
+      const woId = await createTestWorkOrder(client, tenantId, title, description);
+      await transitionWorkOrderStatus(client, tenantId, woId, 'assigned');
+      await transitionWorkOrderStatus(client, tenantId, woId, 'in_progress');
+      await transitionWorkOrderStatus(client, tenantId, woId, 'completed');
+
+      // "Index": same source text recipe as Edge Function (title + description)
+      const sourceText = [title, description].filter(Boolean).join('\n').trim();
+      const embedding = makeVector(10);
+      const { error: upsertErr } = await client.rpc('rpc_upsert_work_order_embedding', {
+        p_work_order_id: woId,
+        p_embedding: embedding,
+        p_source_text: sourceText,
+      });
+      expect(upsertErr).toBeNull();
+
+      // "Search": query with the same embedding (simulates same text → same vector)
+      const { data: similar, error: searchErr } = await client.rpc('rpc_similar_past_work_orders', {
+        p_query_embedding: embedding,
+        p_limit: 5,
+        p_exclude_work_order_id: null,
+      });
+      expect(searchErr).toBeNull();
+      expect(Array.isArray(similar)).toBe(true);
+      expect(similar!.length).toBeGreaterThanOrEqual(1);
+      expect(similar![0].work_order_id).toBe(woId);
+      expect(similar![0].similarity_score).toBe(1);
+      expect(similar![0].title).toBe(title);
+    });
+  });
+
 });

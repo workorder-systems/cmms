@@ -4,21 +4,8 @@
 //
 // Purpose
 // -------
-// Orchestrates the "Similar Past Fixes" experiment end-to-end:
-// - Indexing: given a work order ID, fetch its text, embed it, and upsert
-//   into app.work_order_embeddings via rpc_upsert_work_order_embedding.
-// - Search: given either a work order ID or a free-text query, embed the text
-//   and call rpc_similar_past_work_orders to retrieve similar completed WOs.
-//
-// This function intentionally keeps all tenant isolation and authorization
-// logic inside Postgres (RLS + RPCs). It forwards the caller's Authorization
-// header to Supabase so auth.uid() and RLS behave exactly as in the app.
-//
-// HTTP interface (JSON)
-// ---------------------
-// POST /similar-past-fixes/index
-//   Body: { "workOrderId": "uuid-string" }
-//   Response: { "success": true } or { "error": "message", "code": string }
+// Search for similar past work orders. Indexing is done only by the server
+// (backfill cron); tenant users cannot index.
 //
 // POST /similar-past-fixes/search
 //   Body:
@@ -57,10 +44,6 @@
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-
-type IndexRequest = {
-  workOrderId?: string;
-};
 
 type SearchRequest = {
   workOrderId?: string;
@@ -158,129 +141,6 @@ async function embed(text: string): Promise<number[]> {
   }
 
   return embedding;
-}
-
-async function handleIndex(
-  supabase: ReturnType<typeof createClient>,
-  body: IndexRequest
-): Promise<Response> {
-  const startedAt = Date.now();
-  const workOrderId = body.workOrderId;
-  if (!workOrderId) {
-    return jsonResponse(
-      { error: 'workOrderId is required', code: 'BAD_REQUEST' },
-      400
-    );
-  }
-
-  // Fetch the work order text and context from the tenant-scoped view.
-  const { data: woRows, error: woError } = await supabase
-    .from('v_work_orders')
-    .select('id,title,description,asset_id,location_id')
-    .eq('id', workOrderId)
-    .limit(1);
-
-  if (woError) {
-    console.error(
-      'similar-past-fixes/index: failed to fetch work order',
-      woError
-    );
-    return jsonResponse(
-      {
-        error: 'Failed to fetch work order for embedding',
-        code: 'RPC_FAIL',
-      },
-      500
-    );
-  }
-
-  const wo = woRows && woRows.length > 0 ? woRows[0] : null;
-  if (!wo) {
-    return jsonResponse(
-      { error: 'Work order not found', code: 'NOT_FOUND' },
-      404
-    );
-  }
-
-  const textParts: string[] = [];
-  if (wo.title) textParts.push(String(wo.title));
-  if (wo.description) textParts.push(String(wo.description));
-
-  // Optionally enrich with asset and location names (if accessible in current tenant).
-  try {
-    if (wo.asset_id) {
-      const { data: assetRows } = await supabase
-        .from('v_assets')
-        .select('name')
-        .eq('id', wo.asset_id)
-        .limit(1);
-      const assetName = assetRows && assetRows[0]?.name;
-      if (assetName) textParts.push(String(assetName));
-    }
-    if (wo.location_id) {
-      const { data: locationRows } = await supabase
-        .from('v_locations')
-        .select('name')
-        .eq('id', wo.location_id)
-        .limit(1);
-      const locationName = locationRows && locationRows[0]?.name;
-      if (locationName) textParts.push(String(locationName));
-    }
-  } catch (lookupErr) {
-    console.error(
-      'similar-past-fixes/index: failed to enrich text with asset/location names',
-      lookupErr
-    );
-    // Enrichment is best-effort; continue with basic text.
-  }
-
-  const sourceText = textParts.join('\n').trim();
-
-  let embedding: number[];
-  try {
-    embedding = await embed(sourceText);
-  } catch (err) {
-    console.error('similar-past-fixes/index: embed failed', err);
-    return jsonResponse({ error: 'Failed to compute embedding', code: 'EMBED_FAIL' }, 500);
-  }
-
-  const { error: rpcError } = await supabase.rpc(
-    'rpc_upsert_work_order_embedding',
-    {
-      p_work_order_id: workOrderId,
-      p_embedding: embedding,
-      p_source_text: sourceText || null,
-      p_model_name: EMBEDDING_MODEL,
-      p_model_version: EMBEDDING_MODEL_VERSION,
-    }
-  );
-
-  if (rpcError) {
-    console.error(
-      'similar-past-fixes/index: rpc_upsert_work_order_embedding failed',
-      rpcError
-    );
-    return jsonResponse(
-      {
-        error: 'Failed to upsert work order embedding',
-        code: 'RPC_FAIL',
-      },
-      500
-    );
-  }
-
-  const durationMs = Date.now() - startedAt;
-  console.log(
-    JSON.stringify({
-      source: 'similar-past-fixes',
-      path: '/index',
-      workOrderId,
-      durationMs,
-      code: 'OK',
-    })
-  );
-
-  return jsonResponse({ success: true });
 }
 
 async function handleSearch(
@@ -450,17 +310,12 @@ serve(async (req: Request) => {
     return jsonResponse({ error: 'Invalid JSON body', code: 'BAD_REQUEST' }, 400);
   }
 
-  // Route based on path suffix: /similar-past-fixes/index or /similar-past-fixes/search
-  if (path.endsWith('/index')) {
-    return handleIndex(supabase, body as IndexRequest);
-  }
-
   if (path.endsWith('/search')) {
     return handleSearch(supabase, body as SearchRequest);
   }
 
   return jsonResponse(
-    { error: 'Unknown route. Use /similar-past-fixes/index or /search', code: 'BAD_REQUEST' },
+    { error: 'Unknown route. Use /similar-past-fixes/search', code: 'BAD_REQUEST' },
     404
   );
 });

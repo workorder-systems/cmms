@@ -7,7 +7,7 @@
 // Cron-oriented backfill job for the \"Similar Past Fixes\" experiment.
 // - Finds completed work orders that do not yet have embeddings.
 // - Computes embeddings in small batches.
-// - Upserts into app.work_order_embeddings directly (service role, bypassing RPC).
+// - Upserts via rpc_backfill_upsert_work_order_embedding (service role, app schema not exposed).
 //
 // This function is intended to be invoked on a schedule (e.g. every 5–15 minutes)
 // using Supabase Edge Function cron. It uses the service role key to bypass RLS
@@ -167,17 +167,17 @@ async function backfillBatch(): Promise<BackfillResult> {
     while (attempt < 2 && !success) {
       try {
         const embedding = await embed(sourceText);
-        const { error: upsertError } = await supabase
-          .from('app.work_order_embeddings')
-          .upsert({
-            work_order_id: row.work_order_id,
-            tenant_id: row.tenant_id,
-            embedding,
-            source_text: sourceText || null,
-            model_name: EMBEDDING_MODEL,
-            model_version: EMBEDDING_MODEL_VERSION,
-            embedded_at: new Date().toISOString(),
-          });
+        const { error: upsertError } = await supabase.rpc(
+          'rpc_backfill_upsert_work_order_embedding',
+          {
+            p_work_order_id: row.work_order_id,
+            p_tenant_id: row.tenant_id,
+            p_embedding: embedding,
+            p_source_text: sourceText || null,
+            p_model_name: EMBEDDING_MODEL,
+            p_model_version: EMBEDDING_MODEL_VERSION,
+          }
+        );
 
         if (upsertError) {
           throw upsertError;

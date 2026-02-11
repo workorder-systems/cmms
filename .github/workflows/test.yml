@@ -145,7 +145,7 @@ jobs:
         run: pnpm run build --filter @workorder-systems/sdk
 
       - name: 🧪 Run test suite
-        run: pnpm test
+        run: pnpm run test:ci
         env:
           CI: true
           SUPABASE_URL: ${{ env.SUPABASE_URL }}
