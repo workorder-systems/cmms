@@ -310,7 +310,8 @@ serve(async (req: Request) => {
     return jsonResponse({ error: 'Invalid JSON body', code: 'BAD_REQUEST' }, 400);
   }
 
-  if (path.endsWith('/search')) {
+  /* Accept both /search (direct fetch) and base path (supabase.functions.invoke) */
+  if (path.endsWith('/search') || path.endsWith('similar-past-fixes')) {
     return handleSearch(supabase, body as SearchRequest);
   }
 

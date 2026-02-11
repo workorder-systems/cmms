@@ -12,6 +12,7 @@ import type { CatalogsResource } from './resources/catalogs.js';
 import type { PmResource } from './resources/pm.js';
 import type { DashboardResource } from './resources/dashboard.js';
 import type { AuditResource } from './resources/audit.js';
+import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -65,4 +66,6 @@ export type DbClient = {
   dashboard: DashboardResource;
   /** Audit: entity and permission changes, retention configuration. */
   audit: AuditResource;
+  /** Similar Past Fixes: search for semantically similar completed work orders. */
+  similarPastFixes: SimilarPastFixesResource;
 };
