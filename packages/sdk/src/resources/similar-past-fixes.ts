@@ -72,9 +72,12 @@ export function createSimilarPastFixesResource(
 
       const resolved = data as { results?: SimilarPastFixResult[] } | SearchErrorResponse;
       if ('error' in resolved && resolved.error) {
-        throw new Error(
-          `Similar Past Fixes search failed: ${resolved.error}${resolved.code ? ` (${resolved.code})` : ''}`
-        );
+        // Surface well-known error codes so callers can distinguish rate limits, etc.
+        const message = `Similar Past Fixes search failed: ${resolved.error}`;
+        const err = new (require('../errors.js').SdkError)(message, {
+          code: resolved.code,
+        });
+        throw err;
       }
 
       const results = (resolved as { results?: SimilarPastFixResult[] }).results ?? [];

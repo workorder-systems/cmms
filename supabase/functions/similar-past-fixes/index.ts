@@ -79,6 +79,9 @@ const EMBEDDING_MODEL =
   Deno.env.get('EMBEDDING_MODEL') ?? 'text-embedding-3-small';
 const EMBEDDING_MODEL_VERSION =
   Deno.env.get('EMBEDDING_MODEL_VERSION') ?? 'v1';
+const SIMILAR_PAST_FIXES_ENABLED =
+  (Deno.env.get('SIMILAR_PAST_FIXES_ENABLED') ?? 'true').toLowerCase() !==
+  'false';
 
 const MAX_TEXT_CHARS = 4000;
 
@@ -152,6 +155,16 @@ async function handleSearch(
   const startedAt = Date.now();
   const { workOrderId, queryText, limit, minSimilarity } = body;
 
+  if (!SIMILAR_PAST_FIXES_ENABLED) {
+    return jsonResponse(
+      {
+        error: 'Similar Past Fixes is currently disabled',
+        code: 'DISABLED',
+      },
+      503
+    );
+  }
+
   if (!workOrderId && (!queryText || !queryText.trim())) {
     return jsonResponse(
       {
@@ -191,9 +204,9 @@ async function handleSearch(
 
     const parts: string[] = [];
     if (wo.title) parts.push(String(wo.title));
-    if (wo.description) parts.push(String(wo.description));
     if (wo.cause) parts.push(String(wo.cause));
     if (wo.resolution) parts.push(String(wo.resolution));
+    if (wo.description) parts.push(String(wo.description));
     try {
       if (wo.asset_id) {
         const { data: assetRows } = await supabase
@@ -224,6 +237,31 @@ async function handleSearch(
   } else {
     // Free-text query
     textToEmbed = (queryText ?? '').trim();
+  }
+
+  // Enforce per-tenant/user rate limits before calling OpenAI.
+  try {
+    const { error: rateError } = await supabase.rpc(
+      'rpc_check_similar_past_fixes_rate_limit',
+      {}
+    );
+    if (rateError) {
+      console.error(
+        'similar-past-fixes/search: rate limit RPC failed',
+        rateError
+      );
+      // Treat this as a rate limit-style failure so we fail closed.
+      return jsonResponse(
+        { error: 'Rate limit exceeded or misconfigured', code: 'RATE_LIMITED' },
+        429
+      );
+    }
+  } catch (e) {
+    console.error('similar-past-fixes/search: rate limit check threw', e);
+    return jsonResponse(
+      { error: 'Rate limit exceeded or misconfigured', code: 'RATE_LIMITED' },
+      429
+    );
   }
 
   let queryEmbedding: number[];
