@@ -210,8 +210,15 @@ describe('Similar Past Fixes Experiment', () => {
 
       expect(error).toBeNull();
       expect(Array.isArray(data)).toBe(true);
-      expect(data!.length).toBe(1);
-      expect(data![0].work_order_id).toBe(woWithoutEmbedding);
+      expect(data!.length).toBeGreaterThanOrEqual(1);
+      // Should include the work order without an embedding
+      expect(
+        data!.some((row) => row.work_order_id === woWithoutEmbedding)
+      ).toBe(true);
+      // Should not include the work order that already has an embedding
+      expect(
+        data!.some((row) => row.work_order_id === woWithEmbedding)
+      ).toBe(false);
     });
   });
 

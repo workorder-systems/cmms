@@ -174,8 +174,8 @@ async function backfillBatch(): Promise<BackfillResult> {
         const { error: upsertError } = await supabase.rpc(
           'rpc_backfill_upsert_work_order_embedding',
           {
-            p_work_order_id: row.work_order_id,
             p_tenant_id: row.tenant_id,
+            p_work_order_id: row.work_order_id,
             p_embedding: embedding,
             p_source_text: sourceText || null,
             p_model_name: EMBEDDING_MODEL,

@@ -18,8 +18,8 @@
 -- service role key. Validates work order exists and tenant matches, then upserts.
 
 create or replace function public.rpc_backfill_upsert_work_order_embedding(
-  p_work_order_id uuid,
   p_tenant_id uuid,
+  p_work_order_id uuid,
   p_embedding vector(1536),
   p_source_text text default null,
   p_model_name text default null,
