@@ -190,8 +190,7 @@ export function StatCard({
   const hasFooter =
     footerSummary != null ||
     footerDescription != null ||
-    children != null ||
-    sparklineEl
+    children != null
   const useCardGradient =
     variant === "gradient" || (showBackgroundChart && backgroundChart)
 
@@ -199,7 +198,7 @@ export function StatCard({
     <Card
       data-slot="stat-card"
       className={cn(
-        "relative overflow-hidden @container/card",
+        "relative pb-2 overflow-hidden @container/card group",
         useCardGradient &&
           "bg-linear-to-t from-primary/5 to-card shadow-xs dark:bg-card",
         className
@@ -221,10 +220,13 @@ export function StatCard({
           />
         </>
       )}
+      {trendContent && <div className="top-0 right-0 absolute p-2 opacity-50 group-hover:opacity-100 duration-200">{trendContent}</div>}
 
-      <div className="relative z-10 flex flex-1 flex-col gap-4">
-        <CardHeader className="bg-transparent">
+      <div className="relative z-10 flex flex-1 flex-col h-full justify-between gap-4">
+
+        <CardHeader className="bg-transparent items-end">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
+            {/* badge / trend content */}
             {value != null && (
               <CardTitle data-slot="stat-card-value" className={TITLE_CLASS}>
                 {value}
@@ -239,13 +241,13 @@ export function StatCard({
               </CardDescription>
             )}
           </div>
-          {trendContent && <CardAction>{trendContent}</CardAction>}
+          {trendContent && <CardAction className="flex items-center h-full justify-end">{sparklineEl}</CardAction>}
         </CardHeader>
 
         {hasFooter && (
           <footer
             data-slot="stat-card-footer"
-            className="flex w-full items-end justify-between gap-4 border-t border-border px-6 pt-4 text-sm"
+            className="flex w-full h-min items-end justify-between gap-4 border-t border-border px-6 pt-4 text-sm"
           >
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               {footerSummary != null && (
@@ -266,7 +268,6 @@ export function StatCard({
               )}
               {children}
             </div>
-            {sparklineEl}
           </footer>
         )}
       </div>
