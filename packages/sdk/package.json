@@ -24,6 +24,9 @@
     "test:watch": "vitest",
     "gen-types": "bash scripts/gen-types.sh"
   },
+  "dependencies": {
+    "@workspace/ui": "workspace:*"
+  },
   "peerDependencies": {
     "@supabase/supabase-js": "^2.39.0"
   },
