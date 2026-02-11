@@ -28,7 +28,7 @@ Similar Past Fixes helps you find past work orders that are semantically similar
 await client.setTenant(tenantId)
 
 const results = await client.similarPastFixes.search({
-  queryText: 'Motor overload – check connections',
+  queryText: 'Motor overload, check connections',
   limit: 5,
   minSimilarity: 0.5,
 })
@@ -47,7 +47,7 @@ Pass free text describing the issue (e.g. title + description). The Edge Functio
 await client.setTenant(tenantId)
 
 const results = await client.similarPastFixes.search({
-  queryText: 'Pump not starting – check power supply',
+  queryText: 'Pump not starting, check power supply',
   limit: 5,
 })
 // Returns SimilarPastFixResult[]
@@ -119,6 +119,12 @@ Each result is a `SimilarPastFixResult`:
   </Property>
   <Property name="locationId">
     Optional location UUID.
+  </Property>
+  <Property name="cause">
+    Optional root cause text for the similar work order.
+  </Property>
+  <Property name="resolution">
+    Optional resolution text describing what was done to fix the issue.
   </Property>
 </Properties>
 

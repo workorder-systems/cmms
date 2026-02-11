@@ -23,6 +23,8 @@ export interface SimilarPastFixResult {
   similarityScore: number;
   assetId: string | null;
   locationId: string | null;
+  cause: string | null;
+  resolution: string | null;
 }
 
 /** Error response from the Edge Function. */

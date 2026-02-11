@@ -68,6 +68,8 @@ type SimilarResult = {
   similarityScore: number;
   assetId: string | null;
   locationId: string | null;
+  cause: string | null;
+  resolution: string | null;
 };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -167,7 +169,7 @@ async function handleSearch(
     // Fetch the work order to build the embedding text.
     const { data: woRows, error: woError } = await supabase
       .from('v_work_orders')
-      .select('id,title,description,asset_id,location_id')
+      .select('id,title,description,cause,resolution,asset_id,location_id')
       .eq('id', workOrderId)
       .limit(1);
 
@@ -190,6 +192,8 @@ async function handleSearch(
     const parts: string[] = [];
     if (wo.title) parts.push(String(wo.title));
     if (wo.description) parts.push(String(wo.description));
+    if (wo.cause) parts.push(String(wo.cause));
+    if (wo.resolution) parts.push(String(wo.resolution));
     try {
       if (wo.asset_id) {
         const { data: assetRows } = await supabase
@@ -269,6 +273,8 @@ async function handleSearch(
     similarityScore: Number(row.similarity_score ?? 0),
     assetId: row.asset_id ?? null,
     locationId: row.location_id ?? null,
+    cause: row.cause ?? null,
+    resolution: row.resolution ?? null,
   }));
 
   const durationMs = Date.now() - startedAt;

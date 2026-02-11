@@ -341,6 +341,46 @@ describe('Work Orders', () => {
       expect(wo3?.completed_at).toBeDefined();
     });
 
+    it('should allow recording cause and resolution via rpc_complete_work_order', async () => {
+      const client = createTestClient();
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const workOrderId = await createTestWorkOrder(
+        client,
+        tenantId,
+        'Completion with details',
+        'Investigate vibration on pump'
+      );
+
+      // Move through a valid workflow path before completion.
+      await transitionWorkOrderStatus(client, tenantId, workOrderId, 'assigned');
+      await transitionWorkOrderStatus(client, tenantId, workOrderId, 'in_progress');
+
+      const cause = 'Worn bearing';
+      const resolution = 'Replaced bearing and realigned pump';
+
+      const { error } = await client.rpc('rpc_complete_work_order', {
+        p_tenant_id: tenantId,
+        p_work_order_id: workOrderId,
+        p_cause: cause,
+        p_resolution: resolution,
+      });
+
+      expect(error).toBeNull();
+
+      const { data: wo } = await client
+        .from('v_work_orders')
+        .select('status, cause, resolution')
+        .eq('id', workOrderId)
+        .single();
+
+      expect(wo?.status).toBe('completed');
+      expect(wo?.cause).toBe(cause);
+      expect(wo?.resolution).toBe(resolution);
+    });
+
     it('should prevent transition with missing required fields', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);

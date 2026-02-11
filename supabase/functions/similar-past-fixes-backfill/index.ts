@@ -41,6 +41,8 @@ type BackfillCandidate = {
   tenant_id: string;
   title: string | null;
   description: string | null;
+  cause: string | null;
+  resolution: string | null;
   asset_name: string | null;
   location_name: string | null;
 };
@@ -157,6 +159,8 @@ async function backfillBatch(): Promise<BackfillResult> {
     const parts: string[] = [];
     if (row.title) parts.push(String(row.title));
     if (row.description) parts.push(String(row.description));
+     if (row.cause) parts.push(String(row.cause));
+     if (row.resolution) parts.push(String(row.resolution));
     if (row.asset_name) parts.push(String(row.asset_name));
     if (row.location_name) parts.push(String(row.location_name));
     const sourceText = parts.join('\n').trim();

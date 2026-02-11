@@ -34,6 +34,8 @@ export interface TransitionStatusParams {
 export interface CompleteWorkOrderParams {
   tenantId: string;
   workOrderId: string;
+  cause?: string | null;
+  resolution?: string | null;
 }
 
 /** Params for logging time on a work order. */
@@ -106,6 +108,8 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
       return callRpc(rpc(supabase), 'rpc_complete_work_order', {
         p_tenant_id: params.tenantId,
         p_work_order_id: params.workOrderId,
+        p_cause: params.cause ?? null,
+        p_resolution: params.resolution ?? null,
       });
     },
 

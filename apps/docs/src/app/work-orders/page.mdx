@@ -124,7 +124,7 @@ await client.workOrders.transitionStatus({
 
 ## Complete work order
 
-Mark a work order as completed (transition to completed status).
+Mark a work order as completed (transition to completed status). You can optionally record cause and resolution when completing.
 
 <CodeGroup title="client.workOrders.complete(params)">
 
@@ -132,6 +132,8 @@ Mark a work order as completed (transition to completed status).
 await client.workOrders.complete({
   tenantId: 'uuid-of-tenant',
   workOrderId: 'uuid-of-work-order',
+  cause: 'Worn bearing caused vibration',
+  resolution: 'Replaced bearing and realigned motor',
 })
 ```
 
