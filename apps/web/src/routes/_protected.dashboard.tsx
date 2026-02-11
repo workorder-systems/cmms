@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,24 +44,21 @@ import {
   DropdownMenuTrigger,
 } from '@workspace/ui/components/dropdown-menu'
 import {
-  AudioWaveform,
   BadgeCheck,
   Bell,
   BookOpen,
   Bot,
+  Building2,
   ChevronRight,
   ChevronsUpDown,
-  Command,
   CreditCard,
   Folder,
   Forward,
   Frame,
-  GalleryVerticalEnd,
   LogOut,
   Map,
   MoreHorizontal,
   PieChart,
-  Plus,
   Settings2,
   Sparkles,
   SquareTerminal,
@@ -74,13 +71,9 @@ import {
 } from '@workspace/ui/components/avatar'
 import { useIsMobile } from '@workspace/ui/hooks/use-mobile'
 import { useAuth } from '../contexts/auth'
+import { useTenant } from '../contexts/tenant'
 
 const DASHBOARD_DATA = {
-  teams: [
-    { name: 'Acme Inc', logo: GalleryVerticalEnd, plan: 'Enterprise' },
-    { name: 'Acme Corp.', logo: AudioWaveform, plan: 'Startup' },
-    { name: 'Evil Corp.', logo: Command, plan: 'Free' },
-  ],
   navMain: [
     {
       title: 'Playground',
@@ -133,24 +126,19 @@ const DASHBOARD_DATA = {
   ],
 }
 
-export const Route = createFileRoute('/dashboard')({
-  beforeLoad: async ({ context, location }) => {
-    const { data } = await context.dbClient.supabase.auth.getSession()
-    if (!data.session) {
-      throw redirect({
-        to: '/auth/login',
-        search: { redirect: location.pathname },
-      })
-    }
-  },
+export const Route = createFileRoute('/_protected/dashboard')({
   component: DashboardLayout,
 })
 
 function DashboardLayout() {
+  return <DashboardLayoutInner />
+}
+
+function DashboardLayoutInner() {
   const isMobile = useIsMobile()
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
-  const [activeTeam, setActiveTeam] = React.useState(DASHBOARD_DATA.teams[0])
+  const { tenants, activeTenant, setActiveTenantId, isLoading: tenantsLoading, isSetting } = useTenant()
 
   const displayName =
     (user?.user_metadata?.name as string | undefined) ??
@@ -164,7 +152,16 @@ function DashboardLayout() {
     await navigate({ to: '/' })
   }
 
-  if (!activeTeam) return null
+  const tenantInitial = (name: string | null | undefined) =>
+    (name ?? 'T').slice(0, 1).toUpperCase()
+
+  if (tenantsLoading && tenants.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+        Loading tenants…
+      </div>
+    )
+  }
 
   return (
     <SidebarProvider>
@@ -177,13 +174,24 @@ function DashboardLayout() {
                   <SidebarMenuButton
                     size="lg"
                     className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                    disabled={tenants.length === 0 || isSetting}
                   >
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                      <activeTeam.logo className="size-4" />
+                      {activeTenant ? (
+                        <span className="text-sm font-semibold">
+                          {tenantInitial(activeTenant.name)}
+                        </span>
+                      ) : (
+                        <Building2 className="size-4" />
+                      )}
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{activeTeam.name}</span>
-                      <span className="truncate text-xs">{activeTeam.plan}</span>
+                      <span className="truncate font-semibold">
+                        {activeTenant?.name ?? 'No tenant'}
+                      </span>
+                      <span className="truncate text-xs">
+                        {activeTenant?.slug ?? (isSetting ? 'Switching…' : '')}
+                      </span>
                     </div>
                     <ChevronsUpDown className="ml-auto" />
                   </SidebarMenuButton>
@@ -195,27 +203,35 @@ function DashboardLayout() {
                   sideOffset={4}
                 >
                   <DropdownMenuLabel className="text-xs text-muted-foreground">
-                    Teams
+                    Tenants
                   </DropdownMenuLabel>
-                  {DASHBOARD_DATA.teams.map((team, index) => (
+                  {tenants.map((tenant, index) => (
                     <DropdownMenuItem
-                      key={team.name}
-                      onClick={() => setActiveTeam(team)}
+                      key={tenant.id ?? index}
+                      onClick={() => tenant.id && setActiveTenantId(tenant.id)}
                       className="gap-2 p-2"
+                      disabled={isSetting || tenant.id === activeTenant?.id}
                     >
-                      <div className="flex size-6 items-center justify-center rounded-sm border">
-                        <team.logo className="size-4 shrink-0" />
+                      <div className="flex size-6 items-center justify-center rounded-sm border bg-sidebar-primary/10 text-sidebar-primary">
+                        <span className="text-xs font-medium">
+                          {tenantInitial(tenant.name)}
+                        </span>
                       </div>
-                      {team.name}
+                      <span className="truncate">{tenant.name ?? tenant.slug ?? 'Unnamed'}</span>
                       <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
                     </DropdownMenuItem>
                   ))}
+                  {tenants.length === 0 && (
+                    <DropdownMenuItem disabled className="text-muted-foreground">
+                      No tenants
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="gap-2 p-2">
-                    <div className="flex size-6 items-center justify-center rounded-md border bg-background">
-                      <Plus className="size-4" />
-                    </div>
-                    <div className="font-medium text-muted-foreground">Add team</div>
+                  <DropdownMenuItem asChild>
+                    <Link to="/create-tenant">
+                      <Building2 className="size-4" />
+                      Create tenant
+                    </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
