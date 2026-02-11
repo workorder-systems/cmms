@@ -253,7 +253,8 @@ export const SparklineVariants: Story = {
 };
 
 /**
- * Background chart variants (chart behind gradient for readability). Uses @container/main + gradient.
+ * Background chart variants (chart behind gradient for readability).
+ * Uses theme colors: --chart-1 (default), --chart-2, --chart-3.
  */
 export const BackgroundChartVariants: Story = {
   render: () => (
@@ -266,7 +267,11 @@ export const BackgroundChartVariants: Story = {
       <StatCard
         label="Line background"
         value="1,234"
-        backgroundChart={{ data: ascendingData, variant: 'line' }}
+        backgroundChart={{
+          data: ascendingData,
+          variant: 'line',
+          color: 'var(--chart-2)',
+        }}
       />
       <StatCard
         label="Custom color"
@@ -274,7 +279,7 @@ export const BackgroundChartVariants: Story = {
         backgroundChart={{
           data: volatileData,
           variant: 'area',
-          color: 'var(--chart-1)',
+          color: 'var(--chart-3)',
         }}
       />
     </div>

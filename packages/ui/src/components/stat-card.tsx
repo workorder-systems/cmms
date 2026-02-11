@@ -24,10 +24,12 @@ export interface StatCardBackgroundChartProps {
   className?: string
 }
 
+const BACKGROUND_CHART_DEFAULT_COLOR = "var(--chart-1)"
+
 function StatCardBackgroundChart({
   data,
   variant = "area",
-  color = "var(--muted-foreground)",
+  color = BACKGROUND_CHART_DEFAULT_COLOR,
   className,
 }: StatCardBackgroundChartProps) {
   const gradientId = `stat-card-bg-${React.useId().replace(/:/g, "")}`
@@ -77,17 +79,18 @@ function StatCardBackgroundChart({
         "pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-xl",
         className
       )}
+      style={{ color }}
       aria-hidden
     >
       <svg
-        className="h-full w-full opacity-[0.035] dark:opacity-[0.05]"
+        className="h-full w-full opacity-[0.15] dark:opacity-[0.2]"
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
       >
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity={0.2} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
+            <stop offset="0%" stopColor="currentColor" stopOpacity={0.5} />
+            <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
           </linearGradient>
         </defs>
         {variant === "area" && (
@@ -96,8 +99,8 @@ function StatCardBackgroundChart({
         <path
           d={pathData}
           fill="none"
-          stroke={color}
-          strokeWidth={1}
+          stroke="currentColor"
+          strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
           className="transition-opacity"
@@ -215,18 +218,24 @@ export function StatCard({
           />
           <div
             data-slot="stat-card-chart-gradient"
-            className="pointer-events-none absolute inset-0 z-1 rounded-xl bg-linear-to-t from-card via-card/85 to-card/25"
+            className="pointer-events-none absolute inset-0 z-1 rounded-xl bg-linear-to-t from-card via-card/20 to-card/10"
+            aria-hidden
+          />
+          <div
+            data-slot="stat-card-chart-gradient"
+            className="pointer-events-none absolute inset-0 z-1 rounded-xl bg-linear-to-r from-card/90 via-card/20 to-card/0"
             aria-hidden
           />
         </>
       )}
-      {trendContent && <div className="top-0 right-0 absolute p-2 opacity-50 group-hover:opacity-100 duration-200">{trendContent}</div>}
 
       <div className="relative z-10 flex flex-1 flex-col h-full justify-between gap-4">
 
-        <CardHeader className="bg-transparent items-end">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <CardHeader className="bg-transparent items-end h-full">
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-1">
             {/* badge / trend content */}
+      {trendContent && <div className="">{trendContent}</div>}
+
             {value != null && (
               <CardTitle data-slot="stat-card-value" className={TITLE_CLASS}>
                 {value}
@@ -241,13 +250,13 @@ export function StatCard({
               </CardDescription>
             )}
           </div>
-          {trendContent && <CardAction className="flex items-center h-full justify-end">{sparklineEl}</CardAction>}
+          {sparklineEl && <CardAction className="flex items-center h-full justify-end">{sparklineEl}</CardAction>}
         </CardHeader>
 
         {hasFooter && (
           <footer
             data-slot="stat-card-footer"
-            className="flex w-full h-min items-end justify-between gap-4 border-t border-border px-6 pt-4 text-sm"
+            className="flex w-full h-min items-end justify-between gap-4 border-t border-border px-6 pt-4 pb-2 text-sm"
           >
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               {footerSummary != null && (
