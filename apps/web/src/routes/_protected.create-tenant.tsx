@@ -3,7 +3,13 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { getDbClient } from '../lib/db-client'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
-import { Label } from '@workspace/ui/components/label'
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@workspace/ui/components/field'
 import {
   Card,
   CardContent,
@@ -55,37 +61,43 @@ function CreateTenantPage() {
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent>
             {error && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="mb-4">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="tenant-name">Name</Label>
-              <Input
-                id="tenant-name"
-                type="text"
-                placeholder="Acme Inc"
-                value={name}
-                onChange={(e) => handleSlugFromName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tenant-slug">Slug</Label>
-              <Input
-                id="tenant-slug"
-                type="text"
-                placeholder="acme-inc"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                URL-friendly identifier (lowercase, hyphens).
-              </p>
-            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="tenant-name">Name</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="tenant-name"
+                    type="text"
+                    placeholder="Acme Inc"
+                    value={name}
+                    onChange={(e) => handleSlugFromName(e.target.value)}
+                    required
+                  />
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="tenant-slug">Slug</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="tenant-slug"
+                    type="text"
+                    placeholder="acme-inc"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    required
+                  />
+                  <FieldDescription>
+                    URL-friendly identifier (lowercase, hyphens).
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+            </FieldGroup>
           </CardContent>
           <CardFooter className="flex gap-2">
             <Button type="submit" disabled={loading}>

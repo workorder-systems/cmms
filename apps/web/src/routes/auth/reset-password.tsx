@@ -3,7 +3,13 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { getDbClient } from '../../lib/db-client'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
-import { Label } from '@workspace/ui/components/label'
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@workspace/ui/components/field'
 import {
   Card,
   CardContent,
@@ -61,45 +67,58 @@ function ResetPasswordPage() {
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent>
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-4">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="reset-password">New password</Label>
-            <Input
-              id="reset-password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="reset-confirm">Confirm password</Label>
-            <Input
-              id="reset-confirm"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="reset-password">New password</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="reset-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+                <FieldDescription>At least 6 characters.</FieldDescription>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="reset-confirm">Confirm password</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="reset-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <Button type="submit" className="w-full" disabled={loading || success}>
+                {loading ? 'Updating…' : success ? 'Redirecting…' : 'Update password'}
+              </Button>
+              <FieldDescription className="text-center">
+                <Link
+                  to="/auth/login"
+                  search={{ redirect: undefined }}
+                  className="underline underline-offset-4 hover:text-foreground"
+                >
+                  Back to log in
+                </Link>
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          <Button type="submit" className="w-full" disabled={loading || success}>
-            {loading ? 'Updating…' : success ? 'Redirecting…' : 'Update password'}
-          </Button>
-          <Button asChild variant="ghost" className="w-full">
-            <Link to="/auth/login" search={{ redirect: undefined }}>Back to log in</Link>
-          </Button>
-        </CardFooter>
       </form>
     </Card>
   )

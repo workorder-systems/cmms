@@ -3,7 +3,13 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { getDbClient } from '../../lib/db-client'
 import { Button } from '@workspace/ui/components/button'
 import { Input } from '@workspace/ui/components/input'
-import { Label } from '@workspace/ui/components/label'
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@workspace/ui/components/field'
 import {
   Card,
   CardContent,
@@ -54,47 +60,59 @@ function ForgotPasswordPage() {
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent>
           {sent && (
-            <Alert>
+            <Alert className="mb-4">
               <AlertDescription>Check your email for the reset link.</AlertDescription>
             </Alert>
           )}
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-4">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           {!sent && (
-            <div className="space-y-2">
-              <Label htmlFor="forgot-email">Email</Label>
-              <Input
-                id="forgot-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="forgot-email">Email</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="m@example.com"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </FieldContent>
+              </Field>
+              <Field>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Sending…' : 'Send reset link'}
+                </Button>
+                <FieldDescription className="text-center">
+                  <Link
+                    to="/auth/login"
+                    search={{ redirect: undefined }}
+                    className="underline underline-offset-4 hover:text-foreground"
+                  >
+                    Back to log in
+                  </Link>
+                </FieldDescription>
+              </Field>
+            </FieldGroup>
           )}
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          {!sent ? (
-            <>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Sending…' : 'Send reset link'}
-              </Button>
-              <Button asChild variant="ghost" className="w-full">
-                <Link to="/auth/login" search={{ redirect: undefined }}>Back to log in</Link>
-              </Button>
-            </>
-          ) : (
+        {sent && (
+          <CardFooter>
             <Button asChild className="w-full" variant="outline">
-              <Link to="/auth/login" search={{ redirect: undefined }}>Back to log in</Link>
+              <Link to="/auth/login" search={{ redirect: undefined }}>
+                Back to log in
+              </Link>
             </Button>
-          )}
-        </CardFooter>
+          </CardFooter>
+        )}
       </form>
     </Card>
   )
