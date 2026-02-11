@@ -169,6 +169,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.39.0
+        version: 2.95.3
       '@tanstack/react-query':
         specifier: ^5.90.0
         version: 5.90.21(react@19.2.4)
@@ -181,6 +184,9 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: ^1.159.5
         version: 1.159.5(@tanstack/react-router@1.159.5(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/router-core@1.159.4)(csstype@3.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@workorder-systems/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui

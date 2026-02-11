@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -73,14 +73,9 @@ import {
   AvatarImage,
 } from '@workspace/ui/components/avatar'
 import { useIsMobile } from '@workspace/ui/hooks/use-mobile'
+import { useAuth } from '../contexts/auth'
 
 const DASHBOARD_DATA = {
-  user: {
-    name: 'Skyleen',
-    email: 'skyleen@example.com',
-    avatar:
-      'https://pbs.twimg.com/profile_images/1909615404789506048/MTqvRsjo_400x400.jpg',
-  },
   teams: [
     { name: 'Acme Inc', logo: GalleryVerticalEnd, plan: 'Enterprise' },
     { name: 'Acme Corp.', logo: AudioWaveform, plan: 'Startup' },
@@ -139,12 +134,35 @@ const DASHBOARD_DATA = {
 }
 
 export const Route = createFileRoute('/dashboard')({
+  beforeLoad: async ({ context, location }) => {
+    const { data } = await context.dbClient.supabase.auth.getSession()
+    if (!data.session) {
+      throw redirect({
+        to: '/auth/login',
+        search: { redirect: location.pathname },
+      })
+    }
+  },
   component: DashboardLayout,
 })
 
 function DashboardLayout() {
   const isMobile = useIsMobile()
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
   const [activeTeam, setActiveTeam] = React.useState(DASHBOARD_DATA.teams[0])
+
+  const displayName =
+    (user?.user_metadata?.name as string | undefined) ??
+    user?.email?.split('@')[0] ??
+    'User'
+  const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) ?? ''
+  const initials = displayName.slice(0, 2).toUpperCase()
+
+  const handleSignOut = async () => {
+    await signOut()
+    await navigate({ to: '/' })
+  }
 
   if (!activeTeam) return null
 
@@ -304,17 +322,17 @@ function DashboardLayout() {
                   >
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage
-                        src={DASHBOARD_DATA.user.avatar}
-                        alt={DASHBOARD_DATA.user.name}
+                        src={avatarUrl}
+                        alt={displayName}
                       />
-                      <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                      <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">
-                        {DASHBOARD_DATA.user.name}
+                        {displayName}
                       </span>
                       <span className="truncate text-xs">
-                        {DASHBOARD_DATA.user.email}
+                        {user?.email ?? ''}
                       </span>
                     </div>
                     <ChevronsUpDown className="ml-auto size-4" />
@@ -330,17 +348,17 @@ function DashboardLayout() {
                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                       <Avatar className="h-8 w-8 rounded-lg">
                         <AvatarImage
-                          src={DASHBOARD_DATA.user.avatar}
-                          alt={DASHBOARD_DATA.user.name}
+                          src={avatarUrl}
+                          alt={displayName}
                         />
-                        <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                        <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                       </Avatar>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-semibold">
-                          {DASHBOARD_DATA.user.name}
+                          {displayName}
                         </span>
                         <span className="truncate text-xs">
-                          {DASHBOARD_DATA.user.email}
+                          {user?.email ?? ''}
                         </span>
                       </div>
                     </div>
@@ -368,7 +386,7 @@ function DashboardLayout() {
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut />
                     Log out
                   </DropdownMenuItem>

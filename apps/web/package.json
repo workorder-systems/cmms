@@ -10,6 +10,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@workorder-systems/sdk": "workspace:*",
+    "@supabase/supabase-js": "^2.39.0",
     "@workspace/ui": "workspace:*",
     "lucide-react": "^0.475.0",
     "@tanstack/react-query": "^5.90.0",

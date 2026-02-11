@@ -4,12 +4,15 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import { getDbClient } from './lib/db-client'
+import { AuthProvider } from './contexts/auth'
 
 const queryClient = new QueryClient()
+const dbClient = getDbClient()
 
 const router = createRouter({
   routeTree,
-  context: { queryClient },
+  context: { queryClient, dbClient },
   defaultPreload: 'intent',
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,
@@ -26,6 +29,8 @@ const root = ReactDOM.createRoot(rootElement)
 
 root.render(
   <QueryClientProvider client={queryClient}>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </QueryClientProvider>,
 )
