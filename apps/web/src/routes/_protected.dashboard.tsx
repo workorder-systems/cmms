@@ -55,6 +55,7 @@ import {
   Folder,
   Forward,
   Frame,
+  Home,
   LogOut,
   Map,
   MoreHorizontal,
@@ -405,7 +406,9 @@ function DashboardLayoutInner() {
         <BreadcrumbList>
           <BreadcrumbItem className="hidden md:block">
             <BreadcrumbLink asChild>
-              <Link to="/">Dashboard</Link>
+              <Link to="/">
+                <Home className="size-4" />
+              </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator className="hidden md:block" />
