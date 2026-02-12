@@ -4,6 +4,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import type { QueryClient } from '@tanstack/react-query'
 import type { DbClient } from '@workorder-systems/sdk'
+import { NuqsAdapter } from 'nuqs/adapters/tanstack-router'
 import { NotFound } from '../components/not-found'
 
 export const Route = createRootRouteWithContext<{
@@ -16,7 +17,7 @@ export const Route = createRootRouteWithContext<{
 
 function RootComponent() {
   return (
-    <>
+    <NuqsAdapter>
       <Outlet />
       {import.meta.env.DEV && (
         <>
@@ -24,6 +25,6 @@ function RootComponent() {
           <ReactQueryDevtools buttonPosition="bottom-left" />
         </>
       )}
-    </>
+    </NuqsAdapter>
   )
 }
