@@ -1,14 +1,7 @@
 import * as React from 'react'
 import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@workspace/ui/components/breadcrumb'
 import { Separator } from '@workspace/ui/components/separator'
+import { SmartBreadcrumb } from '../components/smart-breadcrumb'
 import {
   SidebarProvider,
   SidebarInset,
@@ -55,7 +48,6 @@ import {
   Folder,
   Forward,
   Frame,
-  Home,
   LogOut,
   Map,
   MoreHorizontal,
@@ -402,21 +394,12 @@ function DashboardLayoutInner() {
     <>
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink asChild>
-              <Link to="/">
-                <Home className="size-4" />
-              </Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Overview</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <SmartBreadcrumb
+        basePath="/dashboard"
+        rootHref="/dashboard"
+        rootLabel="Dashboard"
+        segmentLabels={{ workorders: 'Work orders', import: 'Import' }}
+      />
     </>
   )
 

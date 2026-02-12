@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef, Row } from '@tanstack/react-table'
 import { useQuery } from '@tanstack/react-query'
-import { ClipboardList, Plus } from 'lucide-react'
+import { ClipboardList, Plus, Upload } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { prefetchCatalogs, catalogQueryOptions } from '../lib/catalog-queries'
@@ -314,10 +314,18 @@ function WorkOrdersPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <ExtensionPoint name="header.right">
-        <Button onClick={openCreateModal} size="sm" variant="outline">
-          <Plus className="size-4" />
-          New work order
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm" variant="ghost">
+            <Link to="/dashboard/workorders/import">
+              <Upload className="size-4" />
+              Import
+            </Link>
+          </Button>
+          <Button onClick={openCreateModal} size="sm" variant="outline">
+            <Plus className="size-4" />
+            New work order
+          </Button>
+        </div>
       </ExtensionPoint>
 
       <ExtensionPoint name="sidebar.right.header">

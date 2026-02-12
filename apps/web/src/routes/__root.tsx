@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { Toaster } from 'sonner'
 import type { QueryClient } from '@tanstack/react-query'
 import type { DbClient } from '@workorder-systems/sdk'
 import { NuqsAdapter } from 'nuqs/adapters/tanstack-router'
@@ -19,6 +20,7 @@ function RootComponent() {
   return (
     <NuqsAdapter>
       <Outlet />
+      <Toaster />
       {import.meta.env.DEV && (
         <>
           <TanStackRouterDevtools position="bottom-right" />
