@@ -11,12 +11,21 @@ import {
   SidebarProvider,
 } from '@workspace/ui/components/sidebar';
 import { PortalTarget } from './portal-target';
-import { useAppShellStore } from './store';
+import { useAppShellStore } from './store.js';
 import { cn } from '@workspace/ui/lib/utils';
-import { SidebarRailRight } from './sidebar-rail-right';
+import { SidebarRailRight } from './sidebar-rail-right.js';
+import type { AppShellStore } from './types.js';
 
 interface AppShellProps {
   children: React.ReactNode;
+  /** Left sidebar header (e.g. tenant switcher). Falls back to PortalTarget if not provided. */
+  leftSidebarHeader?: React.ReactNode;
+  /** Left sidebar main content (e.g. nav). Falls back to PortalTarget if not provided. */
+  leftSidebarContent?: React.ReactNode;
+  /** Left sidebar footer (e.g. user menu). Falls back to PortalTarget if not provided. */
+  leftSidebarFooter?: React.ReactNode;
+  /** Header left slot (e.g. breadcrumb + trigger). Rendered before PortalTarget header.right. */
+  headerLeft?: React.ReactNode;
   leftSidebarCollapsible?: 'offcanvas' | 'icon' | 'none';
   rightSidebarCollapsible?: 'offcanvas' | 'icon' | 'none';
   leftSidebarVariant?: 'sidebar' | 'floating' | 'inset';
@@ -26,16 +35,17 @@ interface AppShellProps {
 
 export function AppShell({
   children,
+  leftSidebarHeader,
+  leftSidebarContent,
+  leftSidebarFooter,
+  headerLeft,
   leftSidebarCollapsible = 'icon',
   rightSidebarCollapsible = 'none',
-  leftSidebarVariant = 'inset',
-  rightSidebarVariant = 'inset',
+  leftSidebarVariant = 'sidebar',
+  rightSidebarVariant = 'sidebar',
   className,
 }: AppShellProps) {
-  // Subscribe to extensions Map (stable selector for SSR)
-  const extensionsMap = useAppShellStore((state) => state.extensions);
-  
-  // Derive hasRightSidebarExtensions using useMemo
+  const extensionsMap = useAppShellStore((state: AppShellStore) => state.extensions);
   const hasRightSidebarExtensions = React.useMemo(
     () =>
       extensionsMap.has('sidebar.right.header') ||
@@ -43,62 +53,65 @@ export function AppShell({
       extensionsMap.has('sidebar.right.footer'),
     [extensionsMap]
   );
-  
-  const rightSidebarOpen = useAppShellStore((state) => state.rightSidebarOpen);
-  const setRightSidebarOpen = useAppShellStore((state) => state.setRightSidebarOpen);
-  
-  // Force close right sidebar when there are no extensions
+
+  const leftSidebarOpen = useAppShellStore((state: AppShellStore) => state.leftSidebarOpen);
+  const setLeftSidebarOpen = useAppShellStore((state: AppShellStore) => state.setLeftSidebarOpen);
+  const rightSidebarOpen = useAppShellStore((state: AppShellStore) => state.rightSidebarOpen);
+  const setRightSidebarOpen = useAppShellStore((state: AppShellStore) => state.setRightSidebarOpen);
+
   const effectiveRightSidebarOpen = hasRightSidebarExtensions ? rightSidebarOpen : false;
 
-  // Handle right sidebar open change
-  const handleRightSidebarOpenChange = React.useCallback((open: boolean) => {
-    // Only allow opening if there are extensions
-    if (open && hasRightSidebarExtensions) {
-      setRightSidebarOpen(true);
-    } else {
-      setRightSidebarOpen(false);
-    }
-  }, [hasRightSidebarExtensions, setRightSidebarOpen]);
+  const handleRightSidebarOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (open && hasRightSidebarExtensions) {
+        setRightSidebarOpen(true);
+      } else {
+        setRightSidebarOpen(false);
+      }
+    },
+    [hasRightSidebarExtensions, setRightSidebarOpen]
+  );
 
   return (
-    <>
-      {/* Left Sidebar - Always visible */}
-      <Sidebar variant={leftSidebarVariant} collapsible={leftSidebarCollapsible} className={className}>
+    <SidebarProvider open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
+      <Sidebar
+        variant={leftSidebarVariant}
+        collapsible={leftSidebarCollapsible}
+        className={className}
+      >
         <SidebarHeader>
-          <PortalTarget name="sidebar.left.header" />
+          {leftSidebarHeader !== undefined ? leftSidebarHeader : <PortalTarget name="sidebar.left.header" />}
         </SidebarHeader>
         <SidebarContent>
-          <PortalTarget name="sidebar.left.content" />
+          {leftSidebarContent !== undefined ? leftSidebarContent : <PortalTarget name="sidebar.left.content" />}
         </SidebarContent>
         <SidebarFooter>
-          <PortalTarget name="sidebar.left.footer" />
+          {leftSidebarFooter !== undefined ? leftSidebarFooter : <PortalTarget name="sidebar.left.footer" />}
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
 
-      {/* Main Content */}
       <SidebarInset className="min-h-0 overflow-x-hidden">
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] duration-300 ease-in-out group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <PortalTarget name="header.left" />
+        <header className="flex h-16 shrink-0 border-b items-center justify-between gap-2 px-4 transition-[width,height] duration-300 ease-in-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {headerLeft !== undefined ? headerLeft : <PortalTarget name="header.left" />}
           </div>
-          <div className="ml-auto flex items-center gap-2 px-4">
+          <div className="flex items-center gap-2">
             <PortalTarget name="header.right" />
           </div>
         </header>
-        <div className="flex flex-col gap-4 p-4 pt-0 min-h-0 w-full max-w-full overflow-x-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-0">
           <PortalTarget name="page.header" />
-          <div className="w-full max-w-full overflow-x-hidden">
+          <div className="min-h-0 w-full min-w-0 flex-1 overflow-x-hidden">
             {children}
           </div>
         </div>
       </SidebarInset>
 
-      {/* Right Sidebar - Only visible when extensions exist */}
       {hasRightSidebarExtensions && (
         <SidebarProvider
-          defaultOpen={rightSidebarOpen}
-          open={rightSidebarOpen}
+          defaultOpen={effectiveRightSidebarOpen}
+          open={effectiveRightSidebarOpen}
           onOpenChange={handleRightSidebarOpenChange}
           className="contents"
         >
@@ -124,6 +137,6 @@ export function AppShell({
           </Sidebar>
         </SidebarProvider>
       )}
-    </>
+    </SidebarProvider>
   );
 }
