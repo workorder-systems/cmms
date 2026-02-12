@@ -1,9 +1,6 @@
 import * as React from 'react'
 import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -17,7 +14,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-  SidebarMenuAction,
+  SidebarTrigger,
 } from '@workspace/ui/components/sidebar'
 import {
   Collapsible,
@@ -37,23 +34,20 @@ import {
 import {
   BadgeCheck,
   Bell,
-  BookOpen,
-  Bot,
   Building2,
+  CalendarCheck,
   ChevronRight,
   ChevronsUpDown,
   CreditCard,
-  Folder,
-  Forward,
-  Frame,
+  ClipboardList,
+  LayoutDashboard,
   LogOut,
-  Map,
-  MoreHorizontal,
-  PieChart,
+  MapPin,
   Settings2,
   Sparkles,
-  SquareTerminal,
-  Trash2,
+  Tags,
+  Users,
+  Wrench,
 } from 'lucide-react'
 import {
   Avatar,
@@ -65,56 +59,50 @@ import { useAuth } from '../contexts/auth'
 import { useTenant } from '../contexts/tenant'
 import { AppShell } from '@workspace/ui/components/app-shell'
 
-const DASHBOARD_DATA = {
-  navMain: [
+/** CMMS sidebar nav: matches SDK resources (work orders, assets, locations, PM, dashboard, catalogs, departments). */
+const CMMS_NAV = {
+  operations: [
     {
-      title: 'Playground',
-      url: '#',
-      icon: SquareTerminal,
-      isActive: true,
+      title: 'Dashboard',
+      to: '/dashboard',
+      icon: LayoutDashboard,
+      items: null as null,
+    },
+    {
+      title: 'Work orders',
+      to: '/dashboard/workorders',
+      icon: ClipboardList,
       items: [
-        { title: 'History', url: '#' },
-        { title: 'Starred', url: '#' },
-        { title: 'Settings', url: '#' },
+        { title: 'All work orders', to: '/dashboard/workorders' },
+        { title: 'Import', to: '/dashboard/workorders/import' },
       ],
     },
     {
-      title: 'Models',
-      url: '#',
-      icon: Bot,
+      title: 'Assets',
+      to: '/dashboard/assets',
+      icon: Wrench,
       items: [
-        { title: 'Genesis', url: '#' },
-        { title: 'Explorer', url: '#' },
-        { title: 'Quantum', url: '#' },
+        { title: 'All assets', to: '/dashboard/assets' },
+        { title: 'Import', to: '/dashboard/assets/import' },
       ],
     },
     {
-      title: 'Documentation',
-      url: '#',
-      icon: BookOpen,
-      items: [
-        { title: 'Introduction', url: '#' },
-        { title: 'Get Started', url: '#' },
-        { title: 'Tutorials', url: '#' },
-        { title: 'Changelog', url: '#' },
-      ],
+      title: 'Locations',
+      to: '/dashboard/locations',
+      icon: MapPin,
+      items: null,
     },
     {
-      title: 'Settings',
-      url: '#',
-      icon: Settings2,
-      items: [
-        { title: 'General', url: '#' },
-        { title: 'Team', url: '#' },
-        { title: 'Billing', url: '#' },
-        { title: 'Limits', url: '#' },
-      ],
+      title: 'Preventive maintenance',
+      to: '/dashboard/pm',
+      icon: CalendarCheck,
+      items: null,
     },
   ],
-  projects: [
-    { name: 'Design Engineering', url: '#', icon: Frame },
-    { name: 'Sales & Marketing', url: '#', icon: PieChart },
-    { name: 'Travel', url: '#', icon: Map },
+  configuration: [
+    { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags },
+    { title: 'Departments', to: '/dashboard/departments', icon: Users },
+    { title: 'Settings', to: '/dashboard/settings', icon: Settings2 },
   ],
 }
 
@@ -231,87 +219,65 @@ function DashboardLayoutInner() {
   const leftSidebarContent = (
     <>
       <SidebarGroup>
-        <SidebarGroupLabel>Platform</SidebarGroupLabel>
+        <SidebarGroupLabel>Operations</SidebarGroupLabel>
         <SidebarMenu>
-          {DASHBOARD_DATA.navMain.map((item) => (
-            <Collapsible
-              key={item.title}
-              asChild
-              defaultOpen={item.isActive}
-              className="group/collapsible"
-            >
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
+          {CMMS_NAV.operations.map((item) =>
+            item.items ? (
+              <Collapsible
+                key={item.title}
+                asChild
+                defaultOpen={item.title === 'Work orders'}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={item.title}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items.map((subItem) => (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton asChild>
+                            <Link to={subItem.to}>
+                              <span>{subItem.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            ) : (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <Link to={item.to}>
+                    <item.icon />
                     <span>{item.title}</span>
-                    <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub>
-                    {item.items?.map((subItem) => (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild>
-                          <a href={subItem.url}>
-                            <span>{subItem.title}</span>
-                          </a>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                </CollapsibleContent>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
-            </Collapsible>
-          ))}
+            )
+          )}
         </SidebarMenu>
       </SidebarGroup>
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-        <SidebarGroupLabel>Projects</SidebarGroupLabel>
+        <SidebarGroupLabel>Configuration</SidebarGroupLabel>
         <SidebarMenu>
-          {DASHBOARD_DATA.projects.map((item) => (
-            <SidebarMenuItem key={item.name}>
-              <SidebarMenuButton asChild>
-                <a href={item.url}>
+          {CMMS_NAV.configuration.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton asChild tooltip={item.title}>
+                <Link to={item.to}>
                   <item.icon />
-                  <span>{item.name}</span>
-                </a>
+                  <span>{item.title}</span>
+                </Link>
               </SidebarMenuButton>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuAction showOnHover>
-                    <MoreHorizontal />
-                    <span className="sr-only">More</span>
-                  </SidebarMenuAction>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-48 rounded-lg"
-                  side={isMobile ? 'bottom' : 'right'}
-                  align={isMobile ? 'end' : 'start'}
-                >
-                  <DropdownMenuItem>
-                    <Folder className="text-muted-foreground" />
-                    <span>View Project</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Forward className="text-muted-foreground" />
-                    <span>Share Project</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Trash2 className="text-muted-foreground" />
-                    <span>Delete Project</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </SidebarMenuItem>
           ))}
-          <SidebarMenuItem>
-            <SidebarMenuButton className="text-sidebar-foreground/70">
-              <MoreHorizontal className="text-sidebar-foreground/70" />
-              <span>More</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroup>
     </>
