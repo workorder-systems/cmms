@@ -72,6 +72,7 @@ import {
 import { useIsMobile } from '@workspace/ui/hooks/use-mobile'
 import { useAuth } from '../contexts/auth'
 import { useTenant } from '../contexts/tenant'
+import { PortalTarget } from '@workspace/ui/components/app-shell'
 
 const DASHBOARD_DATA = {
   navMain: [
@@ -415,7 +416,7 @@ function DashboardLayoutInner() {
       </Sidebar>
 
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] duration-300 ease-in-out group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <header className="flex justify-between h-16 shrink-0 items-center gap-2 transition-[width,height] duration-300 ease-in-out group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -432,6 +433,11 @@ function DashboardLayoutInner() {
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
+          </div>
+
+          {/* Portal targets for header right */}
+          <div className="flex items-center gap-2 px-4">
+            <PortalTarget name="header.right" />
           </div>
         </header>
         <Outlet />

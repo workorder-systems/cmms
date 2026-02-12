@@ -14,6 +14,7 @@ import { DataTableToolbar } from '@workspace/ui/components/data-table/data-table
 import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-table-skeleton'
 import { useDataTable } from '@workspace/ui/hooks/use-data-table'
 import { Button } from '@workspace/ui/components/button'
+import { ExtensionPoint } from '@workspace/ui/components/app-shell'
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -229,13 +230,12 @@ function WorkOrdersPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Work orders</h1>
-        <Button onClick={openCreateModal}>
+      <ExtensionPoint name="header.right">
+        <Button onClick={openCreateModal} size="sm" variant="outline">
           <Plus className="size-4" />
           New work order
         </Button>
-      </div>
+      </ExtensionPoint>
 
       <DataTable table={table}>
         <DataTableToolbar table={table} />
