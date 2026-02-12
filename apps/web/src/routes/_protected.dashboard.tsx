@@ -1,7 +1,5 @@
 import * as React from 'react'
 import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Separator } from '@workspace/ui/components/separator'
-import { SmartBreadcrumb } from '../components/smart-breadcrumb'
 import {
   SidebarProvider,
   SidebarInset,
@@ -393,13 +391,6 @@ function DashboardLayoutInner() {
   const headerLeft = (
     <>
       <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
-      <SmartBreadcrumb
-        basePath="/dashboard"
-        rootHref="/dashboard"
-        rootLabel="Dashboard"
-        segmentLabels={{ workorders: 'Work orders', import: 'Import' }}
-      />
     </>
   )
 

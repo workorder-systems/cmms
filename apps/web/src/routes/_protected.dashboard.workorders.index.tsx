@@ -14,6 +14,7 @@ import { DataTableToolbar } from '@workspace/ui/components/data-table/data-table
 import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-table-skeleton'
 import { useDataTable } from '@workspace/ui/hooks/use-data-table'
 import { Button } from '@workspace/ui/components/button'
+import { useIsMobile } from '@workspace/ui/hooks/use-mobile'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
 import { Separator } from '@workspace/ui/components/separator'
 import {
@@ -293,6 +294,8 @@ function WorkOrdersPage() {
     ? workOrders.find((wo) => wo?.id === selectedWorkOrderId)
     : null
 
+  const isMobile = useIsMobile()
+
   if (isError) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -318,7 +321,6 @@ function WorkOrdersPage() {
           <Button asChild size="sm" variant="ghost">
             <Link to="/dashboard/workorders/import">
               <Upload className="size-4" />
-              Import
             </Link>
           </Button>
           <Button onClick={openCreateModal} size="sm" variant="outline">
@@ -328,51 +330,57 @@ function WorkOrdersPage() {
         </div>
       </ExtensionPoint>
 
-      <ExtensionPoint name="sidebar.right.header">
-        <span className="font-semibold">Details</span>
-      </ExtensionPoint>
-      <ExtensionPoint name="sidebar.right.content">
-        <WorkOrderRightSidebarContent />
-      </ExtensionPoint>
+      {selectedWorkOrderId && !isMobile && (
+        <>
+          <ExtensionPoint name="sidebar.right.header">
+            <span className="font-semibold">Details</span>
+          </ExtensionPoint>
+          <ExtensionPoint name="sidebar.right.content">
+            <WorkOrderRightSidebarContent />
+          </ExtensionPoint>
+        </>
+      )}
 
       <DataTable table={table}>
         <DataTableToolbar table={table} />
       </DataTable>
 
-      {/* Detail: responsive dialog when a row is selected */}
-      <ResponsiveDialog
-        open={!!selectedWorkOrderId}
-        onOpenChange={(open) => !open && setSelectedWorkOrderId(null)}
-      >
-        <ResponsiveDialogContent>
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>
-              {selectedWorkOrder?.title ?? 'Work order'}
-            </ResponsiveDialogTitle>
-            <ResponsiveDialogDescription>
-              View work order details. Full detail view can be added later.
-            </ResponsiveDialogDescription>
-          </ResponsiveDialogHeader>
-          {selectedWorkOrder && (
-            <div className="grid gap-2 text-sm">
-              <p><strong>Status:</strong> {selectedWorkOrder.status ?? '—'}</p>
-              <p><strong>Priority:</strong> {selectedWorkOrder.priority ?? '—'}</p>
-              <p><strong>Assigned to:</strong> {selectedWorkOrder.assigned_to_name ?? '—'}</p>
-              {selectedWorkOrder.due_date && (
-                <p><strong>Due:</strong> {new Date(selectedWorkOrder.due_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
-              )}
-              {selectedWorkOrder.description && (
-                <p><strong>Description:</strong> {selectedWorkOrder.description}</p>
-              )}
-            </div>
-          )}
-          <ResponsiveDialogFooter>
-            <ResponsiveDialogClose asChild>
-              <Button variant="outline">Close</Button>
-            </ResponsiveDialogClose>
-          </ResponsiveDialogFooter>
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+      {/* Detail: on desktop the right sidebar shows the selection; on mobile use a drawer */}
+      {isMobile && (
+        <ResponsiveDialog
+          open={!!selectedWorkOrderId}
+          onOpenChange={(open) => !open && setSelectedWorkOrderId(null)}
+        >
+          <ResponsiveDialogContent>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>
+                {selectedWorkOrder?.title ?? 'Work order'}
+              </ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
+                View work order details. Full detail view can be added later.
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
+            {selectedWorkOrder && (
+              <div className="grid gap-2 text-sm">
+                <p><strong>Status:</strong> {selectedWorkOrder.status ?? '—'}</p>
+                <p><strong>Priority:</strong> {selectedWorkOrder.priority ?? '—'}</p>
+                <p><strong>Assigned to:</strong> {selectedWorkOrder.assigned_to_name ?? '—'}</p>
+                {selectedWorkOrder.due_date && (
+                  <p><strong>Due:</strong> {new Date(selectedWorkOrder.due_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
+                )}
+                {selectedWorkOrder.description && (
+                  <p><strong>Description:</strong> {selectedWorkOrder.description}</p>
+                )}
+              </div>
+            )}
+            <ResponsiveDialogFooter>
+              <ResponsiveDialogClose asChild>
+                <Button variant="outline">Close</Button>
+              </ResponsiveDialogClose>
+            </ResponsiveDialogFooter>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
+      )}
 
       {/* Create: responsive dialog placeholder */}
       <ResponsiveDialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
