@@ -873,13 +873,15 @@ export function SelectCell<TData>({
   const [value, setValue] = React.useState(initialValue);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cellOpts = cell.column.columnDef.meta?.cell;
-  const options = cellOpts?.variant === "select" ? cellOpts.options : [];
+  const options = cellOpts?.variant === "select" ? cellOpts.options ?? [] : [];
 
   const prevInitialValueRef = React.useRef(initialValue);
   if (initialValue !== prevInitialValueRef.current) {
     prevInitialValueRef.current = initialValue;
     setValue(initialValue);
   }
+
+  const valueInOptions = options.some((o) => o.value === value);
 
   const onValueChange = React.useCallback(
     (newValue: string) => {
@@ -939,7 +941,7 @@ export function SelectCell<TData>({
     >
       {isEditing ? (
         <Select
-          value={value}
+          value={value || undefined}
           onValueChange={onValueChange}
           open={isEditing}
           onOpenChange={onOpenChange}
@@ -956,17 +958,21 @@ export function SelectCell<TData>({
                 <SelectValue />
               </Badge>
             ) : (
-              <SelectValue />
+              <SelectValue placeholder="Select…" />
             )}
           </SelectTrigger>
           <SelectContent
             data-grid-cell-editor=""
-            // compensate for the wrapper padding
             align="start"
             alignOffset={-8}
             sideOffset={-8}
             className="min-w-[calc(var(--radix-select-trigger-width)+16px)]"
           >
+            {!valueInOptions && value ? (
+              <SelectItem key={`__current:${value}`} value={value}>
+                {value}
+              </SelectItem>
+            ) : null}
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
