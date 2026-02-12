@@ -90,7 +90,10 @@ const CMMS_NAV = {
       title: 'Locations',
       to: '/dashboard/locations',
       icon: MapPin,
-      items: null,
+      items: [
+        { title: 'All locations', to: '/dashboard/locations' },
+        { title: 'Import', to: '/dashboard/locations/import' },
+      ],
     },
     {
       title: 'Preventive maintenance',
@@ -101,7 +104,15 @@ const CMMS_NAV = {
   ],
   configuration: [
     { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags },
-    { title: 'Departments', to: '/dashboard/departments', icon: Users },
+    {
+      title: 'Departments',
+      to: '/dashboard/departments',
+      icon: Users,
+      items: [
+        { title: 'All departments', to: '/dashboard/departments' },
+        { title: 'Import', to: '/dashboard/departments/import' },
+      ],
+    },
     { title: 'Settings', to: '/dashboard/settings', icon: Settings2 },
   ],
 }
@@ -268,16 +279,48 @@ function DashboardLayoutInner() {
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupLabel>Configuration</SidebarGroupLabel>
         <SidebarMenu>
-          {CMMS_NAV.configuration.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title}>
-                <Link to={item.to}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {CMMS_NAV.configuration.map((item) =>
+            item.items ? (
+              <Collapsible
+                key={item.title}
+                asChild
+                defaultOpen={false}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={item.title}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items.map((subItem) => (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton asChild>
+                            <Link to={subItem.to}>
+                              <span>{subItem.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            ) : (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <Link to={item.to}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ),
+          )}
         </SidebarMenu>
       </SidebarGroup>
     </>
