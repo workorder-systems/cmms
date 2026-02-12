@@ -92,6 +92,7 @@ export function AppShell({
       </Sidebar>
 
       <SidebarInset className="min-h-0 overflow-x-hidden">
+        
         <header className="flex h-16 shrink-0 border-b items-center justify-between gap-2 px-4 transition-[width,height] duration-300 ease-in-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {headerLeft !== undefined ? headerLeft : <PortalTarget name="header.left" />}

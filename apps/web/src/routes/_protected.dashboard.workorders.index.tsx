@@ -14,9 +14,7 @@ import { DataTableToolbar } from '@workspace/ui/components/data-table/data-table
 import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-table-skeleton'
 import { useDataTable } from '@workspace/ui/hooks/use-data-table'
 import { Button } from '@workspace/ui/components/button'
-import { useIsMobile } from '@workspace/ui/hooks/use-mobile'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
-import { Separator } from '@workspace/ui/components/separator'
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -39,76 +37,6 @@ export const Route = createFileRoute('/_protected/dashboard/workorders/')({
   },
   component: WorkOrdersPage,
 })
-
-/** Right sidebar content: shows selected work order details. Uses store + query so it stays live when portaled. */
-function WorkOrderRightSidebarContent() {
-  const client = getDbClient()
-  const { activeTenantId } = useTenant()
-  const selectedWorkOrderId = useWorkOrdersPageStore((s) => s.selectedWorkOrderId)
-  const setSelectedWorkOrderId = useWorkOrdersPageStore((s) => s.setSelectedWorkOrderId)
-  const { data: workOrders = [] } = useQuery({
-    queryKey: ['work-orders', activeTenantId],
-    queryFn: () => client.workOrders.list(),
-    enabled: !!activeTenantId,
-  })
-  const selectedWorkOrder = selectedWorkOrderId
-    ? workOrders.find((wo) => wo?.id === selectedWorkOrderId)
-    : null
-
-  if (!selectedWorkOrder) {
-    return (
-      <p className="p-2 text-sm text-muted-foreground">Select a work order</p>
-    )
-  }
-
-  return (
-    <div className="flex flex-col gap-3 p-2">
-      <div className="space-y-1">
-        <p className="text-sm font-medium leading-none">{selectedWorkOrder.title ?? '—'}</p>
-        <p className="text-xs text-muted-foreground">
-          {selectedWorkOrder.status ?? '—'} · {selectedWorkOrder.priority ?? '—'}
-        </p>
-      </div>
-      <Separator />
-      <dl className="grid gap-2 text-sm">
-        <div>
-          <dt className="text-muted-foreground">Status</dt>
-          <dd>{selectedWorkOrder.status ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Priority</dt>
-          <dd>{selectedWorkOrder.priority ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Assigned to</dt>
-          <dd>{selectedWorkOrder.assigned_to_name ?? '—'}</dd>
-        </div>
-        {selectedWorkOrder.due_date && (
-          <div>
-            <dt className="text-muted-foreground">Due</dt>
-            <dd>{new Date(selectedWorkOrder.due_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</dd>
-          </div>
-        )}
-      </dl>
-      {selectedWorkOrder.description && (
-        <>
-          <Separator />
-          <div>
-            <dt className="mb-1 text-muted-foreground text-xs">Description</dt>
-            <dd className="text-sm whitespace-pre-wrap">{selectedWorkOrder.description}</dd>
-          </div>
-        </>
-      )}
-      <button
-        type="button"
-        className="mt-2 text-left text-xs text-muted-foreground hover:underline"
-        onClick={() => setSelectedWorkOrderId(null)}
-      >
-        Clear selection
-      </button>
-    </div>
-  )
-}
 
 const PAGE_SIZE = 10
 const WORK_ORDER_ENTITY_TYPE = 'work_order'
@@ -156,8 +84,6 @@ function WorkOrdersPage() {
       .filter((o) => o.value)
   }, [priorityCatalog])
 
-  const selectedWorkOrderId = useWorkOrdersPageStore((s) => s.selectedWorkOrderId)
-  const setSelectedWorkOrderId = useWorkOrdersPageStore((s) => s.setSelectedWorkOrderId)
   const isCreateModalOpen = useWorkOrdersPageStore((s) => s.isCreateModalOpen)
   const openCreateModal = useWorkOrdersPageStore((s) => s.openCreateModal)
   const closeCreateModal = useWorkOrdersPageStore((s) => s.closeCreateModal)
@@ -171,13 +97,7 @@ function WorkOrdersPage() {
           <DataTableColumnHeader column={column} label="Title" />
         ),
         cell: ({ row }) => (
-          <button
-            type="button"
-            className="text-left font-medium hover:underline"
-            onClick={() => setSelectedWorkOrderId(row.original?.id ?? null)}
-          >
-            {row.getValue('title') ?? '—'}
-          </button>
+          <span className="font-medium">{row.getValue('title') ?? '—'}</span>
         ),
         meta: {
           label: 'Title',
@@ -277,7 +197,7 @@ function WorkOrdersPage() {
         },
       },
     ],
-    [setSelectedWorkOrderId, statusOptions, priorityOptions],
+    [statusOptions, priorityOptions],
   )
 
   const pageCount = Math.ceil(workOrders.length / PAGE_SIZE) || 1
@@ -289,12 +209,6 @@ function WorkOrdersPage() {
     queryKeys: QUERY_KEYS,
     getRowId: (row) => (row as WorkOrderRow).id ?? '',
   })
-
-  const selectedWorkOrder = selectedWorkOrderId
-    ? workOrders.find((wo) => wo?.id === selectedWorkOrderId)
-    : null
-
-  const isMobile = useIsMobile()
 
   if (isError) {
     return (
@@ -325,64 +239,16 @@ function WorkOrdersPage() {
           </Button>
           <Button onClick={openCreateModal} size="sm" variant="outline">
             <Plus className="size-4" />
-            New work order
+            New
           </Button>
         </div>
       </ExtensionPoint>
-
-      {selectedWorkOrderId && !isMobile && (
-        <>
-          <ExtensionPoint name="sidebar.right.header">
-            <span className="font-semibold">Details</span>
-          </ExtensionPoint>
-          <ExtensionPoint name="sidebar.right.content">
-            <WorkOrderRightSidebarContent />
-          </ExtensionPoint>
-        </>
-      )}
 
       <DataTable table={table}>
         <DataTableToolbar table={table} />
       </DataTable>
 
-      {/* Detail: on desktop the right sidebar shows the selection; on mobile use a drawer */}
-      {isMobile && (
-        <ResponsiveDialog
-          open={!!selectedWorkOrderId}
-          onOpenChange={(open) => !open && setSelectedWorkOrderId(null)}
-        >
-          <ResponsiveDialogContent>
-            <ResponsiveDialogHeader>
-              <ResponsiveDialogTitle>
-                {selectedWorkOrder?.title ?? 'Work order'}
-              </ResponsiveDialogTitle>
-              <ResponsiveDialogDescription>
-                View work order details. Full detail view can be added later.
-              </ResponsiveDialogDescription>
-            </ResponsiveDialogHeader>
-            {selectedWorkOrder && (
-              <div className="grid gap-2 text-sm">
-                <p><strong>Status:</strong> {selectedWorkOrder.status ?? '—'}</p>
-                <p><strong>Priority:</strong> {selectedWorkOrder.priority ?? '—'}</p>
-                <p><strong>Assigned to:</strong> {selectedWorkOrder.assigned_to_name ?? '—'}</p>
-                {selectedWorkOrder.due_date && (
-                  <p><strong>Due:</strong> {new Date(selectedWorkOrder.due_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
-                )}
-                {selectedWorkOrder.description && (
-                  <p><strong>Description:</strong> {selectedWorkOrder.description}</p>
-                )}
-              </div>
-            )}
-            <ResponsiveDialogFooter>
-              <ResponsiveDialogClose asChild>
-                <Button variant="outline">Close</Button>
-              </ResponsiveDialogClose>
-            </ResponsiveDialogFooter>
-          </ResponsiveDialogContent>
-        </ResponsiveDialog>
-      )}
-
-      {/* Create: responsive dialog placeholder */}
+      {/* Create work order modal */}
       <ResponsiveDialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
         <ResponsiveDialogContent>
           <ResponsiveDialogHeader>
