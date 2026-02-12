@@ -41,8 +41,8 @@ export function AppShell({
   headerLeft,
   leftSidebarCollapsible = 'icon',
   rightSidebarCollapsible = 'none',
-  leftSidebarVariant = 'sidebar',
-  rightSidebarVariant = 'sidebar',
+  leftSidebarVariant = 'inset',
+  rightSidebarVariant = 'inset',
   className,
 }: AppShellProps) {
   const extensionsMap = useAppShellStore((state: AppShellStore) => state.extensions);

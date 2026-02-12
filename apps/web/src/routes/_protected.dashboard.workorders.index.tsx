@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef, Row } from '@tanstack/react-table'
 import { useQuery } from '@tanstack/react-query'
 import { ClipboardList, Plus } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
@@ -15,6 +15,7 @@ import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-tabl
 import { useDataTable } from '@workspace/ui/hooks/use-data-table'
 import { Button } from '@workspace/ui/components/button'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
+import { Separator } from '@workspace/ui/components/separator'
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -37,6 +38,76 @@ export const Route = createFileRoute('/_protected/dashboard/workorders/')({
   },
   component: WorkOrdersPage,
 })
+
+/** Right sidebar content: shows selected work order details. Uses store + query so it stays live when portaled. */
+function WorkOrderRightSidebarContent() {
+  const client = getDbClient()
+  const { activeTenantId } = useTenant()
+  const selectedWorkOrderId = useWorkOrdersPageStore((s) => s.selectedWorkOrderId)
+  const setSelectedWorkOrderId = useWorkOrdersPageStore((s) => s.setSelectedWorkOrderId)
+  const { data: workOrders = [] } = useQuery({
+    queryKey: ['work-orders', activeTenantId],
+    queryFn: () => client.workOrders.list(),
+    enabled: !!activeTenantId,
+  })
+  const selectedWorkOrder = selectedWorkOrderId
+    ? workOrders.find((wo) => wo?.id === selectedWorkOrderId)
+    : null
+
+  if (!selectedWorkOrder) {
+    return (
+      <p className="p-2 text-sm text-muted-foreground">Select a work order</p>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3 p-2">
+      <div className="space-y-1">
+        <p className="text-sm font-medium leading-none">{selectedWorkOrder.title ?? '—'}</p>
+        <p className="text-xs text-muted-foreground">
+          {selectedWorkOrder.status ?? '—'} · {selectedWorkOrder.priority ?? '—'}
+        </p>
+      </div>
+      <Separator />
+      <dl className="grid gap-2 text-sm">
+        <div>
+          <dt className="text-muted-foreground">Status</dt>
+          <dd>{selectedWorkOrder.status ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Priority</dt>
+          <dd>{selectedWorkOrder.priority ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Assigned to</dt>
+          <dd>{selectedWorkOrder.assigned_to_name ?? '—'}</dd>
+        </div>
+        {selectedWorkOrder.due_date && (
+          <div>
+            <dt className="text-muted-foreground">Due</dt>
+            <dd>{new Date(selectedWorkOrder.due_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</dd>
+          </div>
+        )}
+      </dl>
+      {selectedWorkOrder.description && (
+        <>
+          <Separator />
+          <div>
+            <dt className="mb-1 text-muted-foreground text-xs">Description</dt>
+            <dd className="text-sm whitespace-pre-wrap">{selectedWorkOrder.description}</dd>
+          </div>
+        </>
+      )}
+      <button
+        type="button"
+        className="mt-2 text-left text-xs text-muted-foreground hover:underline"
+        onClick={() => setSelectedWorkOrderId(null)}
+      >
+        Clear selection
+      </button>
+    </div>
+  )
+}
 
 const PAGE_SIZE = 10
 const WORK_ORDER_ENTITY_TYPE = 'work_order'
@@ -132,10 +203,16 @@ function WorkOrdersPage() {
         },
         meta: {
           label: 'Status',
-          variant: 'select',
+          variant: 'multiSelect',
           options: statusOptions,
         },
         enableColumnFilter: true,
+        filterFn: (row: Row<WorkOrderRow>, id: string, filterValue: unknown) => {
+          const value = row.getValue(id) as string | null
+          const values = Array.isArray(filterValue) ? filterValue : [filterValue]
+          if (!values.length) return true
+          return value != null && values.includes(value)
+        },
       },
       {
         id: 'priority',
@@ -150,10 +227,16 @@ function WorkOrdersPage() {
         },
         meta: {
           label: 'Priority',
-          variant: 'select',
+          variant: 'multiSelect',
           options: priorityOptions,
         },
         enableColumnFilter: true,
+        filterFn: (row: Row<WorkOrderRow>, id: string, filterValue: unknown) => {
+          const value = row.getValue(id) as string | null
+          const values = Array.isArray(filterValue) ? filterValue : [filterValue]
+          if (!values.length) return true
+          return value != null && values.includes(value)
+        },
       },
       {
         id: 'assigned_to_name',
@@ -235,6 +318,13 @@ function WorkOrdersPage() {
           <Plus className="size-4" />
           New work order
         </Button>
+      </ExtensionPoint>
+
+      <ExtensionPoint name="sidebar.right.header">
+        <span className="font-semibold">Details</span>
+      </ExtensionPoint>
+      <ExtensionPoint name="sidebar.right.content">
+        <WorkOrderRightSidebarContent />
       </ExtensionPoint>
 
       <DataTable table={table}>
