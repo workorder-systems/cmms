@@ -11,10 +11,10 @@ import {
   SidebarProvider,
 } from '@workspace/ui/components/sidebar';
 import { PortalTarget } from './portal-target';
-import { useAppShellStore } from './store.js';
+import { useAppShellStore } from './store';
 import { cn } from '@workspace/ui/lib/utils';
-import { SidebarRailRight } from './sidebar-rail-right.js';
-import type { AppShellStore } from './types.js';
+import { SidebarRailRight } from './sidebar-rail-right';
+import type { AppShellStore } from './types';
 
 interface AppShellProps {
   children: React.ReactNode;
