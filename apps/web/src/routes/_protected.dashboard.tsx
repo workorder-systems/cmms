@@ -44,6 +44,7 @@ import {
   LogOut,
   MapPin,
   Settings2,
+  Shield,
   Sparkles,
   Tags,
   Users,
@@ -60,7 +61,7 @@ import { useTenant } from '../contexts/tenant'
 import { AppShell } from '@workspace/ui/components/app-shell'
 import { SmartBreadcrumb } from '../components/smart-breadcrumb'
 
-/** CMMS sidebar nav: matches SDK resources (work orders, assets, locations, PM, dashboard, catalogs, departments). */
+/** CMMS sidebar nav: matches SDK resources (work orders, assets, locations, PM, dashboard, catalogs, departments, users, roles). */
 const CMMS_NAV = {
   operations: [
     {
@@ -94,15 +95,14 @@ const CMMS_NAV = {
       items: null,
     },
   ],
+  team: [
+    { title: 'Departments', to: '/dashboard/departments', icon: Users, items: null as null },
+    { title: 'Users', to: '/dashboard/users', icon: Users, items: null as null },
+    { title: 'Roles', to: '/dashboard/roles', icon: Shield, items: null as null },
+  ],
   configuration: [
-    { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags },
-    {
-      title: 'Departments',
-      to: '/dashboard/departments',
-      icon: Users,
-      items: null as null,
-    },
-    { title: 'Settings', to: '/dashboard/settings', icon: Settings2 },
+    { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags, items: null as null },
+    { title: 'Settings', to: '/dashboard/settings', icon: Settings2, items: null as null },
   ],
 }
 
@@ -266,6 +266,53 @@ function DashboardLayoutInner() {
         </SidebarMenu>
       </SidebarGroup>
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+        <SidebarGroupLabel>Team</SidebarGroupLabel>
+        <SidebarMenu>
+          {CMMS_NAV.team.map((item) =>
+            item.items ? (
+              <Collapsible
+                key={item.title}
+                asChild
+                defaultOpen={false}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={item.title}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items.map((subItem) => (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton asChild>
+                            <Link to={subItem.to}>
+                              <span>{subItem.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            ) : (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <Link to={item.to}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ),
+          )}
+        </SidebarMenu>
+      </SidebarGroup>
+      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupLabel>Configuration</SidebarGroupLabel>
         <SidebarMenu>
           {CMMS_NAV.configuration.map((item) =>
@@ -399,6 +446,8 @@ function DashboardLayoutInner() {
           assets: 'Assets',
           locations: 'Locations',
           departments: 'Departments',
+          users: 'Users',
+          roles: 'Roles',
           catalogs: 'Catalogs',
           settings: 'Settings',
           pm: 'Preventive maintenance',

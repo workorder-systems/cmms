@@ -16,6 +16,7 @@ export type {
   CreateTenantParams,
   InviteUserParams,
   AssignRoleParams,
+  RemoveMemberParams,
   TenantsResource,
 } from './resources/tenants.js';
 export type {
@@ -69,6 +70,7 @@ export type {
   UserTenantRoleRow,
   ProfileRow,
   AssignPermissionToRoleParams,
+  RevokePermissionFromRoleParams,
   GrantScopeParams,
   RevokeScopeParams,
   HasPermissionParams,
