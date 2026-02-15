@@ -72,28 +72,19 @@ const CMMS_NAV = {
       title: 'Work orders',
       to: '/dashboard/workorders',
       icon: ClipboardList,
-      items: [
-        { title: 'All work orders', to: '/dashboard/workorders' },
-        { title: 'Import', to: '/dashboard/workorders/import' },
-      ],
+      items: null as null,
     },
     {
       title: 'Assets',
       to: '/dashboard/assets',
       icon: Wrench,
-      items: [
-        { title: 'All assets', to: '/dashboard/assets' },
-        { title: 'Import', to: '/dashboard/assets/import' },
-      ],
+      items: null as null,
     },
     {
       title: 'Locations',
       to: '/dashboard/locations',
       icon: MapPin,
-      items: [
-        { title: 'All locations', to: '/dashboard/locations' },
-        { title: 'Import', to: '/dashboard/locations/import' },
-      ],
+      items: null as null,
     },
     {
       title: 'Preventive maintenance',
@@ -108,10 +99,7 @@ const CMMS_NAV = {
       title: 'Departments',
       to: '/dashboard/departments',
       icon: Users,
-      items: [
-        { title: 'All departments', to: '/dashboard/departments' },
-        { title: 'Import', to: '/dashboard/departments/import' },
-      ],
+      items: null as null,
     },
     { title: 'Settings', to: '/dashboard/settings', icon: Settings2 },
   ],
