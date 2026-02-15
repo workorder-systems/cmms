@@ -93,19 +93,19 @@ export function SmartBreadcrumb({
       <BreadcrumbList>
         {showRoot && (
           <>
-            <BreadcrumbItem className="hidden @md/main:inline-flex">
+            <BreadcrumbItem className="hidden md:inline-flex">
               <BreadcrumbLink asChild>
                 <Link to={rootHref} className="flex items-center gap-1.5">
                   <Home className="size-4" />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
-            <BreadcrumbSeparator className="hidden @md/main:block" />
+            <BreadcrumbSeparator className="hidden md:block" />
           </>
         )}
         {items.map((item, index) => (
           <React.Fragment key={item.href}>
-            <BreadcrumbItem className={index > 0 ? 'hidden @sm/main:inline-flex' : undefined}>
+            <BreadcrumbItem className={index > 0 ? 'hidden sm:inline-flex' : undefined}>
               {item.isLast ? (
                 <BreadcrumbPage>{item.label}</BreadcrumbPage>
               ) : (
@@ -115,7 +115,7 @@ export function SmartBreadcrumb({
               )}
             </BreadcrumbItem>
             {!item.isLast && (
-              <BreadcrumbSeparator className={index > 0 ? 'hidden @md/main:block' : 'hidden @md/main:block'} />
+              <BreadcrumbSeparator className="hidden md:block" />
             )}
           </React.Fragment>
         ))}

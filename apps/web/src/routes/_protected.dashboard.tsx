@@ -58,6 +58,7 @@ import { useIsMobile } from '@workspace/ui/hooks/use-mobile'
 import { useAuth } from '../contexts/auth'
 import { useTenant } from '../contexts/tenant'
 import { AppShell } from '@workspace/ui/components/app-shell'
+import { SmartBreadcrumb } from '../components/smart-breadcrumb'
 
 /** CMMS sidebar nav: matches SDK resources (work orders, assets, locations, PM, dashboard, catalogs, departments). */
 const CMMS_NAV = {
@@ -388,6 +389,23 @@ function DashboardLayoutInner() {
   const headerLeft = (
     <>
       <SidebarTrigger className="-ml-1" />
+      <SmartBreadcrumb
+      showRoot={true}
+        basePath="/dashboard"
+        rootHref="/dashboard"
+        rootLabel="Dashboard"
+        segmentLabels={{
+          workorders: 'Work orders',
+          assets: 'Assets',
+          locations: 'Locations',
+          departments: 'Departments',
+          catalogs: 'Catalogs',
+          settings: 'Settings',
+          pm: 'Preventive maintenance',
+          import: 'Import',
+        }}
+        className="min-w-0"
+      />
     </>
   )
 
