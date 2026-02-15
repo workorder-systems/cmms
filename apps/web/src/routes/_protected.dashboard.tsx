@@ -61,8 +61,20 @@ import { useTenant } from '../contexts/tenant'
 import { AppShell } from '@workspace/ui/components/app-shell'
 import { SmartBreadcrumb } from '../components/smart-breadcrumb'
 
+/** Nav item with optional sub-items for collapsible sections. */
+type NavItem = {
+  title: string
+  to: string
+  icon: React.ComponentType<{ className?: string }>
+  items: { title: string; to: string }[] | null
+}
+
 /** CMMS sidebar nav: matches SDK resources (work orders, assets, locations, PM, dashboard, catalogs, departments, users, roles). */
-const CMMS_NAV = {
+const CMMS_NAV: {
+  operations: NavItem[]
+  team: NavItem[]
+  configuration: NavItem[]
+} = {
   operations: [
     {
       title: 'Dashboard',
@@ -96,13 +108,13 @@ const CMMS_NAV = {
     },
   ],
   team: [
-    { title: 'Departments', to: '/dashboard/departments', icon: Users, items: null as null },
-    { title: 'Users', to: '/dashboard/users', icon: Users, items: null as null },
-    { title: 'Roles', to: '/dashboard/roles', icon: Shield, items: null as null },
+    { title: 'Departments', to: '/dashboard/departments', icon: Users, items: null },
+    { title: 'Users', to: '/dashboard/users', icon: Users, items: null },
+    { title: 'Roles', to: '/dashboard/roles', icon: Shield, items: null },
   ],
   configuration: [
-    { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags, items: null as null },
-    { title: 'Settings', to: '/dashboard/settings', icon: Settings2, items: null as null },
+    { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags, items: null },
+    { title: 'Settings', to: '/dashboard/settings', icon: Settings2, items: null },
   ],
 }
 
