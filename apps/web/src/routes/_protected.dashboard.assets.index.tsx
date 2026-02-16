@@ -3,7 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef, Row } from '@tanstack/react-table'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Upload, Wrench } from 'lucide-react'
-import type { AssetRow } from '@workorder-systems/sdk'
+import type { AssetRow, AssetMeterRow, MeterReadingRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
@@ -19,6 +19,7 @@ import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
 import { DataTableToolbar } from '@workspace/ui/components/data-table/data-table-toolbar'
 import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-table-skeleton'
+import { Sparkline } from '@workspace/ui/components/sparkline'
 import { useDataTable } from '@workspace/ui/hooks/use-data-table'
 import { Button } from '@workspace/ui/components/button'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
@@ -74,6 +75,18 @@ function AssetsPage() {
     enabled: !!activeTenantId,
   })
 
+  const { data: meters = [] } = useQuery({
+    queryKey: ['meters', activeTenantId],
+    queryFn: () => client.meters.list(),
+    enabled: !!activeTenantId,
+  })
+
+  const { data: meterReadings = [] } = useQuery({
+    queryKey: ['meter-readings', activeTenantId],
+    queryFn: () => client.meters.getReadings(),
+    enabled: !!activeTenantId,
+  })
+
   const assetStatusOptions = React.useMemo(() => {
     const opts = statusCatalog
       .filter((s) => s.entity_type === ASSET_ENTITY_TYPE)
@@ -112,6 +125,37 @@ function AssetsPage() {
     }
     return map
   }, [departments])
+
+  const assetIdToSparklineData = React.useMemo(() => {
+    const meterIdsByAsset = new Map<string, string[]>()
+    for (const m of meters as AssetMeterRow[]) {
+      const aid = m.asset_id ?? ''
+      if (!aid || !m.id) continue
+      const ids = meterIdsByAsset.get(aid) ?? []
+      ids.push(m.id)
+      meterIdsByAsset.set(aid, ids)
+    }
+    const readingsByAsset = new Map<string, { date: string; value: number }[]>()
+    for (const r of meterReadings as MeterReadingRow[]) {
+      const mid = r.meter_id ?? ''
+      const date = r.reading_date ?? ''
+      const value = r.reading_value ?? 0
+      if (!mid) continue
+      for (const [assetId, meterIds] of meterIdsByAsset) {
+        if (!meterIds.includes(mid)) continue
+        const list = readingsByAsset.get(assetId) ?? []
+        list.push({ date, value })
+        readingsByAsset.set(assetId, list)
+        break
+      }
+    }
+    const result = new Map<string, number[]>()
+    readingsByAsset.forEach((list, assetId) => {
+      const sorted = [...list].sort((a, b) => a.date.localeCompare(b.date))
+      result.set(assetId, sorted.slice(-15).map((x) => x.value))
+    })
+    return result
+  }, [meters, meterReadings])
 
   const isCreateModalOpen = useAssetsPageStore((s) => s.isCreateModalOpen)
   const openCreateModal = useAssetsPageStore((s) => s.openCreateModal)
@@ -212,6 +256,25 @@ function AssetsPage() {
         },
       },
       {
+        id: 'meter_trend',
+        accessorKey: 'id',
+        header: () => <span className="text-muted-foreground">Meter trend</span>,
+        cell: ({ row }) => {
+          const assetId = (row.original as AssetRow).id ?? ''
+          const data = assetId ? assetIdToSparklineData.get(assetId) : undefined
+          if (!data || data.length === 0) return <span className="text-muted-foreground">—</span>
+          return (
+            <Sparkline
+              data={data}
+              width={60}
+              height={24}
+              variant="line"
+              showGradient={false}
+            />
+          )
+        },
+      },
+      {
         id: 'created_at',
         accessorKey: 'created_at',
         header: ({ column }) => (
@@ -227,7 +290,7 @@ function AssetsPage() {
         },
       },
     ],
-    [locationIdToName, departmentIdToName, assetStatusOptions, assetStatusCatalog],
+    [locationIdToName, departmentIdToName, assetStatusOptions, assetStatusCatalog, assetIdToSparklineData],
   )
 
   const pageCount = Math.ceil(assets.length / DEFAULT_PAGE_SIZE) || 1
@@ -251,7 +314,7 @@ function AssetsPage() {
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <DataTableSkeleton columnCount={6} rowCount={10} />
+        <DataTableSkeleton columnCount={7} rowCount={10} />
       </div>
     )
   }

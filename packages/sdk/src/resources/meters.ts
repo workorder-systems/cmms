@@ -3,8 +3,12 @@ import type { Database } from '../database.types.js';
 import { normalizeError } from '../errors.js';
 import { callRpc } from '../unwrap.js';
 
-export type AssetMeterRow = Record<string, unknown>;
-export type MeterReadingRow = Record<string, unknown>;
+export type AssetMeterRow = Database['public']['Views']['v_asset_meters'] extends { Row: infer R }
+  ? R
+  : Record<string, unknown>;
+export type MeterReadingRow = Database['public']['Views']['v_meter_readings'] extends { Row: infer R }
+  ? R
+  : Record<string, unknown>;
 
 export interface CreateMeterParams {
   tenantId: string;
