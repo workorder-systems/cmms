@@ -13,6 +13,7 @@ import type { PmResource } from './resources/pm.js';
 import type { DashboardResource } from './resources/dashboard.js';
 import type { AuditResource } from './resources/audit.js';
 import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
+import type { TenantApiKeysResource } from './resources/tenant-api-keys.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -68,4 +69,6 @@ export type DbClient = {
   audit: AuditResource;
   /** Similar Past Fixes: search for semantically similar completed work orders. */
   similarPastFixes: SimilarPastFixesResource;
+  /** Tenant API keys: create, list, revoke. For IoT / machine access (e.g. ingest-meter-reading Edge Function). */
+  tenantApiKeys: TenantApiKeysResource;
 };

@@ -15,6 +15,7 @@ import { createPmResource } from './resources/pm.js';
 import { createDashboardResource } from './resources/dashboard.js';
 import { createAuditResource } from './resources/audit.js';
 import { createSimilarPastFixesResource } from './resources/similar-past-fixes.js';
+import { createTenantApiKeysResource } from './resources/tenant-api-keys.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -60,6 +61,7 @@ export function createDbClient(
     dashboard: createDashboardResource(supabase),
     audit: createAuditResource(supabase),
     similarPastFixes: createSimilarPastFixesResource(supabase),
+    tenantApiKeys: createTenantApiKeysResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',

@@ -130,3 +130,8 @@ export type {
   SimilarPastFixResult,
   SearchSimilarParams,
 } from './resources/similar-past-fixes.js';
+export type {
+  TenantApiKeyRow,
+  CreateTenantApiKeyResult,
+  TenantApiKeysResource,
+} from './resources/tenant-api-keys.js';
