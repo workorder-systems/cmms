@@ -7,6 +7,8 @@ export type RowHeightValue = "short" | "medium" | "tall" | "extra-tall";
 export interface CellSelectOption {
   label: string;
   value: string;
+  /** Optional hex color (#RGB or #RRGGBB) – shown as a dot in dropdowns and badges. */
+  color?: string | null;
   icon?: React.FC<React.SVGProps<SVGSVGElement>>;
   count?: number;
 }

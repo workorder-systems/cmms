@@ -65,7 +65,11 @@ function WorkOrdersPage() {
     return statusCatalog
       .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      .map((s) => ({ label: s.name ?? s.key ?? '', value: s.key ?? '' }))
+      .map((s) => ({
+        label: s.name ?? s.key ?? '',
+        value: s.key ?? '',
+        color: s.color ?? null,
+      }))
       .filter((o) => o.value)
   }, [statusCatalog])
 
@@ -73,7 +77,11 @@ function WorkOrdersPage() {
     return priorityCatalog
       .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      .map((p) => ({ label: p.name ?? p.key ?? '', value: p.key ?? '' }))
+      .map((p) => ({
+        label: p.name ?? p.key ?? '',
+        value: p.key ?? '',
+        color: p.color ?? null,
+      }))
       .filter((o) => o.value)
   }, [priorityCatalog])
 

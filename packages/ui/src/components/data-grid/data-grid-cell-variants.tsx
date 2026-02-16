@@ -920,8 +920,8 @@ export function SelectCell<TData>({
     [isEditing, isFocused, initialValue, tableMeta],
   );
 
-  const displayLabel =
-    options.find((opt) => opt.value === value)?.label ?? value;
+  const selectedOption = options.find((opt) => opt.value === value);
+  const displayLabel = selectedOption?.label ?? value;
 
   return (
     <DataGridCellWrapper<TData>
@@ -952,8 +952,21 @@ export function SelectCell<TData>({
           >
             {displayLabel ? (
               <Badge
-                variant="secondary"
-                className="whitespace-pre-wrap px-1.5 py-px"
+                variant="outline"
+                className={cn(
+                  "flex items-center gap-1 whitespace-pre-wrap px-1.5 py-px font-medium",
+                  !selectedOption?.color &&
+                    "border-transparent bg-muted text-muted-foreground",
+                )}
+                style={
+                  selectedOption?.color
+                    ? {
+                        borderColor: selectedOption.color,
+                        backgroundColor: `${selectedOption.color}18`,
+                        color: selectedOption.color,
+                      }
+                    : undefined
+                }
               >
                 <SelectValue />
               </Badge>
@@ -975,6 +988,13 @@ export function SelectCell<TData>({
             ) : null}
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
+                {option.color ? (
+                  <span
+                    className="mr-1.5 inline-block size-2 shrink-0 rounded-full border border-border"
+                    style={{ backgroundColor: option.color }}
+                    aria-hidden
+                  />
+                ) : null}
                 {option.label}
               </SelectItem>
             ))}
@@ -983,8 +1003,21 @@ export function SelectCell<TData>({
       ) : displayLabel ? (
         <Badge
           data-slot="grid-cell-content"
-          variant="secondary"
-          className="whitespace-pre-wrap px-1.5 py-px"
+          variant="outline"
+          className={cn(
+            "whitespace-pre-wrap px-1.5 py-px font-medium",
+            !selectedOption?.color &&
+              "border-transparent bg-muted text-muted-foreground",
+          )}
+          style={
+            selectedOption?.color
+              ? {
+                  borderColor: selectedOption.color,
+                  backgroundColor: `${selectedOption.color}18`,
+                  color: selectedOption.color,
+                }
+              : undefined
+          }
         >
           {displayLabel}
         </Badge>
@@ -1130,16 +1163,22 @@ export function MultiSelectCell<TData>({
     [searchValue, selectedValues, removeValue],
   );
 
-  const displayLabels = selectedValues
-    .map((val) => options.find((opt) => opt.value === val)?.label ?? val)
-    .filter(Boolean);
+  const displayItems = selectedValues
+    .map((val) => {
+      const opt = options.find((o) => o.value === val);
+      return {
+        label: opt?.label ?? val,
+        color: opt?.color ?? null,
+      };
+    })
+    .filter((item) => item.label);
 
   const lineCount = getLineCount(rowHeight);
 
-  const { visibleItems: visibleLabels, hiddenCount: hiddenBadgeCount } =
+  const { visibleItems: visibleDisplayItems, hiddenCount: hiddenBadgeCount } =
     useBadgeOverflow({
-      items: displayLabels,
-      getLabel: (label) => label,
+      items: displayItems,
+      getLabel: (item) => item.label,
       containerRef,
       lineCount,
     });
@@ -1181,8 +1220,21 @@ export function MultiSelectCell<TData>({
                   return (
                     <Badge
                       key={value}
-                      variant="secondary"
-                      className="gap-1 px-1.5 py-px"
+                      variant="outline"
+                      className={cn(
+                        "flex items-center gap-1 px-1.5 py-px font-medium",
+                        !option?.color &&
+                          "border-transparent bg-muted text-muted-foreground",
+                      )}
+                      style={
+                        option?.color
+                          ? {
+                              borderColor: option.color,
+                              backgroundColor: `${option.color}18`,
+                              color: option.color,
+                            }
+                          : undefined
+                      }
                     >
                       {label}
                       <button
@@ -1213,15 +1265,15 @@ export function MultiSelectCell<TData>({
                   {options.map((option) => {
                     const isSelected = selectedValues.includes(option.value);
 
-                    return (
-                      <CommandItem
+                  return (
+                    <CommandItem
                         key={option.value}
                         value={option.label}
                         onSelect={() => onValueChange(option.value)}
                       >
                         <div
                           className={cn(
-                            "flex size-4 items-center justify-center rounded-sm border border-primary",
+                            "flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary",
                             isSelected
                               ? "bg-primary text-primary-foreground"
                               : "opacity-50 [&_svg]:invisible",
@@ -1229,6 +1281,13 @@ export function MultiSelectCell<TData>({
                         >
                           <Check className="size-3" />
                         </div>
+                        {option.color ? (
+                          <span
+                            className="size-2 shrink-0 rounded-full border border-border"
+                            style={{ backgroundColor: option.color }}
+                            aria-hidden
+                          />
+                        ) : null}
                         <span>{option.label}</span>
                       </CommandItem>
                     );
@@ -1252,15 +1311,28 @@ export function MultiSelectCell<TData>({
           </PopoverContent>
         </Popover>
       ) : null}
-      {displayLabels.length > 0 ? (
+      {displayItems.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1 overflow-hidden">
-          {visibleLabels.map((label, index) => (
+          {visibleDisplayItems.map((item, index) => (
             <Badge
               key={selectedValues[index]}
-              variant="secondary"
-              className="px-1.5 py-px"
+              variant="outline"
+              className={cn(
+                "px-1.5 py-px font-medium",
+                !item.color &&
+                  "border-transparent bg-muted text-muted-foreground",
+              )}
+              style={
+                item.color
+                  ? {
+                      borderColor: item.color,
+                      backgroundColor: `${item.color}18`,
+                      color: item.color,
+                    }
+                  : undefined
+              }
             >
-              {label}
+              {item.label}
             </Badge>
           ))}
           {hiddenBadgeCount > 0 && (

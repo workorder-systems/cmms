@@ -11,9 +11,9 @@ import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
 
 const ASSET_STATUS_OPTIONS = [
-  { label: 'Active', value: 'active' },
-  { label: 'Inactive', value: 'inactive' },
-  { label: 'Retired', value: 'retired' },
+  { label: 'Active', value: 'active', color: '#22c55e' as const },
+  { label: 'Inactive', value: 'inactive', color: '#94a3b8' as const },
+  { label: 'Retired', value: 'retired', color: '#64748b' as const },
 ]
 
 export interface AssetImportRow {

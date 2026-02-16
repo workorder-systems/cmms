@@ -22,7 +22,7 @@ import {
 } from "../popover";
 import { Separator } from "../separator";
 import { cn } from "@workspace/ui/lib/utils";
-import type { Option } from "@workspace/types/data-table";
+import type { Option } from "../../types/data-table";
 
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
@@ -122,8 +122,15 @@ export function DataTableFacetedFilter<TData, TValue>({
                       <Badge
                         variant="secondary"
                         key={option.value}
-                        className="rounded-sm px-1 font-normal"
+                        className="flex items-center gap-1 rounded-sm px-1 font-normal"
                       >
+                        {option.color ? (
+                          <span
+                            className="size-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: option.color }}
+                            aria-hidden
+                          />
+                        ) : null}
                         {option.label}
                       </Badge>
                     ))
@@ -149,7 +156,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                   >
                     <div
                       className={cn(
-                        "flex size-4 items-center justify-center rounded-sm border border-primary",
+                        "flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary",
                         isSelected
                           ? "bg-primary"
                           : "opacity-50 [&_svg]:invisible",
@@ -157,6 +164,15 @@ export function DataTableFacetedFilter<TData, TValue>({
                     >
                       <Check />
                     </div>
+                    {option.color ? (
+                      <span
+                        className="size-2 shrink-0 rounded-full border border-border"
+                        style={{
+                          backgroundColor: option.color,
+                        }}
+                        aria-hidden
+                      />
+                    ) : null}
                     {option.icon && <option.icon />}
                     <span className="truncate">{option.label}</span>
                     {option.count && (

@@ -38,9 +38,9 @@ const WORKORDERS_CSV_OPTIONS = {
 
 /** Fallback when catalog has no work_order priorities. */
 const FALLBACK_PRIORITY_OPTIONS = [
-  { label: 'Low', value: 'low' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'High', value: 'high' },
+  { label: 'Low', value: 'low', color: '#22c55e' as const },
+  { label: 'Medium', value: 'medium', color: '#3b82f6' as const },
+  { label: 'High', value: 'high', color: '#f59e0b' as const },
 ]
 
 function createEmptyRow(priorityDefault = 'medium'): WorkOrderImportRow {
@@ -90,7 +90,11 @@ function WorkOrdersImportPage() {
     return statusCatalog
       .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      .map((s) => ({ label: s.name ?? s.key ?? '', value: s.key ?? '' }))
+      .map((s) => ({
+        label: s.name ?? s.key ?? '',
+        value: s.key ?? '',
+        color: s.color ?? null,
+      }))
       .filter((o) => o.value !== '')
   }, [statusCatalog])
 
@@ -98,7 +102,11 @@ function WorkOrdersImportPage() {
     const opts = priorityCatalog
       .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      .map((p) => ({ label: p.name ?? p.key ?? '', value: p.key ?? '' }))
+      .map((p) => ({
+        label: p.name ?? p.key ?? '',
+        value: p.key ?? '',
+        color: p.color ?? null,
+      }))
       .filter((o) => o.value)
     return opts.length > 0 ? opts : FALLBACK_PRIORITY_OPTIONS
   }, [priorityCatalog])
