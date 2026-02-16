@@ -8,7 +8,14 @@ import { useTenant } from '../contexts/tenant'
 import { ensureTenantContext } from '../lib/route-loaders'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
 import { Button } from '@workspace/ui/components/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@workspace/ui/components/card'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyContent,
+} from '@workspace/ui/components/empty'
 import {
   Item,
   ItemActions,
@@ -139,62 +146,61 @@ function SettingsApiPage() {
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <KeyRound className="size-5" />
-                Keys
-              </CardTitle>
-              <CardDescription>
-                Keys are scoped to this tenant. The secret is only shown once when created.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <p className="text-muted-foreground text-sm">Loading…</p>
-            ) : keys.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No API keys yet. Create one to use with the ingest-meter-reading Edge Function or
-                other integrations.
-              </p>
-            ) : (
-              <ItemGroup>
-                {(keys as TenantApiKeyRow[]).map((k, index) => (
-                  <React.Fragment key={k.id}>
-                    {index > 0 && <ItemSeparator />}
-                    <Item size="sm" variant="outline">
-                      <ItemMedia variant="icon">
-                        <KeyRound className="size-4" />
-                      </ItemMedia>
-                      <ItemContent>
-                        <ItemTitle>{k.name ?? '—'}</ItemTitle>
-                        <ItemDescription>
-                          Prefix: <code className="rounded bg-muted px-1">{k.keyPrefix ?? '—'}</code>
-                          {k.lastUsedAt && (
-                            <> · Last used: {formatDate(k.lastUsedAt)}</>
-                          )}
-                        </ItemDescription>
-                      </ItemContent>
-                      <ItemActions>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setRevokeKeyId(k.id)}
-                        >
-                          <Trash2 className="size-4" />
-                          Revoke
-                        </Button>
-                      </ItemActions>
-                    </Item>
-                  </React.Fragment>
-                ))}
-              </ItemGroup>
-            )}
-          </CardContent>
-        </Card>
+        {isLoading ? (
+          <p className="text-muted-foreground text-sm">Loading…</p>
+        ) : keys.length === 0 ? (
+          <Empty className="min-h-[240px] border border-dashed">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <KeyRound className="size-6" />
+              </EmptyMedia>
+              <EmptyTitle>No API keys yet</EmptyTitle>
+              <EmptyDescription>
+                Create a key to use with the ingest-meter-reading Edge Function or other
+                integrations. The secret is shown only once when created.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => setCreateOpen(true)} size="sm">
+                <Plus className="size-4" />
+                Create key
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <ItemGroup>
+            {(keys as TenantApiKeyRow[]).map((k, index) => (
+              <React.Fragment key={k.id}>
+                {index > 0 && <ItemSeparator />}
+                <Item size="sm" variant="outline">
+                  <ItemMedia variant="icon">
+                    <KeyRound className="size-4" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{k.name ?? '—'}</ItemTitle>
+                    <ItemDescription>
+                      Prefix: <code className="rounded bg-muted px-1">{k.keyPrefix ?? '—'}</code>
+                      {k.lastUsedAt && (
+                        <> · Last used: {formatDate(k.lastUsedAt)}</>
+                      )}
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setRevokeKeyId(k.id)}
+                    >
+                      <Trash2 className="size-4" />
+                      Revoke
+                    </Button>
+                  </ItemActions>
+                </Item>
+              </React.Fragment>
+            ))}
+          </ItemGroup>
+        )}
       </div>
 
       {/* Create key dialog */}
