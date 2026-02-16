@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { ColumnDef, Row } from '@tanstack/react-table'
+import type { ColumnDef, Column, Row } from '@tanstack/react-table'
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import { ClipboardList, History, Loader2 } from 'lucide-react'
 import type { WorkOrderRow, SimilarPastFixResult } from '@workorder-systems/sdk'
@@ -79,7 +79,7 @@ function WorkOrderDetailPage() {
       {
         id: 'title',
         accessorKey: 'title',
-        header: ({ column }) => (
+        header: ({ column }: { column: Column<SimilarPastFixResult, unknown> }) => (
           <DataTableColumnHeader column={column} label="Title" />
         ),
         cell: ({ row }: { row: Row<SimilarPastFixResult> }) => {
@@ -98,7 +98,7 @@ function WorkOrderDetailPage() {
       {
         id: 'similarityScore',
         accessorKey: 'similarityScore',
-        header: ({ column }) => (
+        header: ({ column }: { column: Column<SimilarPastFixResult, unknown> }) => (
           <DataTableColumnHeader column={column} label="Match" />
         ),
         cell: ({ row }: { row: Row<SimilarPastFixResult> }) => {
@@ -113,10 +113,10 @@ function WorkOrderDetailPage() {
       {
         id: 'completedAt',
         accessorKey: 'completedAt',
-        header: ({ column }) => (
+        header: ({ column }: { column: Column<SimilarPastFixResult, unknown> }) => (
           <DataTableColumnHeader column={column} label="Completed" />
         ),
-        cell: ({ row }) => {
+        cell: ({ row }: { row: Row<SimilarPastFixResult> }) => {
           const at = row.original.completedAt
           return at ? (
             <span className="text-muted-foreground text-sm">
@@ -129,9 +129,9 @@ function WorkOrderDetailPage() {
       },
       {
         id: 'cause',
-        accessorFn: (row) => row.cause ?? '',
+        accessorFn: (row: SimilarPastFixResult) => row.cause ?? '',
         header: 'Cause',
-        cell: ({ row }) => {
+        cell: ({ row }: { row: Row<SimilarPastFixResult> }) => {
           const v = row.original.cause
           return v ? (
             <span className="line-clamp-2 text-muted-foreground text-sm">{v}</span>
@@ -142,9 +142,9 @@ function WorkOrderDetailPage() {
       },
       {
         id: 'resolution',
-        accessorFn: (row) => row.resolution ?? '',
+        accessorFn: (row: SimilarPastFixResult) => row.resolution ?? '',
         header: 'Resolution',
-        cell: ({ row }) => {
+        cell: ({ row }: { row: Row<SimilarPastFixResult> }) => {
           const v = row.original.resolution
           return v ? (
             <span className="line-clamp-2 text-muted-foreground text-sm">{v}</span>
@@ -161,7 +161,7 @@ function WorkOrderDetailPage() {
     data: similarPastFixes,
     columns: similarPastFixesColumns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.workOrderId,
+    getRowId: (row: SimilarPastFixResult) => row.workOrderId,
   })
 
   const workOrderStatusCatalog = React.useMemo(
