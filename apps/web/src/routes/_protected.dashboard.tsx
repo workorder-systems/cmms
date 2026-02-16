@@ -474,6 +474,7 @@ function DashboardLayoutInner() {
           roles: 'Roles',
           catalogs: 'Catalogs',
           settings: 'Settings',
+          api: 'API keys',
           pm: 'Preventive maintenance',
           import: 'Import',
         }}
