@@ -2,24 +2,23 @@ import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { getDbClient } from '../lib/db-client'
+import { DASHBOARD_TENANT_STORAGE_KEY } from '../lib/tenant-storage'
 import type { TenantRow } from '@workorder-systems/sdk'
-
-const STORAGE_KEY = 'dashboard_tenant_id'
 
 function getStoredTenantId(): string | null {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem(STORAGE_KEY)
+  return localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
 }
 
 function setStoredTenantId(id: string): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, id)
+    localStorage.setItem(DASHBOARD_TENANT_STORAGE_KEY, id)
   }
 }
 
 function clearStoredTenantId(): void {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(DASHBOARD_TENANT_STORAGE_KEY)
   }
 }
 

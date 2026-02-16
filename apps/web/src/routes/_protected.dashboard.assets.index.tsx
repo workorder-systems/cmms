@@ -6,6 +6,7 @@ import { Plus, Upload, Wrench } from 'lucide-react'
 import type { AssetRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
 import { useAssetsPageStore } from '../stores/assets-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -24,20 +25,13 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
-
 const ASSET_STATUS_OPTIONS = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
 ]
 
 export const Route = createFileRoute('/_protected/dashboard/assets/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: AssetsPage,
 })
 

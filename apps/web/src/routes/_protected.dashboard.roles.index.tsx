@@ -10,6 +10,7 @@ import type {
 } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
 import { useRolesPageStore } from '../stores/roles-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -36,8 +37,6 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
-
 /** Row for table: role with its permission keys. */
 export interface RoleWithPermissionsRow {
   id: string
@@ -49,12 +48,7 @@ export interface RoleWithPermissionsRow {
 }
 
 export const Route = createFileRoute('/_protected/dashboard/roles/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: RolesPage,
 })
 

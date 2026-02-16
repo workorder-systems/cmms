@@ -4,12 +4,12 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getDbClient } from '../lib/db-client'
-import { prefetchCatalogs, catalogQueryOptions } from '../lib/catalog-queries'
+import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
 import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
 const WORK_ORDER_ENTITY_TYPE = 'work_order'
 
 export interface WorkOrderImportRow {
@@ -65,21 +65,7 @@ function getCsvTemplate(statusKeys: string[], priorityKeys: string[]): string {
 }
 
 export const Route = createFileRoute('/_protected/dashboard/workorders/import')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-    // Refresh session so JWT carries tenant_id; catalog views use get_current_tenant_id() from JWT
-    const { data } = await context.dbClient.supabase.auth.getSession()
-    if (data.session) {
-      await context.dbClient.supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      })
-    }
-    await prefetchCatalogs(context.queryClient, context.dbClient, tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
   component: WorkOrdersImportPage,
 })
 

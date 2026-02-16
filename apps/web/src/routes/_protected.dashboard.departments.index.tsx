@@ -6,6 +6,7 @@ import { Plus, Upload, Users } from 'lucide-react'
 import type { DepartmentRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
 import { useDepartmentsPageStore } from '../stores/departments-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -24,15 +25,8 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
-
 export const Route = createFileRoute('/_protected/dashboard/departments/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: DepartmentsPage,
 })
 

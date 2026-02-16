@@ -6,6 +6,7 @@ import { MoreHorizontal, Plus, UserMinus, UserPlus } from 'lucide-react'
 import type { ProfileRow, UserTenantRoleRow, TenantRoleRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
 import { useAuth } from '../contexts/auth'
 import { useUsersPageStore } from '../stores/users-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
@@ -41,8 +42,6 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
-
 /** Combined row for table: profile with roles and joined date. */
 export interface UserMemberRow {
   id: string
@@ -53,12 +52,7 @@ export interface UserMemberRow {
 }
 
 export const Route = createFileRoute('/_protected/dashboard/users/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: UsersPage,
 })
 

@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import { ClipboardList, Plus, Upload } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
-import { prefetchCatalogs, catalogQueryOptions } from '../lib/catalog-queries'
+import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
 import { useWorkOrdersPageStore } from '../stores/workorders-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -25,23 +26,8 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
-
 export const Route = createFileRoute('/_protected/dashboard/workorders/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-    const { data } = await context.dbClient.supabase.auth.getSession()
-    if (data.session) {
-      await context.dbClient.supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      })
-    }
-    await prefetchCatalogs(context.queryClient, context.dbClient, tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
   component: WorkOrdersPage,
 })
 

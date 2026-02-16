@@ -5,10 +5,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
 import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
-
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
 
 const ASSET_STATUS_OPTIONS = [
   { label: 'Active', value: 'active' },
@@ -67,12 +66,7 @@ function getCsvTemplate(): string {
 }
 
 export const Route = createFileRoute('/_protected/dashboard/assets/import')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: AssetsImportPage,
 })
 
