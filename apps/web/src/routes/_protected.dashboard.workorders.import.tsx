@@ -54,7 +54,8 @@ function createEmptyRow(priorityDefault = 'medium'): WorkOrderImportRow {
 }
 
 function getCsvTemplate(statusKeys: string[], priorityKeys: string[]): string {
-  const statusCol = statusKeys.length > 0 ? statusKeys[0]! : 'open'
+  // Use 'draft' (valid status key), not 'open' (category); backend validates against catalog keys
+  const statusCol = statusKeys.length > 0 ? statusKeys[0]! : 'draft'
   const priorityCol = priorityKeys.length > 0 ? priorityKeys[0]! : 'medium'
   return `title,description,status,priority,due_date
 "Repair HVAC unit in Building A","Inspect and replace filters",${statusCol},high,2025-03-15
@@ -69,6 +70,14 @@ export const Route = createFileRoute('/_protected/dashboard/workorders/import')(
     const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
     if (!tenantId) return
     await context.dbClient.setTenant(tenantId)
+    // Refresh session so JWT carries tenant_id; catalog views use get_current_tenant_id() from JWT
+    const { data } = await context.dbClient.supabase.auth.getSession()
+    if (data.session) {
+      await context.dbClient.supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      })
+    }
     await prefetchCatalogs(context.queryClient, context.dbClient, tenantId)
   },
   component: WorkOrdersImportPage,

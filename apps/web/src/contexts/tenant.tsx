@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { getDbClient } from '../lib/db-client'
 import type { TenantRow } from '@workorder-systems/sdk'
@@ -17,6 +17,12 @@ function setStoredTenantId(id: string): void {
   }
 }
 
+function clearStoredTenantId(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(STORAGE_KEY)
+  }
+}
+
 interface TenantState {
   activeTenantId: string | null
   isSetting: boolean
@@ -30,6 +36,7 @@ export const useTenantStore = create<TenantState>()((set, get) => ({
   isSetting: false,
   setActiveTenantIdSync(id: string | null) {
     if (id) setStoredTenantId(id)
+    else clearStoredTenantId()
     set({ activeTenantId: id })
   },
   setSetting(value: boolean) {
@@ -63,6 +70,7 @@ export const useTenantStore = create<TenantState>()((set, get) => ({
  */
 export function useTenant() {
   const client = getDbClient()
+  const queryClient = useQueryClient()
   const { data: tenants = [], isLoading: isLoadingTenants } = useQuery({
     queryKey: ['tenants'],
     queryFn: () => client.tenants.list(),
@@ -70,8 +78,16 @@ export function useTenant() {
 
   const activeTenantId = useTenantStore((s) => s.activeTenantId)
   const isSetting = useTenantStore((s) => s.isSetting)
-  const setActiveTenantId = useTenantStore((s) => s.setActiveTenantId)
+  const setActiveTenantIdStore = useTenantStore((s) => s.setActiveTenantId)
   const setActiveTenantIdSync = useTenantStore((s) => s.setActiveTenantIdSync)
+
+  const setActiveTenantId = React.useCallback(
+    async (id: string) => {
+      await setActiveTenantIdStore(id)
+      queryClient.invalidateQueries({ queryKey: ['catalogs'] })
+    },
+    [setActiveTenantIdStore, queryClient]
+  )
 
   const activeTenant =
     tenants.find((t) => t.id === activeTenantId) ?? tenants[0] ?? null
@@ -99,10 +115,13 @@ export function useTenant() {
           }
         })
       )
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['catalogs'] })
+      })
       .catch(() => {
         initialSyncDone.current = false
       })
-  }, [isLoadingTenants, tenants, client, setActiveTenantIdSync])
+  }, [isLoadingTenants, tenants, client, setActiveTenantIdSync, queryClient])
 
   return {
     tenants,

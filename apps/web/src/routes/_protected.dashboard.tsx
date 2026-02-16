@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
   Sidebar,
@@ -57,7 +58,8 @@ import {
 } from '@workspace/ui/components/avatar'
 import { useIsMobile } from '@workspace/ui/hooks/use-mobile'
 import { useAuth } from '../contexts/auth'
-import { useTenant } from '../contexts/tenant'
+import { useTenant, useTenantStore } from '../contexts/tenant'
+import { getDbClient } from '../lib/db-client'
 import { AppShell } from '@workspace/ui/components/app-shell'
 import { SmartBreadcrumb } from '../components/smart-breadcrumb'
 
@@ -129,6 +131,7 @@ function DashboardLayout() {
 function DashboardLayoutInner() {
   const isMobile = useIsMobile()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { user, signOut } = useAuth()
   const { tenants, activeTenant, setActiveTenantId, isLoading: tenantsLoading, isSetting } = useTenant()
 
@@ -140,6 +143,14 @@ function DashboardLayoutInner() {
   const initials = displayName.slice(0, 2).toUpperCase()
 
   const handleSignOut = async () => {
+    const client = getDbClient()
+    try {
+      await client.clearTenant()
+    } catch {
+      // ignore if already signed out or RPC fails
+    }
+    useTenantStore.getState().setActiveTenantIdSync(null)
+    queryClient.removeQueries({ queryKey: ['catalogs'] })
     await signOut()
     await navigate({ to: '/' })
   }
