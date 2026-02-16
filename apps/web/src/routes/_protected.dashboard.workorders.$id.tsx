@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, History, Loader2 } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
@@ -42,6 +42,12 @@ function WorkOrderDetailPage() {
   const { data: priorityCatalog = [] } = useQuery({
     ...catalogQueryOptions.priorities(activeTenantId ?? '', client),
     enabled: !!activeTenantId,
+  })
+
+  const { data: similarPastFixes = [], isLoading: similarLoading, isError: similarError } = useQuery({
+    queryKey: ['similar-past-fixes', id],
+    queryFn: () => client.similarPastFixes.search({ workOrderId: id, limit: 5 }),
+    enabled: !!id && !!workOrder,
   })
 
   const completeMutation = useMutation({
@@ -235,6 +241,62 @@ function WorkOrderDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <History className="size-4" />
+            Similar past fixes
+          </CardTitle>
+          <CardDescription>
+            Completed work orders similar to this one (by title, description, cause & resolution)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {similarLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Loader2 className="size-4 animate-spin" />
+              Loading similar past fixes…
+            </div>
+          ) : similarError ? (
+            <p className="text-sm text-muted-foreground">
+              Could not load similar past fixes. You may have hit a rate limit or the feature may be disabled.
+            </p>
+          ) : similarPastFixes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No similar past fixes found.
+            </p>
+          ) : (
+            <ul className="space-y-4">
+              {similarPastFixes.map((fix) => (
+                <li key={fix.workOrderId} className="border-b border-border pb-4 last:border-0 last:pb-0">
+                  <Link
+                    to="/dashboard/workorders/$id"
+                    params={{ id: fix.workOrderId }}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {fix.title || 'Untitled'}
+                  </Link>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{(fix.similarityScore * 100).toFixed(0)}% match</span>
+                    {fix.completedAt && (
+                      <span>
+                        Completed {new Date(fix.completedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                      </span>
+                    )}
+                  </div>
+                  {(fix.cause ?? fix.resolution) && (
+                    <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      {fix.cause && <p className="line-clamp-2">{fix.cause}</p>}
+                      {fix.resolution && <p className="line-clamp-2">{fix.resolution}</p>}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -61,9 +61,17 @@ export function createSimilarPastFixesResource(
       if (params.limit != null) body.limit = params.limit;
       if (params.minSimilarity != null) body.minSimilarity = params.minSimilarity;
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const { data, error } = await supabase.functions.invoke(
         'similar-past-fixes',
-        { body }
+        { body, headers }
       );
 
       if (error) {

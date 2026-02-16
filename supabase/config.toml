@@ -318,8 +318,10 @@ allow_dynamic_registration = false
 
 # Edge Functions (Similar Past Fixes)
 # https://supabase.com/docs/guides/functions/function-configuration
+# verify_jwt = false so the request reaches the function; the function forwards the
+# Authorization header to Supabase for RLS. Re-enable verify_jwt for production if desired.
 [functions.similar-past-fixes]
-verify_jwt = true
+verify_jwt = false
 
 [functions.similar-past-fixes-backfill]
 # Called by cron with CRON_SECRET; no user JWT required.
