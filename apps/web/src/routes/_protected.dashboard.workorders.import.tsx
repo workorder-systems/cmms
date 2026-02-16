@@ -7,6 +7,7 @@ import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { generateImportRowId } from '../lib/import-row-id'
 import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
 
@@ -44,7 +45,7 @@ const FALLBACK_PRIORITY_OPTIONS = [
 
 function createEmptyRow(priorityDefault = 'medium'): WorkOrderImportRow {
   return {
-    id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: generateImportRowId(),
     title: '',
     description: '',
     status: '',

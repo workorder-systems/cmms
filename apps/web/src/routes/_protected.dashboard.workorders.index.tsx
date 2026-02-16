@@ -8,6 +8,11 @@ import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import {
+  DEFAULT_PAGE_SIZE,
+  createDataTableQueryKeys,
+} from '../lib/data-table-query-keys'
+import { DataTableErrorMessage } from '../components/data-table-error-message'
 import { useWorkOrdersPageStore } from '../stores/workorders-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -31,15 +36,8 @@ export const Route = createFileRoute('/_protected/dashboard/workorders/')({
   component: WorkOrdersPage,
 })
 
-const PAGE_SIZE = 10
 const WORK_ORDER_ENTITY_TYPE = 'work_order'
-const QUERY_KEYS = {
-  page: 'workOrders_page',
-  perPage: 'workOrders_perPage',
-  sort: 'workOrders_sort',
-  filters: 'workOrders_filters',
-  joinOperator: 'workOrders_joinOperator',
-}
+const QUERY_KEYS = createDataTableQueryKeys('workOrders')
 
 function WorkOrdersPage() {
   const { activeTenantId } = useTenant()
@@ -193,23 +191,21 @@ function WorkOrdersPage() {
     [statusOptions, priorityOptions],
   )
 
-  const pageCount = Math.ceil(workOrders.length / PAGE_SIZE) || 1
+  const pageCount = Math.ceil(workOrders.length / DEFAULT_PAGE_SIZE) || 1
   const { table } = useDataTable({
     data: workOrders,
     columns,
     pageCount,
-    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
+    initialState: {
+      pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
+    },
     queryKeys: QUERY_KEYS,
     getRowId: (row) => (row as WorkOrderRow).id ?? '',
   })
 
   if (isError) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <p className="text-destructive">
-          Failed to load work orders: {error?.message ?? 'Unknown error'}
-        </p>
-      </div>
+      <DataTableErrorMessage resourceName="work orders" error={error ?? null} />
     )
   }
 

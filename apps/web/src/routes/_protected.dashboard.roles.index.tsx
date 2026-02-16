@@ -11,6 +11,11 @@ import type {
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContext } from '../lib/route-loaders'
+import {
+  DEFAULT_PAGE_SIZE,
+  createDataTableQueryKeys,
+} from '../lib/data-table-query-keys'
+import { DataTableErrorMessage } from '../components/data-table-error-message'
 import { useRolesPageStore } from '../stores/roles-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -37,6 +42,8 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
+const QUERY_KEYS = createDataTableQueryKeys('roles')
+
 /** Row for table: role with its permission keys. */
 export interface RoleWithPermissionsRow {
   id: string
@@ -51,15 +58,6 @@ export const Route = createFileRoute('/_protected/dashboard/roles/')({
   beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: RolesPage,
 })
-
-const PAGE_SIZE = 10
-const QUERY_KEYS = {
-  page: 'roles_page',
-  perPage: 'roles_perPage',
-  sort: 'roles_sort',
-  filters: 'roles_filters',
-  joinOperator: 'roles_joinOperator',
-}
 
 function buildRoleRows(
   roles: TenantRoleRow[],
@@ -251,12 +249,14 @@ function RolesPage() {
     [setAddPermissionRoleId, setRevokePermissionRoleId]
   )
 
-  const pageCount = Math.ceil(roleRows.length / PAGE_SIZE) || 1
+  const pageCount = Math.ceil(roleRows.length / DEFAULT_PAGE_SIZE) || 1
   const { table } = useDataTable({
     data: roleRows,
     columns,
     pageCount,
-    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
+    initialState: {
+      pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
+    },
     queryKeys: QUERY_KEYS,
     getRowId: (row) => row.id,
   })
@@ -267,11 +267,7 @@ function RolesPage() {
 
   if (isError) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <p className="text-destructive">
-          Failed to load roles: {error?.message ?? 'Unknown error'}
-        </p>
-      </div>
+      <DataTableErrorMessage resourceName="roles" error={error ?? null} />
     )
   }
 

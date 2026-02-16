@@ -7,6 +7,11 @@ import type { LocationRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContext } from '../lib/route-loaders'
+import {
+  DEFAULT_PAGE_SIZE,
+  createDataTableQueryKeys,
+} from '../lib/data-table-query-keys'
+import { DataTableErrorMessage } from '../components/data-table-error-message'
 import { useLocationsPageStore } from '../stores/locations-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -24,6 +29,8 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
+
+const QUERY_KEYS = createDataTableQueryKeys('locations')
 
 export const Route = createFileRoute('/_protected/dashboard/locations/')({
   beforeLoad: async ({ context }) => ensureTenantContext(context),
@@ -128,23 +135,24 @@ function LocationsPage() {
     [locationIdToName],
   )
 
-  const pageCount = Math.ceil(locations.length / PAGE_SIZE) || 1
+  const pageCount = Math.ceil(locations.length / DEFAULT_PAGE_SIZE) || 1
   const { table } = useDataTable({
     data: locations,
     columns,
     pageCount,
-    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
+    initialState: {
+      pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
+    },
     queryKeys: QUERY_KEYS,
     getRowId: (row) => (row as LocationRow).id ?? '',
   })
 
   if (isError) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <p className="text-destructive">
-          Failed to load locations: {error?.message ?? 'Unknown error'}
-        </p>
-      </div>
+      <DataTableErrorMessage
+        resourceName="locations"
+        error={error ?? null}
+      />
     )
   }
 

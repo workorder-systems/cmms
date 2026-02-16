@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContext } from '../lib/route-loaders'
+import { generateImportRowId } from '../lib/import-row-id'
 import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
 
@@ -28,7 +29,7 @@ const DEPARTMENTS_CSV_OPTIONS = {
 
 function createEmptyRow(): DepartmentImportRow {
   return {
-    id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: generateImportRowId(),
     name: '',
     description: '',
     code: '',
