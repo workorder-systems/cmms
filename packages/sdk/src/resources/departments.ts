@@ -20,6 +20,25 @@ export interface UpdateDepartmentParams {
   code?: string | null;
 }
 
+/** Single row for bulk import (name required; others optional). */
+export interface BulkImportDepartmentRow {
+  name: string;
+  description?: string | null;
+  code?: string | null;
+}
+
+/** Result of bulk import: created department ids and per-row errors. */
+export interface BulkImportDepartmentResult {
+  created_ids: string[];
+  errors: { index: number; message: string }[];
+}
+
+/** Params for bulk importing departments. */
+export interface BulkImportDepartmentsParams {
+  tenantId: string;
+  rows: BulkImportDepartmentRow[];
+}
+
 const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(supabase);
 
@@ -54,6 +73,19 @@ export function createDepartmentsResource(supabase: SupabaseClient<Database>) {
     },
     async delete(tenantId: string, departmentId: string): Promise<void> {
       return callRpc(rpc(supabase), 'rpc_delete_department', { p_tenant_id: tenantId, p_department_id: departmentId });
+    },
+
+    /** Bulk import departments. Returns created ids and per-row errors. */
+    async bulkImport(params: BulkImportDepartmentsParams): Promise<BulkImportDepartmentResult> {
+      const raw = await callRpc(rpc(supabase), 'rpc_bulk_import_departments', {
+        p_tenant_id: params.tenantId,
+        p_rows: params.rows,
+      });
+      const data = raw as { created_ids: string[]; errors: { index: number; message: string }[] };
+      return {
+        created_ids: data.created_ids ?? [],
+        errors: data.errors ?? [],
+      };
     },
   };
 }

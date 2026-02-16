@@ -235,6 +235,12 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   const [columnFilters, setColumnFilters] =
     React.useState<ColumnFiltersState>(initialColumnFilters);
 
+  // Sync columnFilters from URL when filterValues (nuqs) changes (e.g. hydration or back navigation)
+  React.useEffect(() => {
+    if (enableAdvancedFilter) return;
+    setColumnFilters(initialColumnFilters);
+  }, [filterValues, enableAdvancedFilter]);
+
   const onColumnFiltersChange = React.useCallback(
     (updaterOrValue: Updater<ColumnFiltersState>) => {
       if (enableAdvancedFilter) return;
@@ -296,9 +302,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
-    manualPagination: true,
+    manualPagination: false,
     manualSorting: true,
-    manualFiltering: true,
+    manualFiltering: false,
     meta: {
       ...tableProps.meta,
       queryKeys: {

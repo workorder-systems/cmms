@@ -26,6 +26,28 @@ export interface UpdateAssetParams {
   status?: string | null;
 }
 
+/** Single row for bulk import (name required; others optional). */
+export interface BulkImportAssetRow {
+  name: string;
+  description?: string | null;
+  asset_number?: string | null;
+  status?: string | null;
+  location_id?: string | null;
+  department_id?: string | null;
+}
+
+/** Result of bulk import: created asset ids and per-row errors. */
+export interface BulkImportAssetResult {
+  created_ids: string[];
+  errors: { index: number; message: string }[];
+}
+
+/** Params for bulk importing assets. */
+export interface BulkImportAssetsParams {
+  tenantId: string;
+  rows: BulkImportAssetRow[];
+}
+
 const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(supabase);
 
@@ -66,6 +88,19 @@ export function createAssetsResource(supabase: SupabaseClient<Database>) {
     },
     async delete(tenantId: string, assetId: string): Promise<void> {
       return callRpc(rpc(supabase), 'rpc_delete_asset', { p_tenant_id: tenantId, p_asset_id: assetId });
+    },
+
+    /** Bulk import assets. Returns created ids and per-row errors. */
+    async bulkImport(params: BulkImportAssetsParams): Promise<BulkImportAssetResult> {
+      const raw = await callRpc(rpc(supabase), 'rpc_bulk_import_assets', {
+        p_tenant_id: params.tenantId,
+        p_rows: params.rows,
+      });
+      const data = raw as { created_ids: string[]; errors: { index: number; message: string }[] };
+      return {
+        created_ids: data.created_ids ?? [],
+        errors: data.errors ?? [],
+      };
     },
   };
 }
