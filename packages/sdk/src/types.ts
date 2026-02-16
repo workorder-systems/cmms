@@ -37,7 +37,7 @@ export type DbClient = {
   supabase: SupabaseClient<Database>;
   /**
    * Set tenant context. Call before querying tenant-scoped views or RPCs.
-   * Then refresh the session so the JWT carries the tenant_id claim (e.g. getSession() then setSession()).
+   * Then call auth.refreshSession() so the JWT is re-issued with the tenant_id claim.
    */
   setTenant(tenantId: string): Promise<void>;
   /** Clear tenant context. Useful when switching tenants or logging out. */

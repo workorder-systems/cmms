@@ -11,16 +11,41 @@ export const catalogQueryKeys = {
   priorities: (tenantId: string) => ['catalogs', 'priorities', tenantId] as const,
 }
 
+/**
+ * When catalog returns [], it usually means tenant or JWT is out of sync (e.g. tenant_id
+ * not in JWT). Sync tenant context and session once, then refetch.
+ */
+async function catalogQueryFnWithRecovery<T>(
+  client: DbClient,
+  queryKey: readonly unknown[],
+  listFn: () => Promise<T[]>
+): Promise<T[]> {
+  const tenantId = typeof queryKey[2] === 'string' ? queryKey[2] : null
+  const result = await listFn()
+  if (result.length === 0 && tenantId) {
+    await client.setTenant(tenantId)
+    await client.supabase.auth.refreshSession()
+    return listFn()
+  }
+  return result
+}
+
 export const catalogQueryOptions = {
   statuses: (tenantId: string, client: DbClient) => ({
     queryKey: catalogQueryKeys.statuses(tenantId),
-    queryFn: () => client.catalogs.listStatuses(),
+    queryFn: ({ queryKey }: { queryKey: readonly unknown[] }) =>
+      catalogQueryFnWithRecovery(client, queryKey, () =>
+        client.catalogs.listStatuses()
+      ),
     staleTime: CATALOG_STALE_TIME_MS,
     gcTime: CATALOG_GC_TIME_MS,
   }),
   priorities: (tenantId: string, client: DbClient) => ({
     queryKey: catalogQueryKeys.priorities(tenantId),
-    queryFn: () => client.catalogs.listPriorities(),
+    queryFn: ({ queryKey }: { queryKey: readonly unknown[] }) =>
+      catalogQueryFnWithRecovery(client, queryKey, () =>
+        client.catalogs.listPriorities()
+      ),
     staleTime: CATALOG_STALE_TIME_MS,
     gcTime: CATALOG_GC_TIME_MS,
   }),

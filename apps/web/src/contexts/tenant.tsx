@@ -48,13 +48,7 @@ export const useTenantStore = create<TenantState>()((set, get) => ({
     const client = getDbClient()
     try {
       await client.setTenant(id)
-      const { data } = await client.supabase.auth.getSession()
-      if (data.session) {
-        await client.supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        })
-      }
+      await client.supabase.auth.refreshSession()
       setStoredTenantId(id)
       set({ activeTenantId: id, isSetting: false })
     } catch {
@@ -104,16 +98,7 @@ export function useTenant() {
     setActiveTenantIdSync(targetId)
     client
       .setTenant(targetId)
-      .then(() =>
-        client.supabase.auth.getSession().then(({ data }) => {
-          if (data.session) {
-            return client.supabase.auth.setSession({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token,
-            })
-          }
-        })
-      )
+      .then(() => client.supabase.auth.refreshSession())
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['catalogs'] })
       })

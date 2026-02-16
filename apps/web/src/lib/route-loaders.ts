@@ -21,13 +21,7 @@ export async function ensureTenantContext(
   const tenantId = window.localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
   if (!tenantId) return
   await context.dbClient.setTenant(tenantId)
-  const { data } = await context.dbClient.supabase.auth.getSession()
-  if (data.session) {
-    await context.dbClient.supabase.auth.setSession({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
-    })
-  }
+  await context.dbClient.supabase.auth.refreshSession()
 }
 
 /**
@@ -41,12 +35,6 @@ export async function ensureTenantContextWithCatalogs(
   const tenantId = window.localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
   if (!tenantId) return
   await context.dbClient.setTenant(tenantId)
-  const { data } = await context.dbClient.supabase.auth.getSession()
-  if (data.session) {
-    await context.dbClient.supabase.auth.setSession({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
-    })
-  }
+  await context.dbClient.supabase.auth.refreshSession()
   await prefetchCatalogs(context.queryClient, context.dbClient, tenantId)
 }
