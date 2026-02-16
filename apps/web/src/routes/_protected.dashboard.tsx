@@ -475,6 +475,7 @@ function DashboardLayoutInner() {
           catalogs: 'Catalogs',
           settings: 'Settings',
           api: 'API keys',
+          meters: 'Meters',
           pm: 'Preventive maintenance',
           import: 'Import',
         }}
