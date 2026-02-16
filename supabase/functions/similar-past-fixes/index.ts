@@ -41,6 +41,7 @@
 // - OPENAI_API_KEY: secret for embedding provider (or compatible endpoint)
 // - EMBEDDING_MODEL (optional): model name, defaults to text-embedding-3-small
 // - EMBEDDING_MODEL_VERSION (optional): logical version tag (e.g. v1, 2026-02-09)
+// - EMBEDDING_CAUSE_WEIGHT (optional): repeat cause N times in text to embed so cause > title (default 2)
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -82,6 +83,8 @@ const EMBEDDING_MODEL_VERSION =
 const SIMILAR_PAST_FIXES_ENABLED =
   (Deno.env.get('SIMILAR_PAST_FIXES_ENABLED') ?? 'true').toLowerCase() !==
   'false';
+/** Repeat cause this many times in the text to embed so cause weighs more than title. */
+const EMBEDDING_CAUSE_WEIGHT = Math.max(1, parseInt(Deno.env.get('EMBEDDING_CAUSE_WEIGHT') ?? '2', 10));
 
 const MAX_TEXT_CHARS = 4000;
 
@@ -203,8 +206,10 @@ async function handleSearch(
     }
 
     const parts: string[] = [];
+    for (let w = 0; w < EMBEDDING_CAUSE_WEIGHT && wo.cause; w++) {
+      parts.push(String(wo.cause));
+    }
     if (wo.title) parts.push(String(wo.title));
-    if (wo.cause) parts.push(String(wo.cause));
     if (wo.resolution) parts.push(String(wo.resolution));
     if (wo.description) parts.push(String(wo.description));
     try {

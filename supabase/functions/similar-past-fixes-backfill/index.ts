@@ -21,6 +21,7 @@
 // - EMBEDDING_MODEL (optional): model name, defaults to text-embedding-3-small
 // - EMBEDDING_MODEL_VERSION (optional): logical version tag (e.g. v1, 2026-02-09)
 // - BACKFILL_BATCH_LIMIT (optional): max work orders per run, defaults to 50
+// - EMBEDDING_CAUSE_WEIGHT (optional): repeat cause N times when building text (default 2; must match search)
 // - CRON_SECRET (optional but recommended): shared secret required in x-cron-secret
 //   header for invoking this function. Helps ensure only your scheduler can trigger
 //   backfills.
@@ -64,6 +65,8 @@ const BACKFILL_BATCH_LIMIT = Number(
   Deno.env.get('BACKFILL_BATCH_LIMIT') ?? '50'
 );
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
+/** Repeat cause this many times so cause weighs more than title (must match search function). */
+const EMBEDDING_CAUSE_WEIGHT = Math.max(1, parseInt(Deno.env.get('EMBEDDING_CAUSE_WEIGHT') ?? '2', 10));
 const MAX_TEXT_CHARS = 4000;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -157,10 +160,12 @@ async function backfillBatch(): Promise<BackfillResult> {
 
   for (const row of rows) {
     const parts: string[] = [];
+    for (let w = 0; w < EMBEDDING_CAUSE_WEIGHT && row.cause; w++) {
+      parts.push(String(row.cause));
+    }
     if (row.title) parts.push(String(row.title));
+    if (row.resolution) parts.push(String(row.resolution));
     if (row.description) parts.push(String(row.description));
-     if (row.cause) parts.push(String(row.cause));
-     if (row.resolution) parts.push(String(row.resolution));
     if (row.asset_name) parts.push(String(row.asset_name));
     if (row.location_name) parts.push(String(row.location_name));
     const sourceText = parts.join('\n').trim();
