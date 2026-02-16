@@ -21,9 +21,13 @@ function humanizeSegment(segment: string): string {
     .join(' ')
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export interface SmartBreadcrumbProps {
   /** Override labels for specific path segments (e.g. { workorders: 'Work orders' }). */
   segmentLabels?: Record<string, string>
+  /** When a segment looks like a UUID, use this label instead of showing the id (e.g. "Work order"). */
+  uuidSegmentLabel?: string
   /** Label for the root link when showRoot is true. */
   rootLabel?: React.ReactNode
   /** Show a root/home link as the first item. */
@@ -43,6 +47,7 @@ export interface SmartBreadcrumbProps {
  */
 export function SmartBreadcrumb({
   segmentLabels = {},
+  uuidSegmentLabel,
   rootLabel = 'Home',
   showRoot = true,
   rootHref = '/',
@@ -67,11 +72,15 @@ export function SmartBreadcrumb({
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i]!
       acc = acc === '/' ? `/${segment}` : `${acc}/${segment}`
-      const label = segmentLabels[segment] ?? humanizeSegment(segment)
+      const label =
+        segmentLabels[segment] ??
+        (uuidSegmentLabel && UUID_REGEX.test(segment)
+          ? uuidSegmentLabel
+          : humanizeSegment(segment))
       result.push({ href: acc, label, isLast: i === segments.length - 1 })
     }
     return result
-  }, [segments, segmentLabels, basePath])
+  }, [segments, segmentLabels, uuidSegmentLabel, basePath])
 
   if (hideWhenOnlyRoot && items.length === 0 && !showRoot) return null
   if (items.length === 0 && showRoot) {

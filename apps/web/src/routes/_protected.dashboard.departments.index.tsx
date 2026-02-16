@@ -30,21 +30,12 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const QUERY_KEYS = createDataTableQueryKeys('departments')
+const DEPARTMENTS_QUERY_KEYS = createDataTableQueryKeys('departments')
 
 export const Route = createFileRoute('/_protected/dashboard/departments/')({
   beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: DepartmentsPage,
 })
-
-const PAGE_SIZE = 10
-const QUERY_KEYS = {
-  page: 'departments_page',
-  perPage: 'departments_perPage',
-  sort: 'departments_sort',
-  filters: 'departments_filters',
-  joinOperator: 'departments_joinOperator',
-}
 
 function DepartmentsPage() {
   const { activeTenantId } = useTenant()
@@ -134,7 +125,7 @@ function DepartmentsPage() {
     initialState: {
       pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
     },
-    queryKeys: QUERY_KEYS,
+    queryKeys: DEPARTMENTS_QUERY_KEYS,
     getRowId: (row) => (row as DepartmentRow).id ?? '',
   })
 

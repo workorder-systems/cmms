@@ -460,10 +460,11 @@ function DashboardLayoutInner() {
     <>
       <SidebarTrigger className="-ml-1" />
       <SmartBreadcrumb
-      showRoot={true}
+        showRoot={true}
         basePath="/dashboard"
         rootHref="/dashboard"
         rootLabel="Dashboard"
+        uuidSegmentLabel="Work order"
         segmentLabels={{
           workorders: 'Work orders',
           assets: 'Assets',

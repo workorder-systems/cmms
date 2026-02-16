@@ -37,15 +37,6 @@ export const Route = createFileRoute('/_protected/dashboard/locations/')({
   component: LocationsPage,
 })
 
-const PAGE_SIZE = 10
-const QUERY_KEYS = {
-  page: 'locations_page',
-  perPage: 'locations_perPage',
-  sort: 'locations_sort',
-  filters: 'locations_filters',
-  joinOperator: 'locations_joinOperator',
-}
-
 function LocationsPage() {
   const { activeTenantId } = useTenant()
   const client = getDbClient()

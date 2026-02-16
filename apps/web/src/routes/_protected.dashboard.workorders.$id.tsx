@@ -1,0 +1,253 @@
+import * as React from 'react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, ClipboardList } from 'lucide-react'
+import type { WorkOrderRow } from '@workorder-systems/sdk'
+import { getDbClient } from '../lib/db-client'
+import { useTenant } from '../contexts/tenant'
+import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { catalogQueryOptions } from '../lib/catalog-queries'
+import { Button } from '@workspace/ui/components/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@workspace/ui/components/card'
+import { Label } from '@workspace/ui/components/label'
+import { Textarea } from '@workspace/ui/components/textarea'
+import { DataTableErrorMessage } from '../components/data-table-error-message'
+import { toast } from 'sonner'
+
+export const Route = createFileRoute('/_protected/dashboard/workorders/$id')({
+  beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
+  component: WorkOrderDetailPage,
+})
+
+const WORK_ORDER_ENTITY_TYPE = 'work_order'
+
+function WorkOrderDetailPage() {
+  const { id } = Route.useParams()
+  const queryClient = useQueryClient()
+  const client = getDbClient()
+  const { activeTenantId } = useTenant()
+
+  const { data: workOrder, isLoading, isError, error } = useQuery({
+    queryKey: ['work-order', id],
+    queryFn: () => client.workOrders.getById(id),
+    enabled: !!id,
+  })
+
+  const { data: statusCatalog = [] } = useQuery({
+    ...catalogQueryOptions.statuses(activeTenantId ?? '', client),
+    enabled: !!activeTenantId,
+  })
+  const { data: priorityCatalog = [] } = useQuery({
+    ...catalogQueryOptions.priorities(activeTenantId ?? '', client),
+    enabled: !!activeTenantId,
+  })
+
+  const statusOptions = React.useMemo(
+    () =>
+      statusCatalog
+        .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        .map((s) => ({ label: s.name ?? s.key ?? '', value: s.key ?? '' })),
+    [statusCatalog]
+  )
+  const priorityOptions = React.useMemo(
+    () =>
+      priorityCatalog
+        .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        .map((p) => ({ label: p.name ?? p.key ?? '', value: p.key ?? '' })),
+    [priorityCatalog]
+  )
+
+  const completeMutation = useMutation({
+    mutationFn: (params: { cause: string; resolution: string }) =>
+      client.workOrders.complete({
+        tenantId: activeTenantId!,
+        workOrderId: id,
+        cause: params.cause || null,
+        resolution: params.resolution || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['work-order', id] })
+      queryClient.invalidateQueries({ queryKey: ['work-orders', activeTenantId] })
+      toast.success('Work order completed')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  const [completeCause, setCompleteCause] = React.useState('')
+  const [completeResolution, setCompleteResolution] = React.useState('')
+
+  if (isError) {
+    return (
+      <DataTableErrorMessage
+        resourceName="work order"
+        error={error ?? null}
+      />
+    )
+  }
+
+  if (isLoading || !workOrder) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="animate-pulse rounded-lg bg-muted h-8 w-48" />
+        <div className="animate-pulse rounded-lg bg-muted h-32 w-full" />
+      </div>
+    )
+  }
+
+  const statusLabel =
+    statusOptions.find((o) => o.value === workOrder.status)?.label ??
+    workOrder.status
+  const priorityLabel =
+    priorityOptions.find((o) => o.value === workOrder.priority)?.label ??
+    workOrder.priority
+  const isCompleted = workOrder.status === 'completed'
+
+  return (
+    <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" asChild>
+          <Link to="/dashboard/workorders">
+            <ArrowLeft className="size-4" />
+          </Link>
+        </Button>
+        <h1 className="text-xl font-semibold truncate">
+          {workOrder.title ?? 'Work order'}
+        </h1>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardList className="size-4" />
+              Details
+            </CardTitle>
+            <CardDescription>Work order information</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <DetailRow label="Status" value={statusLabel} />
+            <DetailRow label="Priority" value={priorityLabel} />
+            <DetailRow
+              label="Assigned to"
+              value={workOrder.assigned_to_name ?? undefined}
+            />
+            <DetailRow
+              label="Due date"
+              value={
+                workOrder.due_date
+                  ? new Date(workOrder.due_date).toLocaleDateString(undefined, {
+                      dateStyle: 'medium',
+                    })
+                  : undefined
+              }
+            />
+            <DetailRow
+              label="Completed at"
+              value={
+                workOrder.completed_at
+                  ? new Date(workOrder.completed_at).toLocaleString(undefined, {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })
+                  : undefined
+              }
+            />
+            <DetailRow
+              label="Completed by"
+              value={workOrder.completed_by_name ?? undefined}
+            />
+            {workOrder.description ? (
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">Description</Label>
+                <p className="text-sm whitespace-pre-wrap">
+                  {workOrder.description}
+                </p>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Cause & resolution</CardTitle>
+            <CardDescription>
+              Root cause and resolution for completed work orders
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isCompleted ? (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Cause</Label>
+                  <p className="text-sm whitespace-pre-wrap min-h-[4rem]">
+                    {workOrder.cause ?? '—'}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Resolution</Label>
+                  <p className="text-sm whitespace-pre-wrap min-h-[4rem]">
+                    {workOrder.resolution ?? '—'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="complete-cause">Cause</Label>
+                  <Textarea
+                    id="complete-cause"
+                    placeholder="What was the root cause?"
+                    value={completeCause}
+                    onChange={(e) => setCompleteCause(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="complete-resolution">Resolution</Label>
+                  <Textarea
+                    id="complete-resolution"
+                    placeholder="How was it resolved?"
+                    value={completeResolution}
+                    onChange={(e) => setCompleteResolution(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+                <Button
+                  onClick={() =>
+                    completeMutation.mutate({
+                      cause: completeCause.trim(),
+                      resolution: completeResolution.trim(),
+                    })
+                  }
+                  disabled={completeMutation.isPending}
+                >
+                  {completeMutation.isPending ? 'Completing…' : 'Complete work order'}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string
+  value: string | undefined
+}) {
+  if (value == null || value === '') return null
+  return (
+    <div className="space-y-1">
+      <Label className="text-muted-foreground">{label}</Label>
+      <p className="text-sm">{value}</p>
+    </div>
+  )
+}

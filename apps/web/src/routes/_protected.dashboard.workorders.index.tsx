@@ -87,9 +87,20 @@ function WorkOrdersPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Title" />
         ),
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue('title') ?? '—'}</span>
-        ),
+        cell: ({ row }) => {
+          const id = (row.original as WorkOrderRow).id
+          const title = row.getValue('title') as string | null
+          if (!id) return <span className="font-medium">{title ?? '—'}</span>
+          return (
+            <Link
+              to="/dashboard/workorders/$id"
+              params={{ id }}
+              className="font-medium text-primary hover:underline"
+            >
+              {title ?? '—'}
+            </Link>
+          )
+        },
         meta: {
           label: 'Title',
           placeholder: 'Search titles...',
@@ -186,6 +197,40 @@ function WorkOrdersPage() {
           const created = row.getValue('created_at') as string | null
           return created ? new Date(created).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—'
         },
+      },
+      {
+        id: 'cause',
+        accessorKey: 'cause',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} label="Cause" />
+        ),
+        cell: ({ row }) => {
+          const cause = row.getValue('cause') as string | null
+          if (!cause) return '—'
+          return (
+            <span className="max-w-[180px] truncate block" title={cause}>
+              {cause}
+            </span>
+          )
+        },
+        enableColumnFilter: false,
+      },
+      {
+        id: 'resolution',
+        accessorKey: 'resolution',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} label="Resolution" />
+        ),
+        cell: ({ row }) => {
+          const resolution = row.getValue('resolution') as string | null
+          if (!resolution) return '—'
+          return (
+            <span className="max-w-[180px] truncate block" title={resolution}>
+              {resolution}
+            </span>
+          )
+        },
+        enableColumnFilter: false,
       },
     ],
     [statusOptions, priorityOptions],

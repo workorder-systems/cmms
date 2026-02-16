@@ -30,7 +30,7 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const QUERY_KEYS = createDataTableQueryKeys('assets')
+const ASSETS_QUERY_KEYS = createDataTableQueryKeys('assets')
 const ASSET_STATUS_OPTIONS = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
@@ -40,15 +40,6 @@ export const Route = createFileRoute('/_protected/dashboard/assets/')({
   beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: AssetsPage,
 })
-
-const PAGE_SIZE = 10
-const QUERY_KEYS = {
-  page: 'assets_page',
-  perPage: 'assets_perPage',
-  sort: 'assets_sort',
-  filters: 'assets_filters',
-  joinOperator: 'assets_joinOperator',
-}
 
 function AssetsPage() {
   const { activeTenantId } = useTenant()
@@ -205,7 +196,7 @@ function AssetsPage() {
     initialState: {
       pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
     },
-    queryKeys: QUERY_KEYS,
+    queryKeys: ASSETS_QUERY_KEYS,
     getRowId: (row) => (row as AssetRow).id ?? '',
   })
 
