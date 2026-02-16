@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Plus, Upload, Wrench } from 'lucide-react'
 import type { AssetRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
+import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
-import { ensureTenantContext } from '../lib/route-loaders'
+import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { StatusBadge } from '../components/status-badge'
 import {
   DEFAULT_PAGE_SIZE,
   createDataTableQueryKeys,
@@ -31,13 +33,17 @@ import {
 } from '@workspace/ui/components/responsive-dialog'
 
 const ASSETS_QUERY_KEYS = createDataTableQueryKeys('assets')
-const ASSET_STATUS_OPTIONS = [
-  { label: 'Active', value: 'active' },
-  { label: 'Inactive', value: 'inactive' },
+const ASSET_ENTITY_TYPE = 'asset'
+
+/** Fallback when catalog has no asset statuses. */
+const FALLBACK_ASSET_STATUS_OPTIONS = [
+  { label: 'Active', value: 'active', color: '#22c55e' as const },
+  { label: 'Inactive', value: 'inactive', color: '#94a3b8' as const },
+  { label: 'Retired', value: 'retired', color: '#64748b' as const },
 ]
 
 export const Route = createFileRoute('/_protected/dashboard/assets/')({
-  beforeLoad: async ({ context }) => ensureTenantContext(context),
+  beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
   component: AssetsPage,
 })
 
@@ -62,6 +68,34 @@ function AssetsPage() {
     queryFn: () => client.departments.list(),
     enabled: !!activeTenantId,
   })
+
+  const { data: statusCatalog = [] } = useQuery({
+    ...catalogQueryOptions.statuses(activeTenantId ?? '', client),
+    enabled: !!activeTenantId,
+  })
+
+  const assetStatusOptions = React.useMemo(() => {
+    const opts = statusCatalog
+      .filter((s) => s.entity_type === ASSET_ENTITY_TYPE)
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+      .map((s) => ({
+        label: s.name ?? s.key ?? '',
+        value: s.key ?? '',
+        color: s.color ?? null,
+      }))
+      .filter((o) => o.value)
+    return opts.length > 0 ? opts : FALLBACK_ASSET_STATUS_OPTIONS
+  }, [statusCatalog])
+
+  const assetStatusCatalog = React.useMemo(
+    () =>
+      assetStatusOptions.map((s) => ({
+        key: s.value,
+        name: s.label,
+        color: s.color ?? null,
+      })),
+    [assetStatusOptions]
+  )
 
   const locationIdToName = React.useMemo(() => {
     const map = new Map<string, string>()
@@ -124,20 +158,16 @@ function AssetsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Status" />
         ),
-        cell: ({ row }) => {
-          const status = row.getValue('status') as string | null
-          const label =
-            ASSET_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
-          return (
-            <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-muted text-muted-foreground">
-              {label ?? '—'}
-            </span>
-          )
-        },
+        cell: ({ row }) => (
+          <StatusBadge
+            statusKey={row.getValue('status') as string | null}
+            statusCatalog={assetStatusCatalog}
+          />
+        ),
         meta: {
           label: 'Status',
           variant: 'multiSelect',
-          options: ASSET_STATUS_OPTIONS,
+          options: assetStatusOptions,
         },
         enableColumnFilter: true,
         filterFn: (row: Row<AssetRow>, id: string, filterValue: unknown) => {
@@ -185,7 +215,7 @@ function AssetsPage() {
         },
       },
     ],
-    [locationIdToName, departmentIdToName],
+    [locationIdToName, departmentIdToName, assetStatusOptions, assetStatusCatalog],
   )
 
   const pageCount = Math.ceil(assets.length / DEFAULT_PAGE_SIZE) || 1
