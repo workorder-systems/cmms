@@ -12,6 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@work
 import { Label } from '@workspace/ui/components/label'
 import { Textarea } from '@workspace/ui/components/textarea'
 import { DataTableErrorMessage } from '../components/data-table-error-message'
+import { StatusBadge } from '../components/status-badge'
+import { PriorityBadge } from '../components/priority-badge'
 import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_protected/dashboard/workorders/$id')({
@@ -41,23 +43,6 @@ function WorkOrderDetailPage() {
     ...catalogQueryOptions.priorities(activeTenantId ?? '', client),
     enabled: !!activeTenantId,
   })
-
-  const statusOptions = React.useMemo(
-    () =>
-      statusCatalog
-        .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
-        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-        .map((s) => ({ label: s.name ?? s.key ?? '', value: s.key ?? '' })),
-    [statusCatalog]
-  )
-  const priorityOptions = React.useMemo(
-    () =>
-      priorityCatalog
-        .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
-        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-        .map((p) => ({ label: p.name ?? p.key ?? '', value: p.key ?? '' })),
-    [priorityCatalog]
-  )
 
   const completeMutation = useMutation({
     mutationFn: (params: { cause: string; resolution: string }) =>
@@ -96,12 +81,20 @@ function WorkOrderDetailPage() {
     )
   }
 
-  const statusLabel =
-    statusOptions.find((o) => o.value === workOrder.status)?.label ??
-    workOrder.status
-  const priorityLabel =
-    priorityOptions.find((o) => o.value === workOrder.priority)?.label ??
-    workOrder.priority
+  const workOrderStatusCatalog = React.useMemo(
+    () =>
+      statusCatalog
+        .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .map((s) => ({ key: s.key ?? '', name: s.name ?? null, color: s.color ?? null })),
+    [statusCatalog]
+  )
+  const workOrderPriorityCatalog = React.useMemo(
+    () =>
+      priorityCatalog
+        .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .map((p) => ({ key: p.key ?? '', name: p.name ?? null, color: p.color ?? null })),
+    [priorityCatalog]
+  )
   const isCompleted = workOrder.status === 'completed'
 
   return (
@@ -120,8 +113,24 @@ function WorkOrderDetailPage() {
             <CardDescription>Work order information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <DetailRow label="Status" value={statusLabel} />
-            <DetailRow label="Priority" value={priorityLabel} />
+            <DetailRow
+              label="Status"
+              value={
+                <StatusBadge
+                  statusKey={workOrder.status}
+                  statusCatalog={workOrderStatusCatalog}
+                />
+              }
+            />
+            <DetailRow
+              label="Priority"
+              value={
+                <PriorityBadge
+                  priorityKey={workOrder.priority}
+                  priorityCatalog={workOrderPriorityCatalog}
+                />
+              }
+            />
             <DetailRow
               label="Assigned to"
               value={workOrder.assigned_to_name ?? undefined}
@@ -234,13 +243,13 @@ function DetailRow({
   value,
 }: {
   label: string
-  value: string | undefined
+  value: React.ReactNode
 }) {
   if (value == null || value === '') return null
   return (
     <div className="space-y-1">
       <Label className="text-muted-foreground">{label}</Label>
-      <p className="text-sm">{value}</p>
+      <div className="text-sm">{value}</div>
     </div>
   )
 }

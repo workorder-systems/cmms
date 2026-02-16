@@ -13,6 +13,8 @@ import {
   createDataTableQueryKeys,
 } from '../lib/data-table-query-keys'
 import { DataTableErrorMessage } from '../components/data-table-error-message'
+import { StatusBadge } from '../components/status-badge'
+import { PriorityBadge } from '../components/priority-badge'
 import { useWorkOrdersPageStore } from '../stores/workorders-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -75,6 +77,21 @@ function WorkOrdersPage() {
       .filter((o) => o.value)
   }, [priorityCatalog])
 
+  const workOrderStatusCatalog = React.useMemo(
+    () =>
+      statusCatalog
+        .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .map((s) => ({ key: s.key ?? '', name: s.name ?? null, color: s.color ?? null })),
+    [statusCatalog]
+  )
+  const workOrderPriorityCatalog = React.useMemo(
+    () =>
+      priorityCatalog
+        .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .map((p) => ({ key: p.key ?? '', name: p.name ?? null, color: p.color ?? null })),
+    [priorityCatalog]
+  )
+
   const isCreateModalOpen = useWorkOrdersPageStore((s) => s.isCreateModalOpen)
   const openCreateModal = useWorkOrdersPageStore((s) => s.openCreateModal)
   const closeCreateModal = useWorkOrdersPageStore((s) => s.closeCreateModal)
@@ -115,15 +132,12 @@ function WorkOrdersPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Status" />
         ),
-        cell: ({ row }) => {
-          const status = row.getValue('status') as string | null
-          const label = statusOptions.find((o) => o.value === status)?.label ?? status
-          return (
-            <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-muted text-muted-foreground">
-              {label ?? '—'}
-            </span>
-          )
-        },
+        cell: ({ row }) => (
+          <StatusBadge
+            statusKey={row.getValue('status') as string | null}
+            statusCatalog={workOrderStatusCatalog}
+          />
+        ),
         meta: {
           label: 'Status',
           variant: 'multiSelect',
@@ -143,11 +157,12 @@ function WorkOrdersPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Priority" />
         ),
-        cell: ({ row }) => {
-          const priority = row.getValue('priority') as string | null
-          const label = priorityOptions.find((o) => o.value === priority)?.label ?? priority
-          return <span>{label ?? '—'}</span>
-        },
+        cell: ({ row }) => (
+          <PriorityBadge
+            priorityKey={row.getValue('priority') as string | null}
+            priorityCatalog={workOrderPriorityCatalog}
+          />
+        ),
         meta: {
           label: 'Priority',
           variant: 'multiSelect',
@@ -233,7 +248,12 @@ function WorkOrdersPage() {
         enableColumnFilter: false,
       },
     ],
-    [statusOptions, priorityOptions],
+    [
+      statusOptions,
+      priorityOptions,
+      workOrderStatusCatalog,
+      workOrderPriorityCatalog,
+    ],
   )
 
   const pageCount = Math.ceil(workOrders.length / DEFAULT_PAGE_SIZE) || 1
