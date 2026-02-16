@@ -17,19 +17,23 @@ export interface WorkOrderImportRow {
   id: string
   title: string
   description: string
+  cause: string
+  resolution: string
   status: string
   priority: string
   due_date: string
 }
 
 const WORKORDERS_CSV_OPTIONS = {
-  canonicalColumns: ['title', 'description', 'status', 'priority', 'due_date'] as const,
+  canonicalColumns: ['title', 'description', 'cause', 'resolution', 'status', 'priority', 'due_date'] as const,
   requiredColumn: 'title',
   headerAliases: {
     title: [/^(title|name|subject)$/],
     description: [
       /^(description|desc|body|notes|details|comment|content|summary)$/,
     ],
+    cause: [/^(cause|root.?cause|rootcause)$/i],
+    resolution: [/^(resolution|resolve|fix|solution|resolution.?notes)$/i],
     status: [/^(status|state|stage)$/],
     priority: [/^priority$/],
     due_date: [/^(duedate|due_date)$/i],
@@ -48,6 +52,8 @@ function createEmptyRow(priorityDefault = 'medium'): WorkOrderImportRow {
     id: generateImportRowId(),
     title: '',
     description: '',
+    cause: '',
+    resolution: '',
     status: '',
     priority: priorityDefault,
     due_date: '',
@@ -55,13 +61,12 @@ function createEmptyRow(priorityDefault = 'medium'): WorkOrderImportRow {
 }
 
 function getCsvTemplate(statusKeys: string[], priorityKeys: string[]): string {
-  // Use 'draft' (valid status key), not 'open' (category); backend validates against catalog keys
   const statusCol = statusKeys.length > 0 ? statusKeys[0]! : 'draft'
   const priorityCol = priorityKeys.length > 0 ? priorityKeys[0]! : 'medium'
-  return `title,description,status,priority,due_date
-"Repair HVAC unit in Building A","Inspect and replace filters",${statusCol},high,2025-03-15
-"Monthly fire extinguisher check","Check all units on floor 2",${statusCol},medium,2025-03-01
-"Replace light fixtures","Conference room B",${statusCol},low,
+  return `title,description,cause,resolution,status,priority,due_date
+"Repair HVAC unit in Building A","Inspect and replace filters","Worn filters","Replaced filters and cleaned duct",${statusCol},high,2025-03-15
+"Monthly fire extinguisher check","Check all units on floor 2",,,${statusCol},medium,2025-03-01
+"Replace light fixtures","Conference room B",,,${statusCol},low,
 `
 }
 
@@ -134,6 +139,24 @@ function WorkOrdersImportPage() {
         },
       },
       {
+        id: 'cause',
+        accessorKey: 'cause',
+        header: 'Cause',
+        meta: {
+          label: 'Cause',
+          cell: { variant: 'long-text' as const },
+        },
+      },
+      {
+        id: 'resolution',
+        accessorKey: 'resolution',
+        header: 'Resolution',
+        meta: {
+          label: 'Resolution',
+          cell: { variant: 'long-text' as const },
+        },
+      },
+      {
         id: 'status',
         accessorKey: 'status',
         header: 'Status',
@@ -181,6 +204,8 @@ function WorkOrdersImportPage() {
           id: `import-${i}-${Date.now()}`,
           title: p.title ?? '',
           description: p.description ?? '',
+          cause: p.cause ?? '',
+          resolution: p.resolution ?? '',
           status,
           priority: priorityKeys.includes(pri) ? pri : priorityKeys[0] ?? 'medium',
           due_date: p.due_date ?? '',
@@ -202,6 +227,8 @@ function WorkOrdersImportPage() {
       const payload = rows.map((row) => ({
         title: (row.title ?? '').trim(),
         description: (row.description ?? '').trim() || null,
+        cause: (row.cause ?? '').trim() || null,
+        resolution: (row.resolution ?? '').trim() || null,
         status: (row.status ?? '').trim() || null,
         priority: (row.priority ?? defaultPriorityKey).trim() || defaultPriorityKey,
         due_date: (row.due_date ?? '').trim() || null,
@@ -237,7 +264,8 @@ function WorkOrdersImportPage() {
       description={
         <>
           Upload a CSV or add rows below. Columns: <strong>title</strong> (required), description,
-          status, priority, due_date (YYYY-MM-DD). Status and priority use your tenant catalog
+          cause, resolution, status, priority, due_date (YYYY-MM-DD). Cause and resolution are
+          optional (e.g. for completed work orders). Status and priority use your tenant catalog
           keys. Rows with an empty title are skipped on import.
         </>
       }

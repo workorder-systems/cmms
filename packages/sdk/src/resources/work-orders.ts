@@ -27,6 +27,8 @@ export interface CreateWorkOrderParams {
 export interface BulkImportRow {
   title: string;
   description?: string | null;
+  cause?: string | null;
+  resolution?: string | null;
   status?: string | null;
   priority?: string | null;
   due_date?: string | null;
