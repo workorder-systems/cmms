@@ -1,8 +1,10 @@
 import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { ColumnDef, Row } from '@tanstack/react-table'
+import { getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import { ClipboardList, History, Loader2 } from 'lucide-react'
-import type { WorkOrderRow } from '@workorder-systems/sdk'
+import type { WorkOrderRow, SimilarPastFixResult } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
@@ -11,7 +13,10 @@ import { Button } from '@workspace/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@workspace/ui/components/card'
 import { Label } from '@workspace/ui/components/label'
 import { Textarea } from '@workspace/ui/components/textarea'
+import { DataTable } from '@workspace/ui/components/data-table/data-table'
+import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
 import { DataTableErrorMessage } from '../components/data-table-error-message'
+import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-table-skeleton'
 import { StatusBadge } from '../components/status-badge'
 import { PriorityBadge } from '../components/priority-badge'
 import { toast } from 'sonner'
@@ -68,6 +73,96 @@ function WorkOrderDetailPage() {
 
   const [completeCause, setCompleteCause] = React.useState('')
   const [completeResolution, setCompleteResolution] = React.useState('')
+
+  const similarPastFixesColumns = React.useMemo<ColumnDef<SimilarPastFixResult>[]>(
+    () => [
+      {
+        id: 'title',
+        accessorKey: 'title',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} label="Title" />
+        ),
+        cell: ({ row }: { row: Row<SimilarPastFixResult> }) => {
+          const fix = row.original
+          return (
+            <Link
+              to="/dashboard/workorders/$id"
+              params={{ id: fix.workOrderId }}
+              className="font-medium text-primary hover:underline"
+            >
+              {fix.title || 'Untitled'}
+            </Link>
+          )
+        },
+      },
+      {
+        id: 'similarityScore',
+        accessorKey: 'similarityScore',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} label="Match" />
+        ),
+        cell: ({ row }: { row: Row<SimilarPastFixResult> }) => {
+          const score = row.original.similarityScore
+          return (
+            <span className="tabular-nums text-muted-foreground">
+              {(score * 100).toFixed(0)}%
+            </span>
+          )
+        },
+      },
+      {
+        id: 'completedAt',
+        accessorKey: 'completedAt',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} label="Completed" />
+        ),
+        cell: ({ row }) => {
+          const at = row.original.completedAt
+          return at ? (
+            <span className="text-muted-foreground text-sm">
+              {new Date(at).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+            </span>
+          ) : (
+            '—'
+          )
+        },
+      },
+      {
+        id: 'cause',
+        accessorFn: (row) => row.cause ?? '',
+        header: 'Cause',
+        cell: ({ row }) => {
+          const v = row.original.cause
+          return v ? (
+            <span className="line-clamp-2 text-muted-foreground text-sm">{v}</span>
+          ) : (
+            '—'
+          )
+        },
+      },
+      {
+        id: 'resolution',
+        accessorFn: (row) => row.resolution ?? '',
+        header: 'Resolution',
+        cell: ({ row }) => {
+          const v = row.original.resolution
+          return v ? (
+            <span className="line-clamp-2 text-muted-foreground text-sm">{v}</span>
+          ) : (
+            '—'
+          )
+        },
+      },
+    ],
+    [],
+  )
+
+  const similarPastFixesTable = useReactTable({
+    data: similarPastFixes,
+    columns: similarPastFixesColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.workOrderId,
+  })
 
   const workOrderStatusCatalog = React.useMemo(
     () =>
@@ -254,10 +349,7 @@ function WorkOrderDetailPage() {
         </CardHeader>
         <CardContent>
           {similarLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="size-4 animate-spin" />
-              Loading similar past fixes…
-            </div>
+            <DataTableSkeleton columnCount={5} rowCount={3} />
           ) : similarError ? (
             <p className="text-sm text-muted-foreground">
               Could not load similar past fixes. You may have hit a rate limit or the feature may be disabled.
@@ -267,33 +359,7 @@ function WorkOrderDetailPage() {
               No similar past fixes found.
             </p>
           ) : (
-            <ul className="space-y-4">
-              {similarPastFixes.map((fix) => (
-                <li key={fix.workOrderId} className="border-b border-border pb-4 last:border-0 last:pb-0">
-                  <Link
-                    to="/dashboard/workorders/$id"
-                    params={{ id: fix.workOrderId }}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {fix.title || 'Untitled'}
-                  </Link>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{(fix.similarityScore * 100).toFixed(0)}% match</span>
-                    {fix.completedAt && (
-                      <span>
-                        Completed {new Date(fix.completedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-                      </span>
-                    )}
-                  </div>
-                  {(fix.cause ?? fix.resolution) && (
-                    <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                      {fix.cause && <p className="line-clamp-2">{fix.cause}</p>}
-                      {fix.resolution && <p className="line-clamp-2">{fix.resolution}</p>}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <DataTable table={similarPastFixesTable} />
           )}
         </CardContent>
       </Card>
