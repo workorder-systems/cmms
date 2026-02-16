@@ -63,6 +63,21 @@ function WorkOrderDetailPage() {
   const [completeCause, setCompleteCause] = React.useState('')
   const [completeResolution, setCompleteResolution] = React.useState('')
 
+  const workOrderStatusCatalog = React.useMemo(
+    () =>
+      statusCatalog
+        .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .map((s) => ({ key: s.key ?? '', name: s.name ?? null, color: s.color ?? null })),
+    [statusCatalog]
+  )
+  const workOrderPriorityCatalog = React.useMemo(
+    () =>
+      priorityCatalog
+        .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
+        .map((p) => ({ key: p.key ?? '', name: p.name ?? null, color: p.color ?? null })),
+    [priorityCatalog]
+  )
+
   if (isError) {
     return (
       <DataTableErrorMessage
@@ -81,20 +96,6 @@ function WorkOrderDetailPage() {
     )
   }
 
-  const workOrderStatusCatalog = React.useMemo(
-    () =>
-      statusCatalog
-        .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
-        .map((s) => ({ key: s.key ?? '', name: s.name ?? null, color: s.color ?? null })),
-    [statusCatalog]
-  )
-  const workOrderPriorityCatalog = React.useMemo(
-    () =>
-      priorityCatalog
-        .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
-        .map((p) => ({ key: p.key ?? '', name: p.name ?? null, color: p.color ?? null })),
-    [priorityCatalog]
-  )
   const isCompleted = workOrder.status === 'completed'
 
   return (
