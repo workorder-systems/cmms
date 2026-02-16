@@ -264,15 +264,37 @@ async function handleSearch(
     );
   }
 
+  // When searching by workOrderId, use stored embedding if present to avoid an OpenAI call.
   let queryEmbedding: number[];
-  try {
-    queryEmbedding = await embed(textToEmbed);
-  } catch (err) {
-    console.error('similar-past-fixes/search: embed failed', err);
-    return jsonResponse(
-      { error: 'Failed to compute embedding', code: 'EMBED_FAIL' },
-      500
+  if (workOrderId) {
+    const { data: storedEmbedding } = await supabase.rpc(
+      'rpc_get_work_order_embedding',
+      { p_work_order_id: workOrderId }
     );
+    const arr = Array.isArray(storedEmbedding) ? storedEmbedding : null;
+    if (arr && arr.length === 1536 && arr.every((n) => typeof n === 'number')) {
+      queryEmbedding = arr as number[];
+    } else {
+      try {
+        queryEmbedding = await embed(textToEmbed);
+      } catch (err) {
+        console.error('similar-past-fixes/search: embed failed', err);
+        return jsonResponse(
+          { error: 'Failed to compute embedding', code: 'EMBED_FAIL' },
+          500
+        );
+      }
+    }
+  } else {
+    try {
+      queryEmbedding = await embed(textToEmbed);
+    } catch (err) {
+      console.error('similar-past-fixes/search: embed failed', err);
+      return jsonResponse(
+        { error: 'Failed to compute embedding', code: 'EMBED_FAIL' },
+        500
+      );
+    }
   }
 
   const clampedLimit = Math.min(Math.max(limit ?? 5, 1), 50);
