@@ -1,19 +1,24 @@
 import * as React from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { getDbClient } from '../lib/db-client'
+import { DASHBOARD_TENANT_STORAGE_KEY } from '../lib/tenant-storage'
 import type { TenantRow } from '@workorder-systems/sdk'
-
-const STORAGE_KEY = 'dashboard_tenant_id'
 
 function getStoredTenantId(): string | null {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem(STORAGE_KEY)
+  return localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
 }
 
 function setStoredTenantId(id: string): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, id)
+    localStorage.setItem(DASHBOARD_TENANT_STORAGE_KEY, id)
+  }
+}
+
+function clearStoredTenantId(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(DASHBOARD_TENANT_STORAGE_KEY)
   }
 }
 
@@ -30,6 +35,7 @@ export const useTenantStore = create<TenantState>()((set, get) => ({
   isSetting: false,
   setActiveTenantIdSync(id: string | null) {
     if (id) setStoredTenantId(id)
+    else clearStoredTenantId()
     set({ activeTenantId: id })
   },
   setSetting(value: boolean) {
@@ -42,13 +48,7 @@ export const useTenantStore = create<TenantState>()((set, get) => ({
     const client = getDbClient()
     try {
       await client.setTenant(id)
-      const { data } = await client.supabase.auth.getSession()
-      if (data.session) {
-        await client.supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        })
-      }
+      await client.supabase.auth.refreshSession()
       setStoredTenantId(id)
       set({ activeTenantId: id, isSetting: false })
     } catch {
@@ -63,6 +63,7 @@ export const useTenantStore = create<TenantState>()((set, get) => ({
  */
 export function useTenant() {
   const client = getDbClient()
+  const queryClient = useQueryClient()
   const { data: tenants = [], isLoading: isLoadingTenants } = useQuery({
     queryKey: ['tenants'],
     queryFn: () => client.tenants.list(),
@@ -70,8 +71,16 @@ export function useTenant() {
 
   const activeTenantId = useTenantStore((s) => s.activeTenantId)
   const isSetting = useTenantStore((s) => s.isSetting)
-  const setActiveTenantId = useTenantStore((s) => s.setActiveTenantId)
+  const setActiveTenantIdStore = useTenantStore((s) => s.setActiveTenantId)
   const setActiveTenantIdSync = useTenantStore((s) => s.setActiveTenantIdSync)
+
+  const setActiveTenantId = React.useCallback(
+    async (id: string) => {
+      await setActiveTenantIdStore(id)
+      queryClient.invalidateQueries({ queryKey: ['catalogs'] })
+    },
+    [setActiveTenantIdStore, queryClient]
+  )
 
   const activeTenant =
     tenants.find((t) => t.id === activeTenantId) ?? tenants[0] ?? null
@@ -89,20 +98,14 @@ export function useTenant() {
     setActiveTenantIdSync(targetId)
     client
       .setTenant(targetId)
-      .then(() =>
-        client.supabase.auth.getSession().then(({ data }) => {
-          if (data.session) {
-            return client.supabase.auth.setSession({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token,
-            })
-          }
-        })
-      )
+      .then(() => client.supabase.auth.refreshSession())
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['catalogs'] })
+      })
       .catch(() => {
         initialSyncDone.current = false
       })
-  }, [isLoadingTenants, tenants, client, setActiveTenantIdSync])
+  }, [isLoadingTenants, tenants, client, setActiveTenantIdSync, queryClient])
 
   return {
     tenants,

@@ -6,6 +6,12 @@ import { MapPin, Plus, Upload } from 'lucide-react'
 import type { LocationRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
+import {
+  DEFAULT_PAGE_SIZE,
+  createDataTableQueryKeys,
+} from '../lib/data-table-query-keys'
+import { DataTableErrorMessage } from '../components/data-table-error-message'
 import { useLocationsPageStore } from '../stores/locations-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -24,26 +30,12 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
+const QUERY_KEYS = createDataTableQueryKeys('locations')
 
 export const Route = createFileRoute('/_protected/dashboard/locations/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: LocationsPage,
 })
-
-const PAGE_SIZE = 10
-const QUERY_KEYS = {
-  page: 'locations_page',
-  perPage: 'locations_perPage',
-  sort: 'locations_sort',
-  filters: 'locations_filters',
-  joinOperator: 'locations_joinOperator',
-}
 
 function LocationsPage() {
   const { activeTenantId } = useTenant()
@@ -134,23 +126,24 @@ function LocationsPage() {
     [locationIdToName],
   )
 
-  const pageCount = Math.ceil(locations.length / PAGE_SIZE) || 1
+  const pageCount = Math.ceil(locations.length / DEFAULT_PAGE_SIZE) || 1
   const { table } = useDataTable({
     data: locations,
     columns,
     pageCount,
-    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
+    initialState: {
+      pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
+    },
     queryKeys: QUERY_KEYS,
     getRowId: (row) => (row as LocationRow).id ?? '',
   })
 
   if (isError) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <p className="text-destructive">
-          Failed to load locations: {error?.message ?? 'Unknown error'}
-        </p>
-      </div>
+      <DataTableErrorMessage
+        resourceName="locations"
+        error={error ?? null}
+      />
     )
   }
 

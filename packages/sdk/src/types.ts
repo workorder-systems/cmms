@@ -12,6 +12,7 @@ import type { CatalogsResource } from './resources/catalogs.js';
 import type { PmResource } from './resources/pm.js';
 import type { DashboardResource } from './resources/dashboard.js';
 import type { AuditResource } from './resources/audit.js';
+import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -36,7 +37,7 @@ export type DbClient = {
   supabase: SupabaseClient<Database>;
   /**
    * Set tenant context. Call before querying tenant-scoped views or RPCs.
-   * Then refresh the session so the JWT carries the tenant_id claim (e.g. getSession() then setSession()).
+   * Then call auth.refreshSession() so the JWT is re-issued with the tenant_id claim.
    */
   setTenant(tenantId: string): Promise<void>;
   /** Clear tenant context. Useful when switching tenants or logging out. */
@@ -65,4 +66,6 @@ export type DbClient = {
   dashboard: DashboardResource;
   /** Audit: entity and permission changes, retention configuration. */
   audit: AuditResource;
+  /** Similar Past Fixes: search for semantically similar completed work orders. */
+  similarPastFixes: SimilarPastFixesResource;
 };

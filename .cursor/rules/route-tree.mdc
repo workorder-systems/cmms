@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+# Do not edit routeTree.gen.ts
+
+Never edit `apps/web/src/routeTree.gen.ts`.
+
+That file is **generated** by the TanStack Router plugin and is overwritten when you run `pnpm run dev` or `vite build` in the web app. Adding new routes is done by adding new route files (e.g. `_protected.dashboard.workorders.$id.tsx`); the plugin will regenerate `routeTree.gen.ts` and wire the new route.

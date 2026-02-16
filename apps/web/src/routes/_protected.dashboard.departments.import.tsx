@@ -5,10 +5,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
+import { generateImportRowId } from '../lib/import-row-id'
 import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
-
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
 
 export interface DepartmentImportRow {
   id: string
@@ -29,7 +29,7 @@ const DEPARTMENTS_CSV_OPTIONS = {
 
 function createEmptyRow(): DepartmentImportRow {
   return {
-    id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: generateImportRowId(),
     name: '',
     description: '',
     code: '',
@@ -45,12 +45,7 @@ function getCsvTemplate(): string {
 }
 
 export const Route = createFileRoute('/_protected/dashboard/departments/import')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: DepartmentsImportPage,
 })
 

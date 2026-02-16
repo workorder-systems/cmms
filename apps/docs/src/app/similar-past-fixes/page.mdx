@@ -1,0 +1,138 @@
+export const metadata = {
+  title: 'Similar Past Fixes',
+  description: 'Search for semantically similar completed work orders using the SDK.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Search by query text', id: 'search-by-query-text' },
+  { title: 'Search by work order ID', id: 'search-by-work-order-id' },
+  { title: 'Parameters', id: 'parameters' },
+  { title: 'Result shape', id: 'result-shape' },
+]
+
+# Similar Past Fixes
+
+Search for semantically similar completed work orders. Uses an Edge Function that embeds your query or an existing work order, then runs a vector similarity search over completed work orders.
+
+## Overview
+
+Similar Past Fixes helps you find past work orders that are semantically similar to a new issue or an existing work order. Use it when creating or editing work orders to suggest relevant past fixes.
+
+- **Indexing** is done server-side by a cron backfill (not by users). Only completed work orders are indexed.
+- **Search** is via the SDK and uses the `similar-past-fixes` Edge Function. Requires tenant context and an authenticated user.
+
+<CodeGroup title="client.similarPastFixes.search(params)">
+
+```ts
+await client.setTenant(tenantId)
+
+const results = await client.similarPastFixes.search({
+  queryText: 'Motor overload, check connections',
+  limit: 5,
+  minSimilarity: 0.5,
+})
+// Returns SimilarPastFixResult[]
+```
+
+</CodeGroup>
+
+## Search by query text
+
+Pass free text describing the issue (e.g. title + description). The Edge Function embeds it and returns similar completed work orders.
+
+<CodeGroup title="Search by query text">
+
+```ts
+await client.setTenant(tenantId)
+
+const results = await client.similarPastFixes.search({
+  queryText: 'Pump not starting, check power supply',
+  limit: 5,
+})
+// Returns SimilarPastFixResult[]
+```
+
+</CodeGroup>
+
+## Search by work order ID
+
+Pass an existing work order ID to find similar completed work orders. The Edge Function fetches the work order’s title and description, embeds it, and returns similar results. Useful when editing an existing work order (e.g. exclude the current work order from results).
+
+<CodeGroup title="Search by work order ID">
+
+```ts
+await client.setTenant(tenantId)
+
+const results = await client.similarPastFixes.search({
+  workOrderId: 'uuid-of-work-order',
+  limit: 5,
+  minSimilarity: 0.6,
+})
+// Returns SimilarPastFixResult[]
+```
+
+</CodeGroup>
+
+## Parameters
+
+<Properties>
+  <Property name="queryText">
+    Free text describing the issue. Mutually exclusive with <code>workOrderId</code>.
+  </Property>
+  <Property name="workOrderId">
+    Work order UUID to embed and search from. Mutually exclusive with <code>queryText</code>.
+  </Property>
+  <Property name="limit">
+    Max results to return (1–50, default 5).
+  </Property>
+  <Property name="minSimilarity">
+    Minimum similarity threshold in [0,1] (default 0.5). Higher = stricter matches; lower = more recall.
+  </Property>
+</Properties>
+
+## Result shape
+
+Each result is a `SimilarPastFixResult`:
+
+<Properties>
+  <Property name="workOrderId">
+    UUID of the similar work order.
+  </Property>
+  <Property name="title">
+    Work order title.
+  </Property>
+  <Property name="description">
+    Work order description (optional).
+  </Property>
+  <Property name="status">
+    Status key.
+  </Property>
+  <Property name="completedAt">
+    ISO date string when completed (optional).
+  </Property>
+  <Property name="similarityScore">
+    Similarity score (0–1, higher = more similar).
+  </Property>
+  <Property name="assetId">
+    Optional asset UUID.
+  </Property>
+  <Property name="locationId">
+    Optional location UUID.
+  </Property>
+  <Property name="cause">
+    Optional root cause text for the similar work order.
+  </Property>
+  <Property name="resolution">
+    Optional resolution text describing what was done to fix the issue.
+  </Property>
+</Properties>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+</div>

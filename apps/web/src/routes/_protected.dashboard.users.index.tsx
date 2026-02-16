@@ -6,6 +6,12 @@ import { MoreHorizontal, Plus, UserMinus, UserPlus } from 'lucide-react'
 import type { ProfileRow, UserTenantRoleRow, TenantRoleRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
+import {
+  DEFAULT_PAGE_SIZE,
+  createDataTableQueryKeys,
+} from '../lib/data-table-query-keys'
+import { DataTableErrorMessage } from '../components/data-table-error-message'
 import { useAuth } from '../contexts/auth'
 import { useUsersPageStore } from '../stores/users-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
@@ -41,7 +47,7 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
+const QUERY_KEYS = createDataTableQueryKeys('users')
 
 /** Combined row for table: profile with roles and joined date. */
 export interface UserMemberRow {
@@ -53,23 +59,9 @@ export interface UserMemberRow {
 }
 
 export const Route = createFileRoute('/_protected/dashboard/users/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: UsersPage,
 })
-
-const PAGE_SIZE = 10
-const QUERY_KEYS = {
-  page: 'users_page',
-  perPage: 'users_perPage',
-  sort: 'users_sort',
-  filters: 'users_filters',
-  joinOperator: 'users_joinOperator',
-}
 
 function buildMemberRows(
   profiles: ProfileRow[],
@@ -276,12 +268,14 @@ function UsersPage() {
     [currentUserId, setAssignRoleUserId, setRemoveUserId]
   )
 
-  const pageCount = Math.ceil(memberRows.length / PAGE_SIZE) || 1
+  const pageCount = Math.ceil(memberRows.length / DEFAULT_PAGE_SIZE) || 1
   const { table } = useDataTable({
     data: memberRows,
     columns,
     pageCount,
-    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
+    initialState: {
+      pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
+    },
     queryKeys: QUERY_KEYS,
     getRowId: (row) => row.id,
   })
@@ -292,11 +286,7 @@ function UsersPage() {
 
   if (isError) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <p className="text-destructive">
-          Failed to load users: {error?.message ?? 'Unknown error'}
-        </p>
-      </div>
+      <DataTableErrorMessage resourceName="users" error={error ?? null} />
     )
   }
 

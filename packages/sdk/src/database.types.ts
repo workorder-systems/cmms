@@ -2529,6 +2529,7 @@ export type Database = {
           asset_id: string | null
           assigned_to: string | null
           assigned_to_name: string | null
+          cause: string | null
           completed_at: string | null
           completed_by: string | null
           completed_by_name: string | null
@@ -2540,6 +2541,7 @@ export type Database = {
           maintenance_type: string | null
           pm_schedule_id: string | null
           priority: string | null
+          resolution: string | null
           status: string | null
           tenant_id: string | null
           title: string | null
@@ -2698,9 +2700,25 @@ export type Database = {
         Args: { p_role_key: string; p_tenant_id: string; p_user_id: string }
         Returns: undefined
       }
+      rpc_backfill_upsert_work_order_embedding: {
+        Args: {
+          p_embedding: string
+          p_model_name?: string
+          p_model_version?: string
+          p_source_text?: string
+          p_tenant_id: string
+          p_work_order_id: string
+        }
+        Returns: undefined
+      }
       rpc_clear_tenant_context: { Args: never; Returns: undefined }
       rpc_complete_work_order: {
-        Args: { p_tenant_id: string; p_work_order_id: string }
+        Args: {
+          p_cause?: string
+          p_resolution?: string
+          p_tenant_id: string
+          p_work_order_id: string
+        }
         Returns: undefined
       }
       rpc_create_asset: {
@@ -2931,13 +2949,17 @@ export type Database = {
         }
         Returns: string
       }
-      rpc_plugin_installations_by_key: {
-        Args: { p_plugin_key: string }
+      rpc_next_work_orders_for_embedding: {
+        Args: { p_limit?: number }
         Returns: {
-          config: Json
-          installation_id: string
-          plugin_id: string
+          asset_name: string
+          cause: string
+          description: string
+          location_name: string
+          resolution: string
           tenant_id: string
+          title: string
+          work_order_id: string
         }[]
       }
       rpc_record_meter_reading: {
@@ -2981,6 +3003,26 @@ export type Database = {
       rpc_set_tenant_context: {
         Args: { p_tenant_id: string }
         Returns: undefined
+      }
+      rpc_similar_past_work_orders: {
+        Args: {
+          p_exclude_work_order_id?: string
+          p_limit?: number
+          p_min_similarity?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          asset_id: string
+          cause: string
+          completed_at: string
+          description: string
+          location_id: string
+          resolution: string
+          similarity_score: number
+          status: string
+          title: string
+          work_order_id: string
+        }[]
       }
       rpc_transition_work_order_status: {
         Args: {
@@ -3089,6 +3131,16 @@ export type Database = {
       }
       rpc_update_work_order_attachment_metadata: {
         Args: { p_attachment_id: string; p_kind?: string; p_label?: string }
+        Returns: undefined
+      }
+      rpc_upsert_work_order_embedding: {
+        Args: {
+          p_embedding: string
+          p_model_name?: string
+          p_model_version?: string
+          p_source_text?: string
+          p_work_order_id: string
+        }
         Returns: undefined
       }
     }

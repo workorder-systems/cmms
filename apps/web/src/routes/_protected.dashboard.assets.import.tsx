@@ -5,15 +5,15 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContext } from '../lib/route-loaders'
+import { generateImportRowId } from '../lib/import-row-id'
 import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
-
 const ASSET_STATUS_OPTIONS = [
-  { label: 'Active', value: 'active' },
-  { label: 'Inactive', value: 'inactive' },
-  { label: 'Retired', value: 'retired' },
+  { label: 'Active', value: 'active', color: '#22c55e' as const },
+  { label: 'Inactive', value: 'inactive', color: '#94a3b8' as const },
+  { label: 'Retired', value: 'retired', color: '#64748b' as const },
 ]
 
 export interface AssetImportRow {
@@ -48,7 +48,7 @@ const ASSETS_CSV_OPTIONS = {
 
 function createEmptyRow(): AssetImportRow {
   return {
-    id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: generateImportRowId(),
     name: '',
     description: '',
     asset_number: '',
@@ -67,12 +67,7 @@ function getCsvTemplate(): string {
 }
 
 export const Route = createFileRoute('/_protected/dashboard/assets/import')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContext(context),
   component: AssetsImportPage,
 })
 

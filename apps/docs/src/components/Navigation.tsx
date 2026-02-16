@@ -250,6 +250,7 @@ export const navigation: Array<NavGroup> = [
     links: [
       { title: 'Tenants', href: '/tenants' },
       { title: 'Work orders', href: '/work-orders' },
+      { title: 'Similar Past Fixes', href: '/similar-past-fixes' },
       { title: 'Assets', href: '/assets' },
       { title: 'Locations', href: '/locations' },
       { title: 'Departments', href: '/departments' },

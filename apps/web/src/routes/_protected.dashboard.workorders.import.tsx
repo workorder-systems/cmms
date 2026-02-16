@@ -4,31 +4,36 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getDbClient } from '../lib/db-client'
-import { prefetchCatalogs, catalogQueryOptions } from '../lib/catalog-queries'
+import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { generateImportRowId } from '../lib/import-row-id'
 import { parseCsv } from '../lib/csv-import'
 import { CsvImportPage } from '../components/csv-import-page'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
 const WORK_ORDER_ENTITY_TYPE = 'work_order'
 
 export interface WorkOrderImportRow {
   id: string
   title: string
   description: string
+  cause: string
+  resolution: string
   status: string
   priority: string
   due_date: string
 }
 
 const WORKORDERS_CSV_OPTIONS = {
-  canonicalColumns: ['title', 'description', 'status', 'priority', 'due_date'] as const,
+  canonicalColumns: ['title', 'description', 'cause', 'resolution', 'status', 'priority', 'due_date'] as const,
   requiredColumn: 'title',
   headerAliases: {
     title: [/^(title|name|subject)$/],
     description: [
       /^(description|desc|body|notes|details|comment|content|summary)$/,
     ],
+    cause: [/^(cause|root.?cause|rootcause)$/i],
+    resolution: [/^(resolution|resolve|fix|solution|resolution.?notes)$/i],
     status: [/^(status|state|stage)$/],
     priority: [/^priority$/],
     due_date: [/^(duedate|due_date)$/i],
@@ -37,16 +42,18 @@ const WORKORDERS_CSV_OPTIONS = {
 
 /** Fallback when catalog has no work_order priorities. */
 const FALLBACK_PRIORITY_OPTIONS = [
-  { label: 'Low', value: 'low' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'High', value: 'high' },
+  { label: 'Low', value: 'low', color: '#22c55e' as const },
+  { label: 'Medium', value: 'medium', color: '#3b82f6' as const },
+  { label: 'High', value: 'high', color: '#f59e0b' as const },
 ]
 
 function createEmptyRow(priorityDefault = 'medium'): WorkOrderImportRow {
   return {
-    id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: generateImportRowId(),
     title: '',
     description: '',
+    cause: '',
+    resolution: '',
     status: '',
     priority: priorityDefault,
     due_date: '',
@@ -54,23 +61,17 @@ function createEmptyRow(priorityDefault = 'medium'): WorkOrderImportRow {
 }
 
 function getCsvTemplate(statusKeys: string[], priorityKeys: string[]): string {
-  const statusCol = statusKeys.length > 0 ? statusKeys[0]! : 'open'
+  const statusCol = statusKeys.length > 0 ? statusKeys[0]! : 'draft'
   const priorityCol = priorityKeys.length > 0 ? priorityKeys[0]! : 'medium'
-  return `title,description,status,priority,due_date
-"Repair HVAC unit in Building A","Inspect and replace filters",${statusCol},high,2025-03-15
-"Monthly fire extinguisher check","Check all units on floor 2",${statusCol},medium,2025-03-01
-"Replace light fixtures","Conference room B",${statusCol},low,
+  return `title,description,cause,resolution,status,priority,due_date
+"Repair HVAC unit in Building A","Inspect and replace filters","Worn filters","Replaced filters and cleaned duct",${statusCol},high,2025-03-15
+"Monthly fire extinguisher check","Check all units on floor 2",,,${statusCol},medium,2025-03-01
+"Replace light fixtures","Conference room B",,,${statusCol},low,
 `
 }
 
 export const Route = createFileRoute('/_protected/dashboard/workorders/import')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-    await prefetchCatalogs(context.queryClient, context.dbClient, tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
   component: WorkOrdersImportPage,
 })
 
@@ -94,7 +95,11 @@ function WorkOrdersImportPage() {
     return statusCatalog
       .filter((s) => s.entity_type === WORK_ORDER_ENTITY_TYPE)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      .map((s) => ({ label: s.name ?? s.key ?? '', value: s.key ?? '' }))
+      .map((s) => ({
+        label: s.name ?? s.key ?? '',
+        value: s.key ?? '',
+        color: s.color ?? null,
+      }))
       .filter((o) => o.value !== '')
   }, [statusCatalog])
 
@@ -102,7 +107,11 @@ function WorkOrdersImportPage() {
     const opts = priorityCatalog
       .filter((p) => p.entity_type === WORK_ORDER_ENTITY_TYPE)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      .map((p) => ({ label: p.name ?? p.key ?? '', value: p.key ?? '' }))
+      .map((p) => ({
+        label: p.name ?? p.key ?? '',
+        value: p.key ?? '',
+        color: p.color ?? null,
+      }))
       .filter((o) => o.value)
     return opts.length > 0 ? opts : FALLBACK_PRIORITY_OPTIONS
   }, [priorityCatalog])
@@ -126,6 +135,24 @@ function WorkOrdersImportPage() {
         header: 'Description',
         meta: {
           label: 'Description',
+          cell: { variant: 'long-text' as const },
+        },
+      },
+      {
+        id: 'cause',
+        accessorKey: 'cause',
+        header: 'Cause',
+        meta: {
+          label: 'Cause',
+          cell: { variant: 'long-text' as const },
+        },
+      },
+      {
+        id: 'resolution',
+        accessorKey: 'resolution',
+        header: 'Resolution',
+        meta: {
+          label: 'Resolution',
           cell: { variant: 'long-text' as const },
         },
       },
@@ -177,6 +204,8 @@ function WorkOrdersImportPage() {
           id: `import-${i}-${Date.now()}`,
           title: p.title ?? '',
           description: p.description ?? '',
+          cause: p.cause ?? '',
+          resolution: p.resolution ?? '',
           status,
           priority: priorityKeys.includes(pri) ? pri : priorityKeys[0] ?? 'medium',
           due_date: p.due_date ?? '',
@@ -198,6 +227,8 @@ function WorkOrdersImportPage() {
       const payload = rows.map((row) => ({
         title: (row.title ?? '').trim(),
         description: (row.description ?? '').trim() || null,
+        cause: (row.cause ?? '').trim() || null,
+        resolution: (row.resolution ?? '').trim() || null,
         status: (row.status ?? '').trim() || null,
         priority: (row.priority ?? defaultPriorityKey).trim() || defaultPriorityKey,
         due_date: (row.due_date ?? '').trim() || null,
@@ -233,7 +264,8 @@ function WorkOrdersImportPage() {
       description={
         <>
           Upload a CSV or add rows below. Columns: <strong>title</strong> (required), description,
-          status, priority, due_date (YYYY-MM-DD). Status and priority use your tenant catalog
+          cause, resolution, status, priority, due_date (YYYY-MM-DD). Cause and resolution are
+          optional (e.g. for completed work orders). Status and priority use your tenant catalog
           keys. Rows with an empty title are skipped on import.
         </>
       }

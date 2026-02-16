@@ -5,7 +5,15 @@ import { useQuery } from '@tanstack/react-query'
 import { Plus, Upload, Wrench } from 'lucide-react'
 import type { AssetRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
+import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
+import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { StatusBadge } from '../components/status-badge'
+import {
+  DEFAULT_PAGE_SIZE,
+  createDataTableQueryKeys,
+} from '../lib/data-table-query-keys'
+import { DataTableErrorMessage } from '../components/data-table-error-message'
 import { useAssetsPageStore } from '../stores/assets-page'
 import { DataTable } from '@workspace/ui/components/data-table/data-table'
 import { DataTableColumnHeader } from '@workspace/ui/components/data-table/data-table-column-header'
@@ -24,31 +32,20 @@ import {
   ResponsiveDialogClose,
 } from '@workspace/ui/components/responsive-dialog'
 
-const TENANT_STORAGE_KEY = 'dashboard_tenant_id'
+const ASSETS_QUERY_KEYS = createDataTableQueryKeys('assets')
+const ASSET_ENTITY_TYPE = 'asset'
 
-const ASSET_STATUS_OPTIONS = [
-  { label: 'Active', value: 'active' },
-  { label: 'Inactive', value: 'inactive' },
+/** Fallback when catalog has no asset statuses. */
+const FALLBACK_ASSET_STATUS_OPTIONS = [
+  { label: 'Active', value: 'active', color: '#22c55e' as const },
+  { label: 'Inactive', value: 'inactive', color: '#94a3b8' as const },
+  { label: 'Retired', value: 'retired', color: '#64748b' as const },
 ]
 
 export const Route = createFileRoute('/_protected/dashboard/assets/')({
-  beforeLoad: async ({ context }) => {
-    if (typeof window === 'undefined') return
-    const tenantId = window.localStorage.getItem(TENANT_STORAGE_KEY)
-    if (!tenantId) return
-    await context.dbClient.setTenant(tenantId)
-  },
+  beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
   component: AssetsPage,
 })
-
-const PAGE_SIZE = 10
-const QUERY_KEYS = {
-  page: 'assets_page',
-  perPage: 'assets_perPage',
-  sort: 'assets_sort',
-  filters: 'assets_filters',
-  joinOperator: 'assets_joinOperator',
-}
 
 function AssetsPage() {
   const { activeTenantId } = useTenant()
@@ -71,6 +68,34 @@ function AssetsPage() {
     queryFn: () => client.departments.list(),
     enabled: !!activeTenantId,
   })
+
+  const { data: statusCatalog = [] } = useQuery({
+    ...catalogQueryOptions.statuses(activeTenantId ?? '', client),
+    enabled: !!activeTenantId,
+  })
+
+  const assetStatusOptions = React.useMemo(() => {
+    const opts = statusCatalog
+      .filter((s) => s.entity_type === ASSET_ENTITY_TYPE)
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+      .map((s) => ({
+        label: s.name ?? s.key ?? '',
+        value: s.key ?? '',
+        color: s.color ?? null,
+      }))
+      .filter((o) => o.value)
+    return opts.length > 0 ? opts : FALLBACK_ASSET_STATUS_OPTIONS
+  }, [statusCatalog])
+
+  const assetStatusCatalog = React.useMemo(
+    () =>
+      assetStatusOptions.map((s) => ({
+        key: s.value,
+        name: s.label,
+        color: s.color ?? null,
+      })),
+    [assetStatusOptions]
+  )
 
   const locationIdToName = React.useMemo(() => {
     const map = new Map<string, string>()
@@ -100,9 +125,21 @@ function AssetsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Name" />
         ),
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue('name') ?? '—'}</span>
-        ),
+        cell: ({ row }) => {
+          const asset = row.original
+          const name = asset.name ?? '—'
+          return asset.id ? (
+            <Link
+              to="/dashboard/assets/$id"
+              params={{ id: asset.id }}
+              className="font-medium text-primary hover:underline"
+            >
+              {name}
+            </Link>
+          ) : (
+            <span className="font-medium">{name}</span>
+          )
+        },
         meta: {
           label: 'Name',
           placeholder: 'Search names...',
@@ -133,20 +170,16 @@ function AssetsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Status" />
         ),
-        cell: ({ row }) => {
-          const status = row.getValue('status') as string | null
-          const label =
-            ASSET_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
-          return (
-            <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-muted text-muted-foreground">
-              {label ?? '—'}
-            </span>
-          )
-        },
+        cell: ({ row }) => (
+          <StatusBadge
+            statusKey={row.getValue('status') as string | null}
+            statusCatalog={assetStatusCatalog}
+          />
+        ),
         meta: {
           label: 'Status',
           variant: 'multiSelect',
-          options: ASSET_STATUS_OPTIONS,
+          options: assetStatusOptions,
         },
         enableColumnFilter: true,
         filterFn: (row: Row<AssetRow>, id: string, filterValue: unknown) => {
@@ -194,26 +227,24 @@ function AssetsPage() {
         },
       },
     ],
-    [locationIdToName, departmentIdToName],
+    [locationIdToName, departmentIdToName, assetStatusOptions, assetStatusCatalog],
   )
 
-  const pageCount = Math.ceil(assets.length / PAGE_SIZE) || 1
+  const pageCount = Math.ceil(assets.length / DEFAULT_PAGE_SIZE) || 1
   const { table } = useDataTable({
     data: assets,
     columns,
     pageCount,
-    initialState: { pagination: { pageIndex: 0, pageSize: PAGE_SIZE } },
-    queryKeys: QUERY_KEYS,
+    initialState: {
+      pagination: { pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE },
+    },
+    queryKeys: ASSETS_QUERY_KEYS,
     getRowId: (row) => (row as AssetRow).id ?? '',
   })
 
   if (isError) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <p className="text-destructive">
-          Failed to load assets: {error?.message ?? 'Unknown error'}
-        </p>
-      </div>
+      <DataTableErrorMessage resourceName="assets" error={error ?? null} />
     )
   }
 
