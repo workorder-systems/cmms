@@ -10,6 +10,9 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 
+# Generated
+**/routeTree.gen.ts
+
 # Environment variables
 .env
 .env.local

@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react';
 import * as React from 'react';
 import { Portal } from './portal';
 import { Button } from './button';
-import { Dialog, DialogContent, DialogTrigger } from './dialog';
 
 const meta = {
   title: 'Primitives/Portal',
@@ -82,6 +81,41 @@ export const CustomContainer: Story = {
             </div>
           </Portal>
         )}
+      </div>
+    );
+  },
+};
+
+/**
+ * Header with a top-right slot for actions (e.g. "New work order").
+ * The slot is a DOM node; page content can portal a button into it.
+ * In the app, PortalTarget + ExtensionPoint provide this pattern.
+ */
+export const HeaderRightSlot: Story = {
+  render: () => {
+    const [headerRightRef, setHeaderRightRef] = React.useState<HTMLDivElement | null>(null);
+
+    return (
+      <div className="w-full max-w-2xl rounded-lg border">
+        <header
+          className="flex h-14 shrink-0 items-center justify-between gap-2 px-4"
+          aria-label="Page header"
+        >
+          <span className="font-semibold">Work orders</span>
+          <div
+            ref={setHeaderRightRef}
+            className="flex items-center gap-2"
+            data-slot="header.right"
+          />
+        </header>
+        {headerRightRef && (
+          <Portal container={headerRightRef}>
+            <Button size="sm">New work order</Button>
+          </Portal>
+        )}
+        <div className="border-t p-4 text-sm text-muted-foreground">
+          Page content. The &quot;New work order&quot; button above is portaled into header.right.
+        </div>
       </div>
     );
   },

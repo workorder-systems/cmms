@@ -35,6 +35,13 @@ export interface AssignPermissionToRoleParams {
   permissionKey: string;
 }
 
+/** Params for revoking a permission from a role. */
+export interface RevokePermissionFromRoleParams {
+  tenantId: string;
+  roleKey: string;
+  permissionKey: string;
+}
+
 /** Params for granting a scope to a user. */
 export interface GrantScopeParams {
   tenantId: string;
@@ -111,6 +118,15 @@ export function createAuthorizationResource(supabase: SupabaseClient<Database>) 
     /** Assign a permission to a role in a tenant. Requires tenant.admin. */
     async assignPermissionToRole(params: AssignPermissionToRoleParams): Promise<void> {
       return callRpc(rpc(supabase), 'rpc_assign_permission_to_role', {
+        p_tenant_id: params.tenantId,
+        p_role_key: params.roleKey,
+        p_permission_key: params.permissionKey,
+      });
+    },
+
+    /** Revoke a permission from a role in a tenant. Requires tenant.admin. */
+    async revokePermissionFromRole(params: RevokePermissionFromRoleParams): Promise<void> {
+      return callRpc(rpc(supabase), 'rpc_revoke_permission_from_role', {
         p_tenant_id: params.tenantId,
         p_role_key: params.roleKey,
         p_permission_key: params.permissionKey,

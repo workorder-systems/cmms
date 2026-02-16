@@ -23,6 +23,27 @@ export interface CreateWorkOrderParams {
   pmScheduleId?: string | null;
 }
 
+/** Single row for bulk import (title required; others optional, use catalog keys). */
+export interface BulkImportRow {
+  title: string;
+  description?: string | null;
+  status?: string | null;
+  priority?: string | null;
+  due_date?: string | null;
+}
+
+/** Result of bulk import: created work order ids and per-row errors. */
+export interface BulkImportResult {
+  created_ids: string[];
+  errors: { index: number; message: string }[];
+}
+
+/** Params for bulk importing work orders (single RPC, status set on insert). */
+export interface BulkImportParams {
+  tenantId: string;
+  rows: BulkImportRow[];
+}
+
 /** Params for transitioning work order status. */
 export interface TransitionStatusParams {
   tenantId: string;
@@ -90,6 +111,19 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
         p_due_date: params.dueDate ?? null,
         p_pm_schedule_id: params.pmScheduleId ?? null,
       });
+    },
+
+    /** Bulk import work orders. Status/priority set on insert (no transition). Returns created ids and per-row errors. */
+    async bulkImport(params: BulkImportParams): Promise<BulkImportResult> {
+      const raw = await callRpc(rpc(supabase), 'rpc_bulk_import_work_orders', {
+        p_tenant_id: params.tenantId,
+        p_rows: params.rows,
+      });
+      const data = raw as { created_ids: string[]; errors: { index: number; message: string }[] };
+      return {
+        created_ids: data.created_ids ?? [],
+        errors: data.errors ?? [],
+      };
     },
 
     /** Transition work order to a new status. */

@@ -1,6 +1,14 @@
 import { flexRender, type Table as TanstackTable } from "@tanstack/react-table";
+import { Inbox, SearchX } from "lucide-react";
 import type * as React from "react";
 
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../empty";
 import { DataTablePagination } from "./data-table-pagination";
 import {
   Table,
@@ -81,9 +89,35 @@ export function DataTable<TData>({
               <TableRow>
                 <TableCell
                   colSpan={table.getAllColumns().length}
-                  className="h-24 text-center"
+                  className="p-0"
                 >
-                  No results.
+                  {(() => {
+                    const hasActiveFilters =
+                      table.getState().columnFilters.length > 0;
+                    return (
+                      <Empty className="min-h-[200px] rounded-none border-0">
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            {hasActiveFilters ? (
+                              <SearchX />
+                            ) : (
+                              <Inbox />
+                            )}
+                          </EmptyMedia>
+                          <EmptyTitle>
+                            {hasActiveFilters
+                              ? "No results"
+                              : "No items yet"}
+                          </EmptyTitle>
+                          <EmptyDescription>
+                            {hasActiveFilters
+                              ? "Try adjusting your search or filter to find what you're looking for."
+                              : "Get started by adding your first item."}
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    );
+                  })()}
                 </TableCell>
               </TableRow>
             )}

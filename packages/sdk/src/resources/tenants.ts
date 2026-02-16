@@ -26,6 +26,12 @@ export interface AssignRoleParams {
   roleKey: string;
 }
 
+/** Params for removing a member from a tenant. */
+export interface RemoveMemberParams {
+  tenantId: string;
+  userId: string;
+}
+
 const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(supabase);
 
@@ -72,6 +78,14 @@ export function createTenantsResource(supabase: SupabaseClient<Database>) {
         p_tenant_id: params.tenantId,
         p_user_id: params.userId,
         p_role_key: params.roleKey,
+      });
+    },
+
+    /** Remove a user from a tenant. Requires tenant.member.remove permission. Caller cannot remove themselves. */
+    async removeMember(params: RemoveMemberParams): Promise<void> {
+      return callRpc(rpc(supabase), 'rpc_remove_member_from_tenant', {
+        p_tenant_id: params.tenantId,
+        p_user_id: params.userId,
       });
     },
   };
