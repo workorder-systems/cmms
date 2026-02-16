@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ClipboardList } from 'lucide-react'
+import { ClipboardList } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
@@ -106,16 +106,9 @@ function WorkOrderDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/dashboard/workorders">
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
-        <h1 className="text-xl font-semibold truncate">
-          {workOrder.title ?? 'Work order'}
-        </h1>
-      </div>
+      <h1 className="text-xl font-semibold truncate">
+        {workOrder.title ?? 'Work order'}
+      </h1>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
