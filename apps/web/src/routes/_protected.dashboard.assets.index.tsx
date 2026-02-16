@@ -125,9 +125,21 @@ function AssetsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Name" />
         ),
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue('name') ?? '—'}</span>
-        ),
+        cell: ({ row }) => {
+          const asset = row.original
+          const name = asset.name ?? '—'
+          return asset.id ? (
+            <Link
+              to="/dashboard/assets/$id"
+              params={{ id: asset.id }}
+              className="font-medium text-primary hover:underline"
+            >
+              {name}
+            </Link>
+          ) : (
+            <span className="font-medium">{name}</span>
+          )
+        },
         meta: {
           label: 'Name',
           placeholder: 'Search names...',
