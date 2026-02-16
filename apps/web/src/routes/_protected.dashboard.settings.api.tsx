@@ -9,6 +9,16 @@ import { ensureTenantContext } from '../lib/route-loaders'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
 import { Button } from '@workspace/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@workspace/ui/components/card'
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle,
+} from '@workspace/ui/components/item'
 import { Input } from '@workspace/ui/components/input'
 import { Field, FieldLabel } from '@workspace/ui/components/field'
 import {
@@ -150,33 +160,38 @@ function SettingsApiPage() {
                 other integrations.
               </p>
             ) : (
-              <ul className="divide-y divide-border">
-                {(keys as TenantApiKeyRow[]).map((k) => (
-                  <li
-                    key={k.id}
-                    className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium">{k.name ?? '—'}</p>
-                      <p className="text-muted-foreground text-sm">
-                        Prefix: <code className="rounded bg-muted px-1">{k.keyPrefix ?? '—'}</code>
-                        {k.lastUsedAt && (
-                          <> · Last used: {formatDate(k.lastUsedAt)}</>
-                        )}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setRevokeKeyId(k.id)}
-                    >
-                      <Trash2 className="size-4" />
-                      Revoke
-                    </Button>
-                  </li>
+              <ItemGroup>
+                {(keys as TenantApiKeyRow[]).map((k, index) => (
+                  <React.Fragment key={k.id}>
+                    {index > 0 && <ItemSeparator />}
+                    <Item size="sm" variant="outline">
+                      <ItemMedia variant="icon">
+                        <KeyRound className="size-4" />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>{k.name ?? '—'}</ItemTitle>
+                        <ItemDescription>
+                          Prefix: <code className="rounded bg-muted px-1">{k.keyPrefix ?? '—'}</code>
+                          {k.lastUsedAt && (
+                            <> · Last used: {formatDate(k.lastUsedAt)}</>
+                          )}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setRevokeKeyId(k.id)}
+                        >
+                          <Trash2 className="size-4" />
+                          Revoke
+                        </Button>
+                      </ItemActions>
+                    </Item>
+                  </React.Fragment>
                 ))}
-              </ul>
+              </ItemGroup>
             )}
           </CardContent>
         </Card>
