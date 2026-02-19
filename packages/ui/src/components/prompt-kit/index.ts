@@ -108,3 +108,6 @@ export type {
   ChatMessage,
   AssistantPart,
 } from "./cmms-chat"
+
+export { DataChart } from "@workspace/ui/components/data-chart"
+export type { DataChartProps, DataChartDataRow } from "@workspace/ui/components/data-chart"

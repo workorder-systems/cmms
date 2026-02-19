@@ -88,6 +88,7 @@ const SUGGESTED_PROMPTS = [
   "What's urgent?",
   "Asset status",
   "Create work order",
+  "Show a report",
 ] as const
 
 const FOLLOW_UP_SUGGESTIONS = [
@@ -541,6 +542,51 @@ export const CMMSChatComponent: Story = {
 
     return (
       <CMMSChat messages={messages} inputValue={inputValue} onInputChange={setInputValue} onSubmit={handleSubmit} suggestedPrompts={[...SUGGESTED_PROMPTS]} onFilesAdded={fn()} />
+    )
+  },
+}
+
+/**
+ * **Report / chart** – User asks for data or a report; assistant responds with a chart part.
+ * DataChart is driven only by props (type, data, categoryKey, valueKeys) so the AI can emit it easily.
+ */
+export const CMMSChatReportChart: Story = {
+  render: function CMMSChatReportChartRender() {
+    const [inputValue, setInputValue] = useState("")
+    const messages: ChatMessage[] = [
+      { role: "welcome", content: "Hi, I'm the maintenance assistant. Ask for work orders, reports, or charts — I can show data by status, priority, or over time." },
+      { role: "user", content: "Show me work orders by status." },
+      {
+        role: "assistant",
+        parts: [
+          { type: "text", content: "Here’s how work orders break down by status right now:" },
+          {
+            type: "chart",
+            chartType: "bar",
+            data: [
+              { status: "Draft", count: 12 },
+              { status: "In progress", count: 8 },
+              { status: "Completed", count: 24 },
+              { status: "Overdue", count: 3 },
+            ],
+            categoryKey: "status",
+            valueKeys: ["count"],
+            valueLabels: { count: "Work orders" },
+            title: "Work orders by status",
+            height: 260,
+          },
+          { type: "hint", text: 'Try "Show a pie chart by priority" or "Trend this year".' },
+        ],
+      },
+    ]
+    return (
+      <CMMSChat
+        messages={messages}
+        inputValue={inputValue}
+        onInputChange={setInputValue}
+        onSubmit={() => {}}
+        suggestedPrompts={["Work orders by status", "Chart by priority", "Monthly trend"]}
+      />
     )
   },
 }

@@ -34,6 +34,8 @@ import { Steps, StepsContent, StepsItem, StepsTrigger } from "./steps"
 import { SystemMessage } from "./system-message"
 import { Tool } from "./tool"
 import type { ToolPart } from "./tool"
+import { DataChart } from "@workspace/ui/components/data-chart"
+import type { DataChartDataRow } from "@workspace/ui/components/data-chart"
 import { ArrowUp, Copy, Paperclip, ThumbsDown, ThumbsUp } from "lucide-react"
 import * as React from "react"
 
@@ -110,6 +112,17 @@ export type AssistantPart =
       label: string
       title: string
       description: string
+    }
+  | {
+      type: "chart"
+      /** Chart kind: bar, line, area, or pie. */
+      chartType: "bar" | "line" | "area" | "pie"
+      data: DataChartDataRow[]
+      categoryKey: string
+      valueKeys: string[]
+      valueLabels?: Record<string, string>
+      title?: string
+      height?: number
     }
   | { type: "hint"; text: string }
 
@@ -393,6 +406,20 @@ function renderAssistantPart(
           </Source>
           .
         </span>
+      )
+    case "chart":
+      return (
+        <div className="w-full" key={key}>
+          <DataChart
+            type={part.chartType}
+            data={part.data}
+            categoryKey={part.categoryKey}
+            valueKeys={part.valueKeys}
+            valueLabels={part.valueLabels}
+            title={part.title}
+            height={part.height}
+          />
+        </div>
       )
     case "hint":
       return (
