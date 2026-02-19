@@ -41,11 +41,12 @@ import {
   Loader,
   TextShimmer,
   Image,
+  useTextStream,
 } from "./index"
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import { ArrowUp, Copy, Paperclip, Send, ThumbsDown, ThumbsUp } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const meta = {
   title: "Prompt Kit/AI-first CMMS Chat",
@@ -54,7 +55,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "An AI-first CMMS where the chat is the operating system: intent → AI interprets → structured result → confirm → execute → log. Multiple cases: create work order, query urgency, get next-action suggestions. Suggestion chips guide discovery and follow-ups.",
+          "An AI-first CMMS where the chat is the operating system: intent → AI interprets → structured result → confirm → execute → log. Multiple cases with streaming: welcome and assistant replies use useTextStream (typewriter); ThinkingBar then Tool + stream for create-WO; suggestion chips guide discovery and follow-ups.",
       },
     },
   },
@@ -79,16 +80,71 @@ const FOLLOW_UP_SUGGESTIONS = [
   "Create another WO",
 ] as const
 
+/* Streamed copy for typewriter effect */
+const WELCOME_STREAM =
+  "Hi, I'm the maintenance assistant. Describe a problem, ask what's urgent, or check an asset — I'll create work orders, summarize priorities, and suggest next steps."
+const TURN1_INTRO_STREAM =
+  "I'll create a work order for **Pump P-101** based on your report. Here's what I'm about to do:"
+const TURN2_SUMMARY_STREAM =
+  "I'd tackle **WO-2024-038** first (overdue), then **WO-2024-042** (P-101) and **WO-2024-040** this week."
+const TURN3_INTRO_STREAM =
+  "Based on urgency, here are the next actions I recommend:"
+
+/** Inline cursor shown while streaming */
+function StreamingCursor() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block h-4 w-0.5 shrink-0 bg-primary animate-pulse align-middle ml-0.5"
+    />
+  )
+}
+
 /**
- * **Full conversation: AI-first CMMS — multiple cases, suggestions, better flow**
+ * **Full conversation: AI-first CMMS — multiple cases, suggestions, streaming**
  *
- * **Flow:** (1) Welcome + suggested prompts above input. (2) **Create:** user describes problem → Tool, preview, confirm, FeedbackBar. (3) **Query:** "What's urgent?" → Steps + Source. (4) **Suggest:** "Suggest what I should do next" → Tool + Steps + follow-up chips.
+ * **Flow (with streaming):** (1) Welcome **streams** in on load. (2) **Create:** ThinkingBar (1.8s) → Tool + **streamed** intro → when complete, Preview + confirm + FeedbackBar. (3) **Query:** Steps then **streamed** summary; "Data from" + Source appear when stream completes. (4) **Suggest:** **Streamed** intro + Tool + Steps + follow-up chips. Uses `useTextStream` (typewriter) with staggered start; blinking cursor while streaming.
  */
 export const CMMSChatConversation: Story = {
   render: function CMMSChatConversationRender() {
     const [confirmed, setConfirmed] = useState(false)
     const [feedbackClosed, setFeedbackClosed] = useState(false)
     const [inputValue, setInputValue] = useState("")
+    const [turn1StreamText, setTurn1StreamText] = useState("")
+    const [turn3StreamText, setTurn3StreamText] = useState("")
+    const [showThinkingBar, setShowThinkingBar] = useState(true)
+    const [showTurn2Stream, setShowTurn2Stream] = useState(false)
+
+    const welcomeStream = useTextStream({
+      textStream: WELCOME_STREAM,
+      speed: 32,
+    })
+    const turn1Stream = useTextStream({
+      textStream: turn1StreamText,
+      speed: 28,
+    })
+    const turn2Stream = useTextStream({
+      textStream: showTurn2Stream ? TURN2_SUMMARY_STREAM : "",
+      speed: 28,
+    })
+    const turn3Stream = useTextStream({
+      textStream: turn3StreamText,
+      speed: 28,
+    })
+
+    useEffect(() => {
+      const t1 = setTimeout(() => {
+        setShowThinkingBar(false)
+        setTurn1StreamText(TURN1_INTRO_STREAM)
+      }, 1800)
+      const t2 = setTimeout(() => setShowTurn2Stream(true), 4200)
+      const t3 = setTimeout(() => setTurn3StreamText(TURN3_INTRO_STREAM), 6200)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+        clearTimeout(t3)
+      }
+    }, [])
 
     return (
       <div className="bg-background flex h-screen w-full flex-col overflow-hidden">
@@ -101,11 +157,16 @@ export const CMMSChatConversation: Story = {
 
         <ChatContainerRoot className="relative flex-1 space-y-0">
           <ChatContainerContent className="space-y-12 px-4 py-12">
-            {/* Welcome */}
+            {/* Welcome (streaming) */}
             <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
               <div className="group flex w-full flex-col gap-0">
-                <MessageContent className="text-foreground prose w-full min-w-0 rounded-lg bg-transparent p-0" markdown>
-                  {`Hi, I'm the maintenance assistant. Describe a problem, ask what's urgent, or check an asset — I'll create work orders, summarize priorities, and suggest next steps.`}
+                <MessageContent className="text-foreground prose w-full min-w-0 rounded-lg bg-transparent p-0" markdown={false}>
+                  <span className="inline-flex flex-wrap items-baseline gap-0">
+                    <Markdown className="text-foreground prose inline min-w-0 rounded-lg bg-transparent p-0">
+                      {welcomeStream.displayedText}
+                    </Markdown>
+                    {!welcomeStream.isComplete && <StreamingCursor />}
+                  </span>
                 </MessageContent>
               </div>
             </Message>
@@ -126,54 +187,67 @@ export const CMMSChatConversation: Story = {
               </div>
             </Message>
 
-            {/* Turn 1 – Assistant: create WO (Tool, preview, confirm) */}
+            {/* Turn 1 – Assistant: thinking → Tool, streamed intro, preview, confirm */}
             <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
               <div className="group flex w-full flex-col gap-0 space-y-2">
-                <ThinkingBar
-                  text="Creating work order from your description..."
-                  onStop={() => {}}
-                  stopLabel="Cancel"
-                />
-                <div className="w-full">
-                  <Tool
-                  toolPart={{
-                    type: "create_work_order",
-                    state: "output-available",
-                    toolCallId: "call_wo_1",
-                    input: {
-                      title: "Inspect and repair pump P-101 - grinding noise near motor",
-                      asset_id: "asset_p101",
-                      priority: "high",
-                      description: "Reported grinding noise near motor. Requires inspection and possible bearing/seal work.",
-                    },
-                    output: {
-                      id: "wo-2024-042",
-                      status: "draft",
-                      created_at: "2024-02-19T10:30:00Z",
-                    },
-                  }}
+                {showThinkingBar && (
+                  <ThinkingBar
+                    text="Creating work order from your description..."
+                    onStop={() => {}}
+                    stopLabel="Cancel"
                   />
-                </div>
-                <MessageContent
-                  className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
-                  markdown
-                >
-                  {`I'll create a work order for **Pump P-101** based on your report. Here's what I'm about to do:`}
-                </MessageContent>
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
-                    Preview
-                  </p>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <p className="font-medium">Inspect and repair pump P-101 – grinding noise near motor</p>
-                      <p className="text-muted-foreground text-sm">Pump P-101 · High priority</p>
-                    </CardHeader>
-                    <CardContent className="text-muted-foreground text-sm">
-                      Status: Draft · Will be created on confirm
-                    </CardContent>
-                  </Card>
-                </div>
+                )}
+                {!showThinkingBar && (
+                  <>
+                    <div className="w-full">
+                      <Tool
+                        toolPart={{
+                          type: "create_work_order",
+                          state: "output-available",
+                          toolCallId: "call_wo_1",
+                          input: {
+                            title: "Inspect and repair pump P-101 - grinding noise near motor",
+                            asset_id: "asset_p101",
+                            priority: "high",
+                            description: "Reported grinding noise near motor. Requires inspection and possible bearing/seal work.",
+                          },
+                          output: {
+                            id: "wo-2024-042",
+                            status: "draft",
+                            created_at: "2024-02-19T10:30:00Z",
+                          },
+                        }}
+                      />
+                    </div>
+                    <MessageContent
+                      className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
+                      markdown={false}
+                    >
+                      <span className="inline-flex flex-wrap items-baseline gap-0">
+                        <Markdown className="text-foreground prose inline min-w-0 rounded-lg bg-transparent p-0">
+                          {turn1Stream.displayedText}
+                        </Markdown>
+                        {!turn1Stream.isComplete && <StreamingCursor />}
+                      </span>
+                    </MessageContent>
+                  </>
+                )}
+                {!showThinkingBar && turn1Stream.isComplete && (
+                  <>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+                        Preview
+                      </p>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <p className="font-medium">Inspect and repair pump P-101 – grinding noise near motor</p>
+                          <p className="text-muted-foreground text-sm">Pump P-101 · High priority</p>
+                        </CardHeader>
+                        <CardContent className="text-muted-foreground text-sm">
+                          Status: Draft · Will be created on confirm
+                        </CardContent>
+                      </Card>
+                    </div>
 
                 {!confirmed ? (
                   <SystemMessage
@@ -201,6 +275,8 @@ export const CMMSChatConversation: Story = {
                         onClose={() => setFeedbackClosed(true)}
                       />
                     )}
+                  </>
+                )}
                   </>
                 )}
                 <MessageActions className="-ml-2.5 flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
@@ -272,21 +348,28 @@ export const CMMSChatConversation: Story = {
                   className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
                   markdown={false}
                 >
-                  <Markdown className="text-foreground prose w-full min-w-0 rounded-lg bg-transparent p-0">
-                    {`I’d tackle **WO-2024-038** first (overdue), then **WO-2024-042** (P-101) and **WO-2024-040** this week.`}
-                  </Markdown>
-                  {" "}
-                  Data from{" "}
-                  <Source href="https://app.cmms.example/work-orders">
-                    <SourceTrigger label="Work orders" showFavicon />
-                    <SourceContent
-                      title="Work orders list"
-                      description="Open and overdue work orders used for this summary."
-                    />
-                  </Source>
-                  .
+                  <span className="inline-flex flex-wrap items-baseline gap-0">
+                    <Markdown className="text-foreground prose inline min-w-0 rounded-lg bg-transparent p-0">
+                      {turn2Stream.displayedText}
+                    </Markdown>
+                    {!turn2Stream.isComplete && <StreamingCursor />}
+                  </span>
+                  {turn2Stream.isComplete && (
+                    <>
+                      {" "}
+                      Data from{" "}
+                      <Source href="https://app.cmms.example/work-orders">
+                        <SourceTrigger label="Work orders" showFavicon />
+                        <SourceContent
+                          title="Work orders list"
+                          description="Open and overdue work orders used for this summary."
+                        />
+                      </Source>
+                      .
+                    </>
+                  )}
                 </MessageContent>
-                <MessageActions className="-ml-2.5 flex gap-0 opacity-100">
+                <MessageActions className="-ml-2.5 flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                   <MessageAction tooltip="Copy" delayDuration={100}>
                     <Button variant="ghost" size="icon" className="rounded-full">
                       <Copy className="size-4" />
@@ -342,9 +425,14 @@ export const CMMSChatConversation: Story = {
                 />
                 <MessageContent
                   className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
-                  markdown
+                  markdown={false}
                 >
-                  Based on urgency, here are the next actions I recommend:
+                  <span className="inline-flex flex-wrap items-baseline gap-0">
+                    <Markdown className="text-foreground prose inline min-w-0 rounded-lg bg-transparent p-0">
+                      {turn3Stream.displayedText}
+                    </Markdown>
+                    {!turn3Stream.isComplete && <StreamingCursor />}
+                  </span>
                 </MessageContent>
                 <Steps>
                   <StepsTrigger>Recommended next steps</StepsTrigger>
