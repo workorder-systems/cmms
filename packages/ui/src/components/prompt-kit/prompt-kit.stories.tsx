@@ -44,7 +44,7 @@ import {
 } from "./index"
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
-import { Copy, Paperclip, Send } from "lucide-react"
+import { ArrowUp, Copy, Paperclip, Send, ThumbsDown, ThumbsUp } from "lucide-react"
 import { useState } from "react"
 
 const meta = {
@@ -81,49 +81,41 @@ export const CMMSChatConversation: Story = {
     const [feedbackClosed, setFeedbackClosed] = useState(false)
 
     return (
-      <div className="bg-background flex h-[720px] w-full max-w-2xl flex-col rounded-xl border shadow-lg">
-        <div className="border-b px-4 py-3">
+      <div className="bg-background flex h-screen w-full flex-col overflow-hidden">
+        <div className="sr-only">
           <h2 className="font-semibold">Maintenance Assistant</h2>
           <p className="text-muted-foreground text-sm">
             Describe a problem, ask about an asset, or say what’s urgent.
           </p>
         </div>
 
-        <ChatContainerRoot className="relative min-h-0 min-w-0 flex-1">
-          <ChatContainerContent className="space-y-4 p-4">
+        <ChatContainerRoot className="relative flex-1 space-y-0">
+          <ChatContainerContent className="space-y-12 px-4 py-12">
             {/* User: describe problem */}
-            <Message>
-              <MessageAvatar
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=user"
-                alt="User"
-                fallback="U"
-              />
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <MessageContent>
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-end">
+              <div className="group flex w-full flex-col items-end gap-1">
+                <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
                   Pump P-101 is making a grinding noise near the motor. Can you create a work order?
                 </MessageContent>
+                <MessageActions className="flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <MessageAction tooltip="Copy" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Copy className="size-4" />
+                    </Button>
+                  </MessageAction>
+                </MessageActions>
               </div>
             </Message>
 
             {/* Assistant: thinking then structured response */}
-            <Message>
-              <MessageAvatar
-                src="https://api.dicebear.com/7.x/bottts/svg?seed=cmms"
-                alt="Assistant"
-                fallback="AI"
-              />
-              <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
+              <div className="group flex w-full flex-col gap-0 space-y-2">
                 <ThinkingBar
                   text="Creating work order from your description..."
                   onStop={() => {}}
                   stopLabel="Cancel"
                 />
-
-                <MessageContent markdown>
-                  I’ll create a work order for **Pump P-101** based on your report. Here’s what I’m
-                  about to do:
-                </MessageContent>
-
+                <div className="w-full">
                 <Tool
                   toolPart={{
                     type: "create_work_order",
@@ -142,7 +134,14 @@ export const CMMSChatConversation: Story = {
                     },
                   }}
                 />
-
+                </div>
+                <MessageContent
+                  className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
+                  markdown
+                >
+                  I'll create a work order for **Pump P-101** based on your report. Here's what I'm
+                  about to do:
+                </MessageContent>
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
                     Preview
@@ -186,27 +185,60 @@ export const CMMSChatConversation: Story = {
                     )}
                   </>
                 )}
+                <MessageActions className="-ml-2.5 flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <MessageAction tooltip="Copy" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Copy className="size-4" />
+                    </Button>
+                  </MessageAction>
+                  <MessageAction tooltip="Upvote" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <ThumbsUp className="size-4" />
+                    </Button>
+                  </MessageAction>
+                  <MessageAction tooltip="Downvote" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <ThumbsDown className="size-4" />
+                    </Button>
+                  </MessageAction>
+                </MessageActions>
               </div>
             </Message>
 
-            {/* Second turn: "What's urgent?" */}
-            <Message>
-              <MessageAvatar
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=user2"
-                alt="User"
-                fallback="U"
-              />
-              <MessageContent>What’s urgent right now?</MessageContent>
+            {/* Second turn */}
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-end">
+              <div className="group flex w-full flex-col items-end gap-1">
+                <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
+                  What's urgent right now?
+                </MessageContent>
+                <MessageActions className="flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <MessageAction tooltip="Copy" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Copy className="size-4" />
+                    </Button>
+                  </MessageAction>
+                </MessageActions>
+              </div>
             </Message>
 
-            <Message>
-              <MessageAvatar
-                src="https://api.dicebear.com/7.x/bottts/svg?seed=cmms"
-                alt="Assistant"
-                fallback="AI"
-              />
-              <div className="flex min-w-0 flex-1 flex-col gap-3">
-                <Steps defaultOpen>
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-end">
+              <div className="group flex w-full flex-col items-end gap-1">
+                <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
+                  What's urgent right now?
+                </MessageContent>
+                <MessageActions className="flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <MessageAction tooltip="Copy" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Copy className="size-4" />
+                    </Button>
+                  </MessageAction>
+                </MessageActions>
+              </div>
+            </Message>
+
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
+              <div className="group flex w-full flex-col gap-0 space-y-2">
+                <Steps>
                   <StepsTrigger>Urgency breakdown</StepsTrigger>
                   <StepsContent>
                     <div className="space-y-2">
@@ -232,9 +264,15 @@ export const CMMSChatConversation: Story = {
                   </StepsContent>
                 </Steps>
 
-                <MessageContent markdown>
-                  I’d tackle **WO-2024-038** first (overdue), then **WO-2024-042** (P-101) and
-                  **WO-2024-040** this week. Data from{" "}
+                <MessageContent
+                  className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
+                  markdown={false}
+                >
+                  <Markdown className="text-foreground prose w-full min-w-0 rounded-lg bg-transparent p-0">
+                    {`I’d tackle **WO-2024-038** first (overdue), then **WO-2024-042** (P-101) and **WO-2024-040** this week.`}
+                  </Markdown>
+                  {" "}
+                  Data from{" "}
                   <Source href="https://app.cmms.example/work-orders">
                     <SourceTrigger label="Work orders" showFavicon />
                     <SourceContent
@@ -244,6 +282,23 @@ export const CMMSChatConversation: Story = {
                   </Source>
                   .
                 </MessageContent>
+                <MessageActions className="-ml-2.5 flex gap-0 opacity-100">
+                  <MessageAction tooltip="Copy" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Copy className="size-4" />
+                    </Button>
+                  </MessageAction>
+                  <MessageAction tooltip="Upvote" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <ThumbsUp className="size-4" />
+                    </Button>
+                  </MessageAction>
+                  <MessageAction tooltip="Downvote" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <ThumbsDown className="size-4" />
+                    </Button>
+                  </MessageAction>
+                </MessageActions>
               </div>
             </Message>
 
@@ -254,24 +309,32 @@ export const CMMSChatConversation: Story = {
           </div>
         </ChatContainerRoot>
 
-        <div className="border-t p-3">
+        <div className="inset-x-0 bottom-0 mx-auto w-full max-w-3xl shrink-0 px-3 pb-3 md:px-5 md:pb-5">
           <FileUpload onFilesAdded={fn()}>
-            <PromptInput onSubmit={fn()} className="flex items-end gap-2">
-              <PromptInputTextarea placeholder="Describe a problem, ask about an asset, or report downtime..." />
-              <PromptInputActions>
-                <PromptInputAction tooltip="Attach file" side="top">
-                  <FileUploadTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" aria-label="Attach">
-                      <Paperclip className="size-4" />
+            <PromptInput
+              onSubmit={fn()}
+              className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-xs"
+            >
+              <div className="flex flex-col">
+                <PromptInputTextarea
+                  placeholder="Describe a problem, ask about an asset, or report downtime..."
+                  className="min-h-[44px] pt-3 pl-4 text-base leading-[1.3] sm:text-base md:text-base"
+                />
+                <PromptInputActions className="mt-3 flex w-full items-center justify-between gap-2 p-2">
+                  <PromptInputAction tooltip="Attach file" side="top">
+                    <FileUploadTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon" aria-label="Attach">
+                        <Paperclip className="size-4" />
+                      </Button>
+                    </FileUploadTrigger>
+                  </PromptInputAction>
+                  <PromptInputAction tooltip="Send" side="top">
+                    <Button type="button" size="icon" className="size-9 rounded-full" aria-label="Send">
+                      <ArrowUp className="size-4" />
                     </Button>
-                  </FileUploadTrigger>
-                </PromptInputAction>
-                <PromptInputAction tooltip="Send" side="top">
-                  <Button type="button" size="icon" aria-label="Send">
-                    <Send className="size-4" />
-                  </Button>
-                </PromptInputAction>
-              </PromptInputActions>
+                  </PromptInputAction>
+                </PromptInputActions>
+              </div>
             </PromptInput>
             <FileUploadContent />
           </FileUpload>
@@ -428,7 +491,7 @@ export const AllComponentsShowcase: Story = {
         <section>
           <h3 className="mb-3 font-semibold">Steps</h3>
           <div className="space-y-4">
-            <Steps defaultOpen>
+            <Steps>
               <StepsTrigger>Steps example</StepsTrigger>
               <StepsContent>
                 <div className="space-y-2">

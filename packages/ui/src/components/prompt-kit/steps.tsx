@@ -90,7 +90,7 @@ export const StepsBar = ({ className, ...props }: StepsBarProps) => (
 
 export type StepsProps = React.ComponentProps<typeof Collapsible>
 
-export function Steps({ defaultOpen = true, className, ...props }: StepsProps) {
+export function Steps({ defaultOpen = false, className, ...props }: StepsProps) {
   return (
     <Collapsible
       defaultOpen={defaultOpen}
