@@ -528,6 +528,29 @@ export const CMMSChatComponent: Story = {
         { role: "assistant", content: "I'd tackle **WO-2024-038** first (overdue), then **WO-2024-042** (P-101) and **WO-2024-040** this week.", sourceSuffix: SOURCE_WORK_ORDERS, parts: [{ type: "steps", trigger: "Urgency breakdown", source: SOURCE_WORK_ORDERS, sections: [{ label: "Overdue", items: ["WO-2024-038 – Replace filter F-02 (2 days overdue)"] }, { label: "Due this week", items: ["WO-2024-042 – Pump P-101 grinding noise (just created)", "WO-2024-040 – HVAC inspection Bldg A"] }] }] },
         { role: "user", content: "Suggest what I should do next." },
         { role: "assistant", parts: [{ type: "tool", toolPart: { type: "get_next_actions", state: "output-available", toolCallId: "call_sugg_1", input: { context: "urgency_summary" }, output: { suggestions: [{ id: "wo-038", action: "Assign WO-2024-038", reason: "Overdue" }, { id: "wo-042", action: "Schedule WO-2024-042", reason: "High priority" }, { id: "inspect", action: "Run HVAC inspection", reason: "Due this week" }] } } }, { type: "text", content: "Based on urgency, here are the next actions I recommend:" }, { type: "steps", trigger: "Recommended next steps", sections: [{ label: "1. Assign WO-2024-038 (Replace filter F-02) — overdue; assign to a tech and schedule.", items: [] }, { label: "2. Schedule WO-2024-042 (Pump P-101) — high priority; book inspection or parts.", items: [] }, { label: "3. Run HVAC inspection for WO-2024-040 (Bldg A) — due this week.", items: [] }] }, { type: "hint", text: "You can say \"Assign WO-2024-038 to John\" or \"View all urgent\" to continue." }, { type: "followUps", suggestions: [...FOLLOW_UP_SUGGESTIONS], onSuggestionClick: setInputValue }] },
+        { role: "user", content: "Show me work orders by status." },
+        {
+          role: "assistant",
+          parts: [
+            { type: "text", content: "Here's how work orders break down by status right now:" },
+            {
+              type: "chart",
+              chartType: "bar",
+              data: [
+                { status: "Draft", count: 12 },
+                { status: "In progress", count: 8 },
+                { status: "Completed", count: 24 },
+                { status: "Overdue", count: 3 },
+              ],
+              categoryKey: "status",
+              valueKeys: ["count"],
+              valueLabels: { count: "Work orders" },
+              title: "Work orders by status",
+              height: 260,
+            },
+            { type: "hint", text: 'Try "Chart by priority" or "Monthly trend" for more views.' },
+          ],
+        },
       ]
       return [...base, ...extraMessages]
     }, [confirmed, feedbackClosed, extraMessages])
