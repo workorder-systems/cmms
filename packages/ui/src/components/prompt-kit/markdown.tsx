@@ -81,7 +81,12 @@ function MarkdownComponent({
 }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
-  const source = typeof children === "string" ? children : String(children ?? "")
+  const source =
+    typeof children === "string"
+      ? children
+      : typeof children === "number"
+        ? String(children)
+        : ""
   const blocks = useMemo(() => parseMarkdownIntoBlocks(source), [source])
 
   return (

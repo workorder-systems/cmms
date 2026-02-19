@@ -156,9 +156,7 @@ function renderAssistantPart(
           markdown={part.markdown ?? true}
           key={key}
         >
-          <Markdown className="text-foreground prose w-full min-w-0 rounded-lg bg-transparent p-0">
-            {toMarkdownString(part.content)}
-          </Markdown>
+          {toMarkdownString(part.content)}
         </MessageContent>
       )
     case "tool":
