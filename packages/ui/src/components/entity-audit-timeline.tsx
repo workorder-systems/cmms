@@ -3,14 +3,8 @@
 import * as React from "react"
 
 import { cn } from "@workspace/ui/lib/utils"
-import {
-  Timeline,
-  TimelineItem,
-  TimelineItemDate,
-  TimelineItemDescription,
-  TimelineItemTitle,
-} from "@workspace/ui/components/timeline"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from "@workspace/ui/components/empty"
+import { Badge } from "@workspace/ui/components/badge"
 import { History } from "lucide-react"
 
 /**
@@ -41,10 +35,20 @@ function formatTableLabel(tableName: string | undefined): string {
   return tableName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function getOperationVariant(
+  operation: string
+): "default" | "secondary" | "destructive" | "outline" {
+  const lower = operation?.toLowerCase() ?? ""
+  if (lower === "insert") return "default"
+  if (lower === "update") return "secondary"
+  if (lower === "delete") return "destructive"
+  return "outline"
+}
+
 export interface EntityAuditTimelineProps {
   /** Audit items, newest or oldest first depending on sort in the app. */
   items: EntityAuditItem[]
-  /** Custom date formatter. Default: toLocaleDateString with dateStyle + timeStyle short. */
+  /** Custom date formatter. Default: medium date + short time. */
   formatDate?: (date: Date) => string
   /** Message when items is empty. */
   emptyMessage?: React.ReactNode
@@ -85,34 +89,79 @@ export function EntityAuditTimeline({
   return (
     <div
       data-slot="entity-audit-timeline"
-      className={cn("w-full max-w-xl", className)}
+      className={cn("relative w-full max-w-xl", className)}
+      role="list"
+      aria-label="Audit history"
     >
-      <Timeline orientation="vertical" alternating={false} alignment="top/left">
-        {items.map((item, index) => {
-          const date = new Date(item.created_at)
-          const dateDisplay = formatDate(date)
-          const operationLabel = formatOperationLabel(item.operation)
-          const tableLabel = formatTableLabel(item.table_name)
-          const title =
-            tableLabel ? `${operationLabel} (${tableLabel})` : operationLabel
-          const parts: string[] = []
-          if (item.user_display_name) parts.push(`By ${item.user_display_name}`)
-          if (item.changed_fields?.length) {
-            parts.push(`Fields: ${item.changed_fields.join(", ")}`)
-          }
-          const description = parts.join(" · ")
+      {/* Vertical line: fixed-width track so it centers with dots */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-3 flex justify-center"
+        aria-hidden
+      >
+        <div className="h-full w-px min-h-0 bg-border/60" role="presentation" />
+      </div>
+      {items.map((item, index) => {
+        const date = new Date(item.created_at)
+        const dateDisplay = formatDate(date)
+        const operationLabel = formatOperationLabel(item.operation)
+        const tableLabel = formatTableLabel(item.table_name)
+        const variant = getOperationVariant(item.operation)
 
-          return (
-            <TimelineItem key={item.id ?? index}>
-              <TimelineItemDate>{dateDisplay}</TimelineItemDate>
-              <TimelineItemTitle>{title}</TimelineItemTitle>
-              {description ? (
-                <TimelineItemDescription>{description}</TimelineItemDescription>
-              ) : null}
-            </TimelineItem>
-          )
-        })}
-      </Timeline>
+        return (
+          <div
+            key={item.id ?? index}
+            role="listitem"
+            className="flex gap-4 pb-6 last:pb-0"
+          >
+            {/* Dot column: same width as line track, dot centered */}
+            <div className="relative w-3 shrink-0 flex justify-center pt-2.5">
+              <div
+                className={cn(
+                  "size-2.5 rounded-full border-2 border-background shadow-sm",
+                  variant === "destructive" && "bg-destructive",
+                  variant === "secondary" && "bg-muted-foreground",
+                  variant !== "destructive" && variant !== "secondary" && "bg-primary"
+                )}
+              />
+            </div>
+
+            {/* Content */}
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="rounded-lg border border-border/80 bg-card px-4 py-3 shadow-sm transition-colors hover:border-border">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <time
+                    dateTime={date.toISOString()}
+                    className="text-muted-foreground text-xs tabular-nums"
+                  >
+                    {dateDisplay}
+                  </time>
+                  <Badge variant={variant} className="text-xs font-medium">
+                    {operationLabel}
+                  </Badge>
+                  {tableLabel ? (
+                    <span className="text-muted-foreground text-xs">
+                      {tableLabel}
+                    </span>
+                  ) : null}
+                </div>
+                {(item.user_display_name || (item.changed_fields?.length ?? 0) > 0) ? (
+                  <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+                    {item.user_display_name ? (
+                      <span>By {item.user_display_name}</span>
+                    ) : null}
+                    {item.user_display_name && item.changed_fields?.length ? " · " : null}
+                    {item.changed_fields?.length ? (
+                      <span>
+                        Fields: {item.changed_fields.join(", ")}
+                      </span>
+                    ) : null}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

@@ -99,3 +99,30 @@ export const DueSoon: Story = {
     locationLabel: "Building A",
   },
 }
+
+export const WithChecklistProgress: Story = {
+  args: {
+    title: "Replace pump seal - P-101",
+    statusKey: "in_progress",
+    statusCatalog,
+    priorityKey: "high",
+    priorityCatalog,
+    dueDate: dueSoon,
+    assigneeDisplayName: "Jane Smith",
+    checklistCompleted: 3,
+    checklistTotal: 5,
+    checklistLabel: "tasks",
+    checklistShowBar: true,
+  },
+}
+
+export const WithChecklistNoBar: Story = {
+  args: {
+    title: "Inspect HVAC unit",
+    statusKey: "in_progress",
+    statusCatalog,
+    checklistCompleted: 2,
+    checklistTotal: 4,
+    checklistLabel: "steps",
+  },
+}

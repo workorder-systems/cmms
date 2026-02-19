@@ -88,3 +88,29 @@ export const WithActions: Story = {
     actions: <Button variant="ghost" size="icon-xs">⋮</Button>,
   },
 }
+
+export const WithImage: Story = {
+  args: {
+    name: "Pump P-101",
+    assetNumber: "AST-001",
+    statusKey: "operational",
+    statusCatalog,
+    locationLabel: "Building A · Floor 2",
+    meterSummary: "Last: 1,234 h",
+    imageUrl:
+      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=100&h=100&fit=crop",
+    href: "#",
+  },
+}
+
+export const WithImageNoLink: Story = {
+  args: {
+    name: "Compressor C-02",
+    assetNumber: "AST-003",
+    statusKey: "operational",
+    statusCatalog,
+    meterSummary: "Runtime: 3,100 h",
+    imageUrl:
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=100&h=100&fit=crop",
+  },
+}

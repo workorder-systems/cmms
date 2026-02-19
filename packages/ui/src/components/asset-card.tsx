@@ -3,7 +3,14 @@
 import * as React from "react"
 
 import { cn } from "@workspace/ui/lib/utils"
-import { Card, CardContent } from "@workspace/ui/components/card"
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+  ItemActions,
+} from "@workspace/ui/components/item"
 import { CatalogStatusBadge, type StatusCatalogEntry } from "@workspace/ui/components/catalog-status-badge"
 
 export interface AssetCardProps {
@@ -14,6 +21,10 @@ export interface AssetCardProps {
   locationLabel?: string | null
   locationBreadcrumb?: React.ReactNode
   meterSummary?: string | null
+  /** Optional asset image URL (e.g. thumbnail or product photo). */
+  imageUrl?: string | null
+  /** Optional custom image node instead of imageUrl (e.g. custom element or placeholder). */
+  image?: React.ReactNode
   href?: string
   onClick?: () => void
   actions?: React.ReactNode
@@ -21,7 +32,7 @@ export interface AssetCardProps {
 }
 
 /**
- * Compact card for an asset: name, status, optional location, optional meter summary.
+ * Compact card for an asset built with Item: name, optional image, status, location, meter summary.
  * Use in asset grid view or dashboard.
  */
 export function AssetCard({
@@ -32,59 +43,108 @@ export function AssetCard({
   locationLabel,
   locationBreadcrumb,
   meterSummary,
+  imageUrl,
+  image,
   href,
   onClick,
   actions,
   className,
 }: AssetCardProps) {
+  const hasImage = !!(image ?? imageUrl)
+  const loc = locationBreadcrumb ?? locationLabel
+  const description =
+    loc && meterSummary ? (
+      <>
+        {loc} · {meterSummary}
+      </>
+    ) : loc ?? (meterSummary ?? null)
+
   const content = (
-    <Card
+    <Item
       data-slot="asset-card"
+      variant="outline"
+      size="default"
+      asChild={!!href}
       className={cn(
-        "py-4 transition-colors",
+        "w-full transition-colors",
         (href ?? onClick) && "cursor-pointer hover:bg-accent/50",
         className
       )}
       onClick={!href ? onClick : undefined}
     >
-      <CardContent className="flex flex-col gap-3 px-4 py-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="font-medium">{name}</div>
-            {assetNumber ? (
-              <div className="text-muted-foreground text-xs">{assetNumber}</div>
+      {href ? (
+        <a href={href} className="flex items-center gap-4 text-inherit no-underline outline-none">
+          {hasImage ? (
+            <ItemMedia variant="image">
+              {image ?? (
+                <img
+                  src={imageUrl!}
+                  alt={name}
+                  className="size-full object-cover rounded-sm"
+                />
+              )}
+            </ItemMedia>
+          ) : null}
+          <ItemContent className="min-w-0 flex-1">
+            <ItemTitle>{name}</ItemTitle>
+            {(assetNumber != null || statusKey !== undefined) ? (
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                {assetNumber ? (
+                  <span className="text-muted-foreground text-xs">{assetNumber}</span>
+                ) : null}
+                {statusKey !== undefined ? (
+                  <CatalogStatusBadge statusKey={statusKey} statusCatalog={statusCatalog} />
+                ) : null}
+              </div>
             ) : null}
-          </div>
+            {description ? (
+              <ItemDescription className="mt-1">{description}</ItemDescription>
+            ) : null}
+          </ItemContent>
           {actions ? (
-            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            <ItemActions onClick={(e) => e.stopPropagation()}>
               {actions}
-            </div>
+            </ItemActions>
           ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          {statusKey !== undefined ? (
-            <CatalogStatusBadge statusKey={statusKey} statusCatalog={statusCatalog} />
+        </a>
+      ) : (
+        <>
+          {hasImage ? (
+            <ItemMedia variant="image">
+              {image ?? (
+                <img
+                  src={imageUrl!}
+                  alt={name}
+                  className="size-full object-cover rounded-sm"
+                />
+              )}
+            </ItemMedia>
           ) : null}
-        </div>
-        {locationBreadcrumb ?? locationLabel ? (
-          <div className="text-muted-foreground text-xs">
-            {locationBreadcrumb ?? locationLabel}
-          </div>
-        ) : null}
-        {meterSummary ? (
-          <p className="text-muted-foreground text-xs">{meterSummary}</p>
-        ) : null}
-      </CardContent>
-    </Card>
+          <ItemContent className="min-w-0 flex-1">
+            <ItemTitle>{name}</ItemTitle>
+            {(assetNumber != null || statusKey !== undefined) ? (
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                {assetNumber ? (
+                  <span className="text-muted-foreground text-xs">{assetNumber}</span>
+                ) : null}
+                {statusKey !== undefined ? (
+                  <CatalogStatusBadge statusKey={statusKey} statusCatalog={statusCatalog} />
+                ) : null}
+              </div>
+            ) : null}
+            {description ? (
+              <ItemDescription className="mt-1">{description}</ItemDescription>
+            ) : null}
+          </ItemContent>
+          {actions ? (
+            <ItemActions onClick={(e) => e.stopPropagation()}>
+              {actions}
+            </ItemActions>
+          ) : null}
+        </>
+      )}
+    </Item>
   )
-
-  if (href) {
-    return (
-      <a href={href} className="block text-inherit no-underline">
-        {content}
-      </a>
-    )
-  }
 
   return content
 }
