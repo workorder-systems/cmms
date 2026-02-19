@@ -3,6 +3,7 @@ export {
   PromptInputTextarea,
   PromptInputActions,
   PromptInputAction,
+  usePromptInput,
 } from "./prompt-input"
 export type { PromptInputProps, PromptInputTextareaProps, PromptInputActionsProps, PromptInputActionProps } from "./prompt-input"
 
@@ -100,3 +101,10 @@ export type { TextShimmerProps } from "./text-shimmer"
 export { ThinkingBar } from "./thinking-bar"
 
 export { FeedbackBar } from "./feedback-bar"
+
+export { CMMSChat } from "./cmms-chat"
+export type {
+  CMMSChatProps,
+  ChatMessage,
+  AssistantPart,
+} from "./cmms-chat"
