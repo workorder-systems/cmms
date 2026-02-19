@@ -54,7 +54,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "An AI-first CMMS where the chat is the operating system: intent → AI interprets → structured result → confirm → execute → log. All write actions show a clear preview and require confirmation before execution.",
+          "An AI-first CMMS where the chat is the operating system: intent → AI interprets → structured result → confirm → execute → log. Multiple cases: create work order, query urgency, get next-action suggestions. Suggestion chips guide discovery and follow-ups.",
       },
     },
   },
@@ -65,20 +65,30 @@ export default meta
 
 type Story = StoryObj<typeof meta>
 
+/* Suggested prompts: reusable chip row */
+const SUGGESTED_PROMPTS = [
+  "Report a problem",
+  "What's urgent?",
+  "Asset status",
+  "Create work order",
+] as const
+
+const FOLLOW_UP_SUGGESTIONS = [
+  "Assign WO-2024-038",
+  "View all urgent",
+  "Create another WO",
+] as const
+
 /**
- * **Full conversation: AI-first CMMS**
+ * **Full conversation: AI-first CMMS — multiple cases, suggestions, better flow**
  *
- * - **User** describes a problem → system creates a work order.
- * - **Assistant** shows reasoning (ChainOfThought), tool call (Tool), then a **preview** (structured card).
- * - **SystemMessage** explains what will change and asks for confirmation.
- * - After confirm: execution is **logged** in the same conversation; **FeedbackBar** for rating.
- *
- * A second turn shows: "What's urgent?" → **Steps** for analysis, structured answer, **Source** citation.
+ * **Flow:** (1) Welcome + suggested prompts above input. (2) **Create:** user describes problem → Tool, preview, confirm, FeedbackBar. (3) **Query:** "What's urgent?" → Steps + Source. (4) **Suggest:** "Suggest what I should do next" → Tool + Steps + follow-up chips.
  */
 export const CMMSChatConversation: Story = {
   render: function CMMSChatConversationRender() {
     const [confirmed, setConfirmed] = useState(false)
     const [feedbackClosed, setFeedbackClosed] = useState(false)
+    const [inputValue, setInputValue] = useState("")
 
     return (
       <div className="bg-background flex h-screen w-full flex-col overflow-hidden">
@@ -91,7 +101,16 @@ export const CMMSChatConversation: Story = {
 
         <ChatContainerRoot className="relative flex-1 space-y-0">
           <ChatContainerContent className="space-y-12 px-4 py-12">
-            {/* User: describe problem */}
+            {/* Welcome */}
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
+              <div className="group flex w-full flex-col gap-0">
+                <MessageContent className="text-foreground prose w-full min-w-0 rounded-lg bg-transparent p-0" markdown>
+                  {`Hi, I'm the maintenance assistant. Describe a problem, ask what's urgent, or check an asset — I'll create work orders, summarize priorities, and suggest next steps.`}
+                </MessageContent>
+              </div>
+            </Message>
+
+            {/* Turn 1 – User: describe problem */}
             <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-end">
               <div className="group flex w-full flex-col items-end gap-1">
                 <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
@@ -107,7 +126,7 @@ export const CMMSChatConversation: Story = {
               </div>
             </Message>
 
-            {/* Assistant: thinking then structured response */}
+            {/* Turn 1 – Assistant: create WO (Tool, preview, confirm) */}
             <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
               <div className="group flex w-full flex-col gap-0 space-y-2">
                 <ThinkingBar
@@ -116,7 +135,7 @@ export const CMMSChatConversation: Story = {
                   stopLabel="Cancel"
                 />
                 <div className="w-full">
-                <Tool
+                  <Tool
                   toolPart={{
                     type: "create_work_order",
                     state: "output-available",
@@ -133,14 +152,13 @@ export const CMMSChatConversation: Story = {
                       created_at: "2024-02-19T10:30:00Z",
                     },
                   }}
-                />
+                  />
                 </div>
                 <MessageContent
                   className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
                   markdown
                 >
-                  I'll create a work order for **Pump P-101** based on your report. Here's what I'm
-                  about to do:
+                  {`I'll create a work order for **Pump P-101** based on your report. Here's what I'm about to do:`}
                 </MessageContent>
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
@@ -205,11 +223,11 @@ export const CMMSChatConversation: Story = {
               </div>
             </Message>
 
-            {/* Second turn */}
+            {/* Turn 2 – User: what's urgent */}
             <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-end">
               <div className="group flex w-full flex-col items-end gap-1">
                 <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
-                  What's urgent right now?
+                  {`What's urgent right now?`}
                 </MessageContent>
                 <MessageActions className="flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                   <MessageAction tooltip="Copy" delayDuration={100}>
@@ -221,6 +239,7 @@ export const CMMSChatConversation: Story = {
               </div>
             </Message>
 
+            {/* Turn 2 – Assistant: urgency breakdown (Steps + Source) */}
             <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
               <div className="group flex w-full flex-col gap-0 space-y-2">
                 <Steps>
@@ -287,6 +306,93 @@ export const CMMSChatConversation: Story = {
               </div>
             </Message>
 
+            {/* Turn 3 – User: suggest next */}
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-end">
+              <div className="group flex w-full flex-col items-end gap-1">
+                <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
+                  Suggest what I should do next.
+                </MessageContent>
+                <MessageActions className="flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <MessageAction tooltip="Copy" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Copy className="size-4" />
+                    </Button>
+                  </MessageAction>
+                </MessageActions>
+              </div>
+            </Message>
+
+            {/* Turn 3 – Assistant: next-action suggestions (Tool + Steps + follow-up chips) */}
+            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
+              <div className="group flex w-full flex-col gap-0 space-y-2">
+                <Tool
+                  toolPart={{
+                    type: "get_next_actions",
+                    state: "output-available",
+                    toolCallId: "call_sugg_1",
+                    input: { context: "urgency_summary" },
+                    output: {
+                      suggestions: [
+                        { id: "wo-038", action: "Assign WO-2024-038", reason: "Overdue" },
+                        { id: "wo-042", action: "Schedule WO-2024-042", reason: "High priority" },
+                        { id: "inspect", action: "Run HVAC inspection", reason: "Due this week" },
+                      ],
+                    },
+                  }}
+                />
+                <MessageContent
+                  className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"
+                  markdown
+                >
+                  Based on urgency, here are the next actions I recommend:
+                </MessageContent>
+                <Steps>
+                  <StepsTrigger>Recommended next steps</StepsTrigger>
+                  <StepsContent>
+                    <div className="space-y-2">
+                      <StepsItem>1. Assign WO-2024-038 (Replace filter F-02) — overdue; assign to a tech and schedule.</StepsItem>
+                      <StepsItem>2. Schedule WO-2024-042 (Pump P-101) — high priority; book inspection or parts.</StepsItem>
+                      <StepsItem>3. Run HVAC inspection for WO-2024-040 (Bldg A) — due this week.</StepsItem>
+                    </div>
+                  </StepsContent>
+                </Steps>
+                <p className="text-muted-foreground text-sm">
+                  {`You can say "Assign WO-2024-038 to John" or "View all urgent" to continue.`}
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {FOLLOW_UP_SUGGESTIONS.map((label) => (
+                    <Button
+                      key={label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full text-xs"
+                      onClick={() => setInputValue(label)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <MessageActions className="-ml-2.5 flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <MessageAction tooltip="Copy" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <Copy className="size-4" />
+                    </Button>
+                  </MessageAction>
+                  <MessageAction tooltip="Upvote" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <ThumbsUp className="size-4" />
+                    </Button>
+                  </MessageAction>
+                  <MessageAction tooltip="Downvote" delayDuration={100}>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <ThumbsDown className="size-4" />
+                    </Button>
+                  </MessageAction>
+                </MessageActions>
+              </div>
+            </Message>
+
             <ChatContainerScrollAnchor />
           </ChatContainerContent>
           <div className="absolute right-4 bottom-4">
@@ -295,9 +401,26 @@ export const CMMSChatConversation: Story = {
         </ChatContainerRoot>
 
         <div className="inset-x-0 bottom-0 mx-auto w-full max-w-3xl shrink-0 px-3 pb-3 md:px-5 md:pb-5">
+          <div className="mb-2 flex flex-wrap gap-2">
+            <span className="text-muted-foreground text-xs font-medium self-center">Try asking:</span>
+            {SUGGESTED_PROMPTS.map((label) => (
+              <Button
+                key={label}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs"
+                onClick={() => setInputValue(label)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           <FileUpload onFilesAdded={fn()}>
             <PromptInput
               onSubmit={fn()}
+              value={inputValue}
+              onValueChange={setInputValue}
               className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-xs"
             >
               <div className="flex flex-col">
