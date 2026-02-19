@@ -40,9 +40,10 @@ const INITIAL_COMPONENTS: Partial<Components> = {
 
     const language = extractLanguage(className)
 
+    const raw = typeof children === "string" ? children : String(children ?? "")
     return (
       <CodeBlock>
-        <CodeBlockCode code={String(children).replace(/\n$/, "")} language={language} />
+        <CodeBlockCode code={raw.replace(/\n$/, "")} language={language} />
       </CodeBlock>
     )
   },
@@ -80,7 +81,8 @@ function MarkdownComponent({
 }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
+  const source = typeof children === "string" ? children : String(children ?? "")
+  const blocks = useMemo(() => parseMarkdownIntoBlocks(source), [source])
 
   return (
     <div id={blockId} className={cn("prose dark:prose-invert", className)}>

@@ -37,20 +37,21 @@ function CodeBlockCode({
   className,
   ...props
 }: CodeBlockCodeProps) {
+  const codeStr = typeof code === "string" ? code : String(code ?? "")
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
 
   useEffect(() => {
     async function highlight() {
-      if (!code) {
+      if (!codeStr) {
         setHighlightedHtml(" ")
         return
       }
 
-      const html = await codeToHtml(code, { lang: language, theme })
+      const html = await codeToHtml(codeStr, { lang: language, theme })
       setHighlightedHtml(html)
     }
     highlight()
-  }, [code, language, theme])
+  }, [codeStr, language, theme])
 
   const classNames = cn(
     "w-full overflow-x-auto text-[13px] [&>pre]:px-4 [&>pre]:py-4",
@@ -66,7 +67,7 @@ function CodeBlockCode({
   ) : (
     <div className={classNames} {...props}>
       <pre>
-        <code>{code}</code>
+        <code>{codeStr}</code>
       </pre>
     </div>
   )

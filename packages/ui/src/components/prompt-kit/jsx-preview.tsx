@@ -71,9 +71,10 @@ function JsxPreview({
   isStreaming = false,
   ...props
 }: JsxPreviewProps) {
+  const source = typeof jsx === "string" ? jsx : String(jsx ?? "")
   const processedJsx = React.useMemo(
-    () => (isStreaming ? completeJsxTag(jsx) : jsx),
-    [jsx, isStreaming]
+    () => (isStreaming ? completeJsxTag(source) : source),
+    [source, isStreaming]
   )
 
   const Parser = JsxParser as unknown as React.ComponentType<JsxParserProps>

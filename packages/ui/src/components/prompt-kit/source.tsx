@@ -25,15 +25,18 @@ export type SourceProps = {
 }
 
 export function Source({ href, children }: SourceProps) {
+  const hrefStr = typeof href === "string" ? href : String(href ?? "")
   let domain = ""
   try {
-    domain = new URL(href).hostname
+    domain = new URL(hrefStr).hostname ?? ""
   } catch {
-    domain = href.split("/").pop() ?? href
+    const parts = hrefStr.split("/")
+    domain = parts[parts.length - 1] ?? hrefStr
   }
+  const domainStr = typeof domain === "string" ? domain : ""
 
   return (
-    <SourceContext.Provider value={{ href, domain }}>
+    <SourceContext.Provider value={{ href: hrefStr, domain: domainStr }}>
       <HoverCard>{children}</HoverCard>
     </SourceContext.Provider>
   )
@@ -51,7 +54,7 @@ export function SourceTrigger({
   className,
 }: SourceTriggerProps) {
   const { href, domain } = useSourceContext()
-  const labelToShow = label ?? domain.replace("www.", "")
+  const labelToShow = label ?? (typeof domain === "string" ? domain.replace("www.", "") : "")
 
   return (
     <HoverCardTrigger asChild>
@@ -99,7 +102,7 @@ export function SourceContent({
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-foreground text-xs"
         >
-          {domain.replace("www.", "")}
+          {typeof domain === "string" ? domain.replace("www.", "") : domain}
         </a>
         <p className="font-medium">{title}</p>
         <p className="text-muted-foreground text-sm">{description}</p>
