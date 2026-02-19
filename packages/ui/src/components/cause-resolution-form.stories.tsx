@@ -48,3 +48,39 @@ export const CustomSubmitLabel: Story = {
     onSubmit: () => {},
   },
 }
+
+export const RequiredResolution: Story = {
+  args: {
+    requireResolution: true,
+    submitLabel: "Complete work order",
+    onSubmit: (payload) => console.log("Submit", payload),
+  },
+}
+
+export const Submitting: Story = {
+  args: {
+    cause: "Seal wear.",
+    resolution: "Replaced seal and flushed system.",
+    isSubmitting: true,
+    submitLabel: "Complete",
+    onSubmit: () => {},
+  },
+}
+
+export const WithDescriptions: Story = {
+  args: {
+    causeDescription: "What was the root cause of the issue?",
+    resolutionDescription: "Describe the steps taken to fix it (required for completion).",
+    submitLabel: "Complete",
+    onSubmit: (payload) => console.log(payload),
+  },
+}
+
+export const WithLegend: Story = {
+  args: {
+    legend: "Completion details",
+    cause: "Worn seal.",
+    resolution: "Replaced seal.",
+    onSubmit: () => {},
+  },
+}
