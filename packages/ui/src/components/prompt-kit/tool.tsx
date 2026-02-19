@@ -35,6 +35,14 @@ export type ToolProps = {
   className?: string
 }
 
+/** Convert snake_case tool type to human-readable title (e.g. create_work_order → Create Work Order). */
+function toolTypeToLabel(type: string): string {
+  return type
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ")
+}
+
 const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
@@ -110,7 +118,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
             className="flex w-full items-center gap-2 text-left"
           >
             {getStateIcon()}
-            <span className="font-medium">{toolPart.type}</span>
+            <span className="font-medium">{toolTypeToLabel(toolPart.type)}</span>
             {getStateBadge()}
             <ChevronDown
               className={cn("ml-auto size-4 transition-transform", isOpen && "rotate-180")}

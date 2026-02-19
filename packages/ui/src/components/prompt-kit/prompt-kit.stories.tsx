@@ -221,21 +221,6 @@ export const CMMSChatConversation: Story = {
               </div>
             </Message>
 
-            <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-end">
-              <div className="group flex w-full flex-col items-end gap-1">
-                <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
-                  What's urgent right now?
-                </MessageContent>
-                <MessageActions className="flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                  <MessageAction tooltip="Copy" delayDuration={100}>
-                    <Button variant="ghost" size="icon" className="rounded-full">
-                      <Copy className="size-4" />
-                    </Button>
-                  </MessageAction>
-                </MessageActions>
-              </div>
-            </Message>
-
             <Message className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10 items-start">
               <div className="group flex w-full flex-col gap-0 space-y-2">
                 <Steps>
