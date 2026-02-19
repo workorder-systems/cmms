@@ -44,8 +44,10 @@ import {
   CMMSChat,
   type ChatMessage,
 } from "./index"
-import { Card, CardContent, CardHeader } from "@workspace/ui/components/card"
+import { CatalogPriorityBadge } from "@workspace/ui/components/catalog-priority-badge"
+import { CatalogStatusBadge } from "@workspace/ui/components/catalog-status-badge"
 import { Button } from "@workspace/ui/components/button"
+import { Card, CardContent, CardHeader } from "@workspace/ui/components/card"
 import { ArrowUp, Copy, Paperclip, Send, ThumbsDown, ThumbsUp } from "lucide-react"
 import { useState, useMemo } from "react"
 
@@ -66,6 +68,19 @@ const meta = {
 export default meta
 
 type Story = StoryObj<typeof meta>
+
+/* Catalogs for work order preview (status/priority colors). */
+const PREVIEW_STATUS_CATALOG = [
+  { key: "draft", name: "Draft", color: "#94a3b8" },
+  { key: "in_progress", name: "In progress", color: "#3b82f6" },
+  { key: "completed", name: "Completed", color: "#22c55e" },
+]
+const PREVIEW_PRIORITY_CATALOG = [
+  { key: "low", name: "Low", color: "#22c55e" },
+  { key: "medium", name: "Medium", color: "#eab308" },
+  { key: "high", name: "High", color: "#f97316" },
+  { key: "urgent", name: "Urgent", color: "#ef4444" },
+]
 
 /* Suggested prompts: reusable chip row */
 const SUGGESTED_PROMPTS = [
@@ -161,13 +176,17 @@ export const CMMSChatConversation: Story = {
                   <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
                     Preview
                   </p>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <p className="font-medium">Inspect and repair pump P-101 – grinding noise near motor</p>
-                      <p className="text-muted-foreground text-sm">Pump P-101 · High priority</p>
+                  <Card className="py-4">
+                    <CardHeader className="space-y-2 pb-2">
+                      <p className="font-medium leading-snug">Inspect and repair pump P-101 – grinding noise near motor</p>
+                      <p className="text-muted-foreground text-sm">Pump P-101</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <CatalogStatusBadge statusKey="draft" statusCatalog={PREVIEW_STATUS_CATALOG} className="font-normal" />
+                        <CatalogPriorityBadge priorityKey="high" priorityCatalog={PREVIEW_PRIORITY_CATALOG} className="font-normal" />
+                      </div>
                     </CardHeader>
-                    <CardContent className="text-muted-foreground text-sm">
-                      Status: Draft · Will be created on confirm
+                    <CardContent className="text-muted-foreground pt-0 text-sm">
+                      Will be created when you confirm below.
                     </CardContent>
                   </Card>
                 </div>
@@ -479,10 +498,28 @@ export const CMMSChatComponent: Story = {
         {
           role: "assistant",
           parts: [
-            { type: "tool", toolPart: { type: "create_work_order", state: "output-available", toolCallId: "call_wo_1", input: { title: "Inspect and repair pump P-101 - grinding noise near motor", asset_id: "asset_p101", priority: "high", description: "Reported grinding noise near motor. Requires inspection and possible bearing/seal work." }, output: { id: "wo-2024-042", status: "draft", created_at: "2024-02-19T10:30:00Z" } } },
+            {
+              type: "tool",
+              toolPart: { type: "create_work_order", state: "output-available", toolCallId: "call_wo_1", input: { title: "Inspect and repair pump P-101 - grinding noise near motor", asset_id: "asset_p101", priority: "high", description: "Reported grinding noise near motor. Requires inspection and possible bearing/seal work." }, output: { id: "wo-2024-042", status: "draft", created_at: "2024-02-19T10:30:00Z" } },
+              confirm: {
+                message: "Confirm to create work order WO-2024-042. You can edit details after creation.",
+                confirmLabel: "Confirm & create",
+                onConfirm: () => setConfirmed(true),
+              },
+              confirmed,
+              successMessage: <>Work order <strong>WO-2024-042</strong> created. {"It's"} in Draft; you can assign and schedule it from the work orders list.</>,
+            },
             { type: "text", content: "I'll create a work order for **Pump P-101** based on your report. Here's what I'm about to do:" },
-            { type: "preview", title: "Inspect and repair pump P-101 – grinding noise near motor", subtitle: "Pump P-101 · High priority", status: "Status: Draft · Will be created on confirm" },
-            confirmed ? { type: "systemMessage" as const, variant: "action" as const, children: <>Work order <strong>WO-2024-042</strong> created. {"It's"} in Draft; you can assign and schedule it from the work orders list.</> } : { type: "systemMessage" as const, variant: "action" as const, children: "Confirm to create work order WO-2024-042. You can edit details after creation.", cta: { label: "Confirm & create", variant: "solid", onClick: () => setConfirmed(true) } },
+            {
+              type: "preview",
+              title: "Inspect and repair pump P-101 – grinding noise near motor",
+              assetLabel: "Pump P-101",
+              statusKey: "draft",
+              statusCatalog: PREVIEW_STATUS_CATALOG,
+              priorityKey: "high",
+              priorityCatalog: PREVIEW_PRIORITY_CATALOG,
+              pendingConfirm: !confirmed,
+            },
             ...(confirmed && !feedbackClosed ? [{ type: "feedbackBar" as const, title: "Was this helpful?", onHelpful: fn(), onNotHelpful: fn(), onClose: () => setFeedbackClosed(true) }] : []),
           ],
         },

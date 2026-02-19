@@ -102,7 +102,7 @@ export { ThinkingBar } from "./thinking-bar"
 
 export { FeedbackBar } from "./feedback-bar"
 
-export { CMMSChat } from "./cmms-chat"
+export { CMMSChat, isCreateOrMutationTool } from "./cmms-chat"
 export type {
   CMMSChatProps,
   ChatMessage,

@@ -1,5 +1,10 @@
 "use client"
 
+import { Badge } from "@workspace/ui/components/badge"
+import { CatalogPriorityBadge } from "@workspace/ui/components/catalog-priority-badge"
+import type { PriorityCatalogEntry } from "@workspace/ui/components/catalog-priority-badge"
+import { CatalogStatusBadge } from "@workspace/ui/components/catalog-status-badge"
+import type { StatusCatalogEntry } from "@workspace/ui/components/catalog-status-badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card"
 import {
@@ -36,8 +41,26 @@ import * as React from "react"
  * Types: all message and part shapes are prop-driven; parent owns state.
  * ------------------------------------------------------------------------- */
 
+/** Tool types that mutate data (e.g. create_*) should always require user confirmation. */
+export function isCreateOrMutationTool(toolPart: ToolPart): boolean {
+  const t = toolPart.type.toLowerCase()
+  return t.startsWith("create_") || t.startsWith("update_") || t.startsWith("delete_")
+}
+
 export type AssistantPart =
-  | { type: "tool"; toolPart: ToolPart }
+  | {
+      type: "tool"
+      toolPart: ToolPart
+      /** For create/mutation tools: require user confirmation before the action is considered done. */
+      confirm?: {
+        message: React.ReactNode
+        confirmLabel: string
+        onConfirm: () => void
+      }
+      confirmed?: boolean
+      /** Shown after user confirms (e.g. "Work order WO-2024-042 created."). */
+      successMessage?: React.ReactNode
+    }
   | { type: "text"; content: string; markdown?: boolean }
   | {
       type: "steps"
@@ -50,6 +73,18 @@ export type AssistantPart =
       title: string
       subtitle?: string
       status?: string
+      /** Work-order-style: use catalog for colors/labels. */
+      statusKey?: string | null
+      statusCatalog?: StatusCatalogEntry[]
+      priorityKey?: string | null
+      priorityCatalog?: PriorityCatalogEntry[]
+      /** Fallback when catalog not used (plain badges). */
+      statusLabel?: string
+      priorityLabel?: string
+      /** Asset or location line (e.g. "Pump P-101"). */
+      assetLabel?: string
+      /** When true, show "Will be created on confirm" instead of treating as completed. */
+      pendingConfirm?: boolean
     }
   | {
       type: "systemMessage"
@@ -159,12 +194,61 @@ function renderAssistantPart(
           {toMarkdownString(part.content)}
         </MessageContent>
       )
-    case "tool":
-      return (
+    case "tool": {
+      const awaitingConfirmation = Boolean(part.confirm && !part.confirmed)
+      const toolBlock = (
         <div className="w-full" key={key}>
-          <Tool toolPart={part.toolPart} />
+          <Tool
+            toolPart={part.toolPart}
+            awaitingConfirmation={awaitingConfirmation}
+          />
         </div>
       )
+      if (!part.confirm) return toolBlock
+      const safeConfirmMessage =
+        typeof part.confirm.message === "string" ||
+        typeof part.confirm.message === "number" ||
+        React.isValidElement(part.confirm.message)
+          ? part.confirm.message
+          : toMarkdownString(part.confirm.message)
+      const safeSuccessMessage =
+        part.successMessage != null
+          ? typeof part.successMessage === "string" ||
+              typeof part.successMessage === "number" ||
+              React.isValidElement(part.successMessage)
+            ? part.successMessage
+            : toMarkdownString(part.successMessage)
+          : null
+      if (part.confirmed) {
+        return (
+          <React.Fragment key={key}>
+            {toolBlock}
+            {safeSuccessMessage != null && (
+              <SystemMessage key={`${key}-success`} variant="action" fill>
+                {safeSuccessMessage}
+              </SystemMessage>
+            )}
+          </React.Fragment>
+        )
+      }
+      return (
+        <React.Fragment key={key}>
+          {toolBlock}
+          <SystemMessage
+            key={`${key}-confirm`}
+            variant="action"
+            fill
+            cta={{
+              label: part.confirm.confirmLabel,
+              variant: "solid",
+              onClick: part.confirm.onConfirm,
+            }}
+          >
+            {safeConfirmMessage}
+          </SystemMessage>
+        </React.Fragment>
+      )
+    }
     case "steps": {
       const { trigger, sections, source } = part
       return (
@@ -197,25 +281,61 @@ function renderAssistantPart(
         </Steps>
       )
     }
-    case "preview":
+    case "preview": {
       return (
         <div className="rounded-lg border bg-muted/30 p-3" key={key}>
           <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             Preview
           </p>
-          <Card>
-            <CardHeader className="pb-2">
-              <p className="font-medium">{part.title}</p>
-              {part.subtitle && (
-                <p className="text-muted-foreground text-sm">{part.subtitle}</p>
+          <Card className="py-4">
+            <CardHeader className="space-y-2 pb-2">
+              <p className="font-medium leading-snug">{part.title}</p>
+              {(part.assetLabel ?? part.subtitle) && (
+                <p className="text-muted-foreground text-sm">
+                  {part.assetLabel ?? part.subtitle}
+                </p>
+              )}
+              {((part.statusKey != null && part.statusKey !== "") ||
+                (part.priorityKey != null && part.priorityKey !== "") ||
+                part.statusLabel != null ||
+                part.priorityLabel != null) && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(part.statusKey != null && part.statusKey !== "") ? (
+                    <CatalogStatusBadge
+                      statusKey={part.statusKey}
+                      statusCatalog={part.statusCatalog}
+                      className="font-normal"
+                    />
+                  ) : part.statusLabel != null ? (
+                    <Badge variant="secondary" className="font-normal">
+                      {part.statusLabel}
+                    </Badge>
+                  ) : null}
+                  {(part.priorityKey != null && part.priorityKey !== "") ? (
+                    <CatalogPriorityBadge
+                      priorityKey={part.priorityKey}
+                      priorityCatalog={part.priorityCatalog}
+                      className="font-normal"
+                    />
+                  ) : part.priorityLabel != null ? (
+                    <Badge variant="outline" className="font-normal">
+                      {part.priorityLabel}
+                    </Badge>
+                  ) : null}
+                </div>
               )}
             </CardHeader>
-            {part.status && (
-              <CardContent className="text-muted-foreground text-sm">{part.status}</CardContent>
+            {(part.status != null || part.pendingConfirm === true) && (
+              <CardContent className="text-muted-foreground pt-0 text-sm">
+                {part.pendingConfirm
+                  ? "Will be created when you confirm below."
+                  : part.status}
+              </CardContent>
             )}
           </Card>
         </div>
       )
+    }
     case "systemMessage": {
       const children = part.children
       const safeChildren =

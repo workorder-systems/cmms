@@ -13,6 +13,7 @@ import {
   Loader2,
   Settings,
   XCircle,
+  Clock,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -31,6 +32,8 @@ export type ToolPart = {
 
 export type ToolProps = {
   toolPart: ToolPart
+  /** When true, show "Awaiting" instead of "Completed" (e.g. for create tools pending user confirm). */
+  awaitingConfirmation?: boolean
   defaultOpen?: boolean
   className?: string
 }
@@ -43,12 +46,18 @@ function toolTypeToLabel(type: string): string {
     .join(" ")
 }
 
-const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
+const Tool = ({
+  toolPart,
+  awaitingConfirmation = false,
+  defaultOpen = false,
+  className,
+}: ToolProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   const { state, input, output, toolCallId } = toolPart
 
   const getStateIcon = () => {
+    if (awaitingConfirmation) return <Clock className="size-4 text-amber-600 dark:text-amber-400" />
     switch (state) {
       case "input-streaming":
         return <Loader2 className="size-4 animate-spin" />
@@ -65,6 +74,13 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
 
   const getStateBadge = () => {
     const baseClasses = "px-2 py-1 rounded-full text-xs font-medium"
+    if (awaitingConfirmation) {
+      return (
+        <span className={cn(baseClasses, "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400")}>
+          Awaiting
+        </span>
+      )
+    }
     switch (state) {
       case "input-streaming":
         return (
@@ -140,13 +156,17 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
               </div>
             )}
 
-            {output && (
+            {output && !awaitingConfirmation && (
               <div className="flex flex-col gap-1">
                 <span className="text-muted-foreground text-xs font-medium">Output</span>
                 <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs">
                   {formatValue(output)}
                 </pre>
               </div>
+            )}
+
+            {awaitingConfirmation && (
+              <p className="text-muted-foreground text-sm">Confirm below to complete. Output will appear after confirmation.</p>
             )}
 
             {state === "output-error" && toolPart.errorText && (
