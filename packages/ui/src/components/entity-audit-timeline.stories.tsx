@@ -16,6 +16,17 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+const statusCatalog = [
+  { key: "draft", name: "Draft" },
+  { key: "in_progress", name: "In progress" },
+  { key: "completed", name: "Completed" },
+]
+const priorityCatalog = [
+  { key: "low", name: "Low" },
+  { key: "medium", name: "Medium" },
+  { key: "high", name: "High" },
+]
+
 const mockItems: EntityAuditItem[] = [
   {
     id: 1,
@@ -35,6 +46,8 @@ const mockItems: EntityAuditItem[] = [
     user_id: "u2",
     user_display_name: "John Doe",
     changed_fields: ["status", "priority"],
+    old_data: { status: "draft", priority: "low" },
+    new_data: { status: "in_progress", priority: "high" },
   },
   {
     id: 3,
@@ -44,6 +57,8 @@ const mockItems: EntityAuditItem[] = [
     record_id: "wo-001",
     user_display_name: "Jane Smith",
     changed_fields: ["assigned_to_id", "due_date"],
+    old_data: { assigned_to_id: null, due_date: "2024-02-20T00:00:00Z" },
+    new_data: { assigned_to_id: "u1", due_date: "2024-02-25T00:00:00Z" },
   },
   {
     id: 4,
@@ -58,6 +73,8 @@ const mockItems: EntityAuditItem[] = [
 export const WithAuditItems: Story = {
   args: {
     items: mockItems,
+    statusCatalog,
+    priorityCatalog,
   },
 }
 
@@ -91,5 +108,26 @@ export const EmptyWithCustomMessage: Story = {
   args: {
     items: [],
     emptyMessage: "No changes recorded for this entity yet.",
+  },
+}
+
+/** When the API provides old_data/new_data (e.g. from v_audit_entity_changes), the timeline shows per-field old → new. Status and priority use catalog labels when statusCatalog/priorityCatalog are passed. */
+export const WithOldAndNewValues: Story = {
+  args: {
+    items: [
+      {
+        id: 1,
+        operation: "update",
+        created_at: "2024-02-16T14:30:00Z",
+        table_name: "work_orders",
+        record_id: "wo-001",
+        user_display_name: "John Doe",
+        changed_fields: ["status", "priority", "assigned_to_id"],
+        old_data: { status: "draft", priority: "low", assigned_to_id: null },
+        new_data: { status: "in_progress", priority: "high", assigned_to_id: "u1" },
+      },
+    ],
+    statusCatalog,
+    priorityCatalog,
   },
 }
