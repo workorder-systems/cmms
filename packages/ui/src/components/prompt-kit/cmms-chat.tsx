@@ -34,8 +34,18 @@ import { Steps, StepsContent, StepsItem, StepsTrigger } from "./steps"
 import { SystemMessage } from "./system-message"
 import { Tool } from "./tool"
 import type { ToolPart } from "./tool"
+import { AssetCard } from "@workspace/ui/components/asset-card"
+import { AssetTracker } from "@workspace/ui/components/asset-tracker"
+import type { AssetTrackerEntry } from "@workspace/ui/components/asset-tracker"
 import { DataChart } from "@workspace/ui/components/data-chart"
 import type { DataChartDataRow } from "@workspace/ui/components/data-chart"
+import { Heatmap } from "@workspace/ui/components/heatmap"
+import type { HeatmapData } from "@workspace/ui/components/heatmap"
+import {
+  TrackerWithCatalog,
+  type TrackerBlockCatalogEntry,
+  type TrackerBlockInput,
+} from "@workspace/ui/components/tracker"
 import { ArrowUp, Copy, Paperclip, ThumbsDown, ThumbsUp } from "lucide-react"
 import * as React from "react"
 
@@ -123,6 +133,50 @@ export type AssistantPart =
       valueLabels?: Record<string, string>
       title?: string
       height?: number
+    }
+  | {
+      type: "tracker"
+      /** Asset identity and optional status. */
+      name: string
+      assetNumber?: string | null
+      statusKey?: string | null
+      statusCatalog?: StatusCatalogEntry[]
+      /** Location line on card (e.g. "Building A · Floor 2"). */
+      locationLabel?: string | null
+      /** Tracker: last known location (can mirror or extend locationLabel). */
+      location?: string | null
+      /** Tracker: last seen / last updated (e.g. "2 min ago"). */
+      lastSeen?: string | null
+      /** Tracker: optional key-value rows (e.g. runtime, sensor). */
+      entries?: AssetTrackerEntry[]
+    }
+  | {
+      type: "tracker24h"
+      /** AI-friendly: one block per period (e.g. 24h). statusKey maps to color via statusCatalog. */
+      blocks: TrackerBlockInput[]
+      /** Optional; defaults to TRACKER_STATUS_CATALOG (running, idle, maintenance, fault). */
+      statusCatalog?: TrackerBlockCatalogEntry[]
+      defaultBackgroundColor?: string
+      hoverEffect?: boolean
+    }
+  | {
+      type: "heatmap"
+      /** Activity per day: date (YYYY-MM-DD), value (e.g. count or hours). */
+      data: HeatmapData
+      /** Start of range (ISO date string). */
+      startDate: string
+      /** End of range (ISO date string). */
+      endDate: string
+      /** discrete = color scale buckets; interpolate = gradient. */
+      colorMode: "discrete" | "interpolate"
+      /** For discrete: optional hex/class scale; for interpolate: minColor, maxColor, interpolation. */
+      colorScale?: string[]
+      minColor?: string
+      maxColor?: string
+      interpolation?: "linear" | "sqrt" | "log"
+      cellSize?: number
+      gap?: number
+      displayStyle?: "squares" | "bubbles"
     }
   | { type: "hint"; text: string }
 
@@ -427,6 +481,63 @@ function renderAssistantPart(
           {toMarkdownString(part.text)}
         </p>
       )
+    case "tracker": {
+      const { name, assetNumber, statusKey, statusCatalog, locationLabel, location, lastSeen, entries } = part
+      return (
+        <div className="w-full max-w-md" key={key}>
+          <AssetCard
+            name={name}
+            assetNumber={assetNumber ?? undefined}
+            statusKey={statusKey ?? undefined}
+            statusCatalog={statusCatalog}
+            locationLabel={locationLabel ?? undefined}
+          >
+            <AssetTracker
+              location={location ?? locationLabel ?? undefined}
+              lastSeen={lastSeen ?? undefined}
+              entries={entries}
+            />
+          </AssetCard>
+        </div>
+      )
+    }
+    case "tracker24h":
+      return (
+        <div className="w-full max-w-md" key={key}>
+          <TrackerWithCatalog
+            blocks={part.blocks}
+            statusCatalog={part.statusCatalog}
+            defaultBackgroundColor={part.defaultBackgroundColor}
+            hoverEffect={part.hoverEffect}
+          />
+        </div>
+      )
+    case "heatmap": {
+      const start = new Date(part.startDate)
+      const end = new Date(part.endDate)
+      const colorOpts =
+        part.colorMode === "discrete"
+          ? { colorMode: "discrete" as const, colorScale: part.colorScale }
+          : {
+              colorMode: "interpolate" as const,
+              minColor: part.minColor,
+              maxColor: part.maxColor,
+              interpolation: part.interpolation,
+            }
+      return (
+        <div className="w-full" key={key}>
+          <Heatmap
+            data={part.data}
+            startDate={start}
+            endDate={end}
+            {...colorOpts}
+            cellSize={part.cellSize ?? 12}
+            gap={part.gap ?? 3}
+            displayStyle={part.displayStyle}
+          />
+        </div>
+      )
+    }
     default:
       return null
   }

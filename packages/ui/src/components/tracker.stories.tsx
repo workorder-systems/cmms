@@ -1,5 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react"
-import { Tracker, type TrackerBlockProps } from "./tracker"
+import {
+  Tracker,
+  TrackerWithCatalog,
+  type TrackerBlockProps,
+  type TrackerBlockInput,
+} from "./tracker"
 
 const meta = {
   title: "Data Display/Tracker",
@@ -185,6 +190,51 @@ export const MultiAssetStatus: Story = {
   render: (args) => (
     <div className="w-[280px]">
       <Tracker {...args} />
+    </div>
+  ),
+}
+
+/* -------------------------------------------------------------------------
+ * AI-friendly wrapper: statusKey + tooltip only; colors from TRACKER_STATUS_CATALOG.
+ * Use in chat or when the caller should not supply CSS classes.
+ * ------------------------------------------------------------------------- */
+
+/** 24h blocks with semantic keys (running, idle, maintenance) — no raw colors. */
+const ai24hBlocks: TrackerBlockInput[] = Array.from({ length: 24 }, (_, i) => {
+  const hour = `${i.toString().padStart(2, "0")}:00`
+  if (i >= 2 && i < 6) return { statusKey: "idle", tooltip: `${hour} – Idle` }
+  if (i >= 10 && i < 12) return { statusKey: "maintenance", tooltip: `${hour} – Maintenance` }
+  return { statusKey: "running", tooltip: `${hour} – Running` }
+})
+
+/**
+ * Same as MachineStatus48h but via TrackerWithCatalog: AI passes statusKey + tooltip;
+ * colors come from default catalog (running → green, fault → red, etc.).
+ */
+export const WithCatalog24h: StoryObj<Meta<typeof TrackerWithCatalog>> = {
+  render: () => (
+    <div className="w-[600px]">
+      <TrackerWithCatalog blocks={ai24hBlocks} hoverEffect />
+    </div>
+  ),
+}
+
+/**
+ * Multi-asset with catalog: statusKey only, no CSS.
+ */
+export const WithCatalogMultiAsset: StoryObj<Meta<typeof TrackerWithCatalog>> = {
+  render: () => (
+    <div className="w-[280px]">
+      <TrackerWithCatalog
+        blocks={[
+          { statusKey: "running", tooltip: "Press-01: Running" },
+          { statusKey: "running", tooltip: "Press-02: Running" },
+          { statusKey: "warning", tooltip: "Mill-03: Warning – vibration" },
+          { statusKey: "fault", tooltip: "Conveyor-04: Down – WO-2852" },
+          { statusKey: "running", tooltip: "Robot-05: Running" },
+        ]}
+        hoverEffect
+      />
     </div>
   ),
 }

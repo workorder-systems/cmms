@@ -28,6 +28,8 @@ export interface AssetCardProps {
   href?: string
   onClick?: () => void
   actions?: React.ReactNode
+  /** Optional slot for e.g. AssetTracker (location, last seen, key-value rows). */
+  children?: React.ReactNode
   className?: string
 }
 
@@ -48,6 +50,7 @@ export function AssetCard({
   href,
   onClick,
   actions,
+  children,
   className,
 }: AssetCardProps) {
   const hasImage = !!(image ?? imageUrl)
@@ -100,6 +103,7 @@ export function AssetCard({
             {description ? (
               <ItemDescription className="mt-1">{description}</ItemDescription>
             ) : null}
+            {children ? <div className="mt-1 w-full">{children}</div> : null}
           </ItemContent>
           {actions ? (
             <ItemActions onClick={(e) => e.stopPropagation()}>
@@ -135,6 +139,7 @@ export function AssetCard({
             {description ? (
               <ItemDescription className="mt-1">{description}</ItemDescription>
             ) : null}
+            {children ? <div className="mt-1 w-full">{children}</div> : null}
           </ItemContent>
           {actions ? (
             <ItemActions onClick={(e) => e.stopPropagation()}>

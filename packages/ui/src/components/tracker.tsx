@@ -76,7 +76,7 @@ const Tracker = React.forwardRef<HTMLDivElement, TrackerProps>(
     return (
       <div
         ref={forwardedRef}
-        className={cn("group flex h-8 min-w-0 w-full min-h-[2rem] items-stretch", className)}
+        className={cn("group flex h-8 min-h-8 min-w-0 w-full items-stretch", className)}
         {...props}
       >
         {data.map((blockProps, index) => (
@@ -93,5 +93,76 @@ const Tracker = React.forwardRef<HTMLDivElement, TrackerProps>(
 )
 
 Tracker.displayName = "Tracker"
+
+/* -------------------------------------------------------------------------
+ * AI-friendly wrapper: pass statusKey + optional tooltip; catalog maps to color.
+ * No raw CSS — use semantic keys (running, idle, maintenance, fault).
+ * ------------------------------------------------------------------------- */
+
+export type TrackerBlockCatalogEntry = { key: string; color: string }
+
+/** Default catalog aligned with tracker.stories (bg-success, bg-muted, etc.). */
+export const TRACKER_STATUS_CATALOG: TrackerBlockCatalogEntry[] = [
+  { key: "running", color: "bg-success" },
+  { key: "idle", color: "bg-muted" },
+  { key: "off", color: "bg-muted" },
+  { key: "no_data", color: "bg-muted" },
+  { key: "maintenance", color: "bg-warning" },
+  { key: "degraded", color: "bg-warning" },
+  { key: "warning", color: "bg-warning" },
+  { key: "fault", color: "bg-destructive" },
+  { key: "down", color: "bg-destructive" },
+  { key: "destructive", color: "bg-destructive" },
+]
+
+export type TrackerBlockInput = { statusKey: string; tooltip?: string }
+
+export interface TrackerWithCatalogProps extends Omit<TrackerProps, "data"> {
+  /** AI-friendly: one entry per block with statusKey (and optional tooltip). */
+  blocks: TrackerBlockInput[]
+  /** Optional; defaults to TRACKER_STATUS_CATALOG. */
+  statusCatalog?: TrackerBlockCatalogEntry[]
+}
+
+function getColorForKey(
+  statusKey: string,
+  catalog: TrackerBlockCatalogEntry[]
+): string | undefined {
+  const normalized = statusKey.toLowerCase().trim()
+  const entry = catalog.find((e) => e.key.toLowerCase() === normalized)
+  return entry?.color
+}
+
+/**
+ * Wrapper for Tracker: AI passes statusKey + tooltip per block; catalog maps statusKey → color.
+ * Use this in chat or any place where the caller should not supply raw CSS classes.
+ */
+export function TrackerWithCatalog({
+  blocks,
+  statusCatalog = TRACKER_STATUS_CATALOG,
+  defaultBackgroundColor = "bg-muted",
+  hoverEffect,
+  className,
+  ...props
+}: TrackerWithCatalogProps) {
+  const data: TrackerBlockProps[] = blocks.map((b, i) => {
+    const color = getColorForKey(b.statusKey, statusCatalog)
+    return {
+      key: i,
+      color,
+      defaultBackgroundColor: color ? undefined : defaultBackgroundColor,
+      tooltip: b.tooltip,
+    }
+  })
+  return (
+    <Tracker
+      data={data}
+      defaultBackgroundColor={defaultBackgroundColor}
+      hoverEffect={hoverEffect}
+      className={className}
+      {...props}
+    />
+  )
+}
 
 export { Tracker }

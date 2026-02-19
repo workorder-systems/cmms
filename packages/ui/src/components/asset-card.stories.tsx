@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import { AssetCard } from "./asset-card"
+import { AssetTracker } from "./asset-tracker"
 import { Button } from "./button"
 import { LocationBreadcrumb } from "./location-breadcrumb"
 
@@ -112,5 +113,25 @@ export const WithImageNoLink: Story = {
     meterSummary: "Runtime: 3,100 h",
     imageUrl:
       "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=100&h=100&fit=crop",
+  },
+}
+
+export const WithTracker: Story = {
+  args: {
+    name: "Pump P-101",
+    assetNumber: "AST-001",
+    statusKey: "operational",
+    statusCatalog,
+    locationLabel: "Building A · Floor 2",
+    children: (
+      <AssetTracker
+        location="Building A · Floor 2"
+        lastSeen="2 min ago"
+        entries={[
+          { label: "Runtime", value: "1,234 h" },
+          { label: "Last service", value: "Jan 15" },
+        ]}
+      />
+    ),
   },
 }
