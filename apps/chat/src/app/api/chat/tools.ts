@@ -219,7 +219,7 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
     // ---------- Write: return pending confirm (client will call /api/chat/execute) ----------
     create_work_order: tool({
       description:
-        "Create a new work order. Only title is required; description, priority, assetId, and locationId are optional. Use when the user asks to create or report a work order. Extract a short title from their message (e.g. 'Fix HVAC airco' or 'Repair pump'); use extra context as description if useful. Do not ask for optional fields—proceed with the information given. Requires user confirmation.",
+        "Create a new work order. Only title is required; description, priority, assetId, and locationId are optional. Use when the user asks to create or report a work order. Extract a short title from their message (e.g. 'Fix HVAC airco'). When the user mentions equipment (HVAC, pump, etc.) or a location, use list_assets or list_locations first to find a matching id, then pass that as assetId or locationId so the work order is linked. Do not ask for optional fields—proceed with the information given or from prior tool results. Requires user confirmation.",
       parameters: z.object({
         title: z.string().min(1).describe("Short title (required); derive from the user's request, e.g. 'Fix HVAC airco'"),
         description: z.string().optional().describe("Optional longer description; use user's context if they gave details"),

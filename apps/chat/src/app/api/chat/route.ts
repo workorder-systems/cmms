@@ -2,6 +2,9 @@ import { openai } from "@ai-sdk/openai"
 import { streamText, convertToCoreMessages } from "ai"
 import type { UIMessage } from "ai"
 import type { CoreMessage } from "ai"
+
+/** Max sequential LLM steps (tool rounds) per turn. Default is 1; set higher so model can e.g. list_assets then create_work_order. */
+const MAX_TOOL_STEPS = 5
 import { getDbClientForUser } from "@/lib/chat-db"
 import { createChatTools } from "./tools"
 
@@ -77,7 +80,9 @@ function pruneToolCallsBeforeLastMessage(messages: CoreMessage[]): CoreMessage[]
 const SYSTEM_PROMPT_WITH_TOOLS = `You are a chat-first CMMS assistant.
 Be concise (1–2 lines unless asked).
 Use tools for all data operations. Never assume execution without a tool result.
-Only ask for fields that are strictly required. Do not ask for optional fields (e.g. description, asset ID, location ID) when the user has given enough to proceed—create or act with what they provided.`
+Only ask for fields that are strictly required; use tools to resolve the rest when possible. Do not ask for optional fields when the user has given enough to proceed.
+
+When the user asks to create a work order and mentions equipment or a place (e.g. HVAC, airco, pump, motor, "the boiler", "building A"), call list_assets first. If the returned list contains an asset whose name or description clearly matches (e.g. contains "HVAC", "airco", or the mentioned term), call create_work_order with that asset's id as assetId so the work order is linked to the right asset. Do the same with list_locations and locationId when the user mentions a location. Prefer one round: list_assets (or list_locations), then create_work_order with the matching id.`
 
 /** System prompt when no tools (unauthenticated or no tenant). */
 const SYSTEM_PROMPT = `You are a concise maintenance assistant. Keep answers short and actionable. Use at most 2–3 sentences unless the user explicitly asks for detail. To list or create work orders and assets, the user must sign in and select a tenant.`
@@ -123,7 +128,10 @@ export async function POST(req: Request) {
       model: openai("gpt-4o-mini"),
       messages: withSystem,
       maxTokens: MAX_OUTPUT_TOKENS,
-      ...(tools && { tools }),
+      ...(tools && {
+        tools,
+        maxSteps: MAX_TOOL_STEPS,
+      }),
     })
     return result.toDataStreamResponse()
   } catch (error) {
