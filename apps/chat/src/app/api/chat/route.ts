@@ -76,9 +76,8 @@ function pruneToolCallsBeforeLastMessage(messages: CoreMessage[]): CoreMessage[]
 /** System prompt when tools are available (user authenticated with tenant). */
 const SYSTEM_PROMPT_WITH_TOOLS = `You are a chat-first CMMS assistant.
 Be concise (1–2 lines unless asked).
-Use tools for all data operations.
-Never assume execution without a tool result.
-Ask for missing required fields.`
+Use tools for all data operations. Never assume execution without a tool result.
+Only ask for fields that are strictly required. Do not ask for optional fields (e.g. description, asset ID, location ID) when the user has given enough to proceed—create or act with what they provided.`
 
 /** System prompt when no tools (unauthenticated or no tenant). */
 const SYSTEM_PROMPT = `You are a concise maintenance assistant. Keep answers short and actionable. Use at most 2–3 sentences unless the user explicitly asks for detail. To list or create work orders and assets, the user must sign in and select a tenant.`

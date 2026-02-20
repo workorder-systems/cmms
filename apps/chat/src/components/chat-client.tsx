@@ -319,10 +319,15 @@ export function ChatClient() {
     console.log("[chat] messages", messages)
   }, [messages])
 
+  /** Guard: prevent double-execute when user clicks Confirm multiple times before first request completes. */
+  const executingRef = React.useRef<Set<string>>(new Set())
+
   const onConfirm = React.useCallback(
     (toolCallId: string, action: string, params: Record<string, unknown>) => {
       return async () => {
         if (!session?.access_token || !tenantId) return
+        if (executingRef.current.has(toolCallId)) return
+        executingRef.current.add(toolCallId)
         try {
           const res = await fetch("/api/chat/execute", {
             method: "POST",
@@ -349,6 +354,8 @@ export function ChatClient() {
         } catch (err) {
           const message = err instanceof Error ? err.message : "Request failed"
           setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Error: ${message}` }))
+        } finally {
+          executingRef.current.delete(toolCallId)
         }
       }
     },

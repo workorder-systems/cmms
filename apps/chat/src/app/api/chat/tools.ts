@@ -219,13 +219,13 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
     // ---------- Write: return pending confirm (client will call /api/chat/execute) ----------
     create_work_order: tool({
       description:
-        "Create a new work order. Requires user confirmation. Use when the user asks to create or report a work order.",
+        "Create a new work order. Only title is required; description, priority, assetId, and locationId are optional. Use when the user asks to create or report a work order. Extract a short title from their message (e.g. 'Fix HVAC airco' or 'Repair pump'); use extra context as description if useful. Do not ask for optional fields—proceed with the information given. Requires user confirmation.",
       parameters: z.object({
-        title: z.string().describe("Short title for the work order"),
-        description: z.string().optional().describe("Optional longer description"),
-        priority: z.string().optional().describe("Priority key, e.g. high, medium, low"),
-        assetId: z.string().optional().describe("Optional asset UUID"),
-        locationId: z.string().optional().describe("Optional location UUID"),
+        title: z.string().min(1).describe("Short title (required); derive from the user's request, e.g. 'Fix HVAC airco'"),
+        description: z.string().optional().describe("Optional longer description; use user's context if they gave details"),
+        priority: z.string().optional().describe("Optional: high, medium, low, critical"),
+        assetId: z.string().optional().describe("Optional asset UUID; only if user specified an asset"),
+        locationId: z.string().optional().describe("Optional location UUID; only if user specified a location"),
       }),
       execute: async (params) => {
         return pendingConfirm("create_work_order", params)
