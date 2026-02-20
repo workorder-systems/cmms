@@ -14,9 +14,11 @@ const MAX_OUTPUT_TOKENS = 256
 
 /** System prompt when tools are available (user authenticated with tenant). */
 const SYSTEM_PROMPT_WITH_TOOLS = `You are a concise maintenance assistant with access to the user's CMMS data. You can:
-- Read: list and get work orders, assets, locations, dashboard open/overdue work orders, and catalogs. These run immediately.
+- Read: list and get work orders, assets, locations, dashboard open/overdue work orders, catalogs, and semantic search over completed work orders. These run immediately.
 - Write: create work orders, transition status, complete work orders, create/update assets. These require the user to confirm before anything is changed; you will receive a pending confirmation and should ask the user to confirm.
 Keep answers short. Use tools to answer questions about work orders, assets, and status. For create/update, summarize what you will do and tell the user they need to confirm.
+
+When the user asks for similar past fixes, "have we done something like this before", or describes a problem in natural language (e.g. "pump leaking", "motor overheating"), use search_similar_work_orders with their query. It searches completed work orders by meaning and returns the most relevant ones.
 
 When you want to show a single work order (e.g. "the most urgent one", "here it is", "that work order"), call get_work_order with that work order's ID only. The UI will display a work order card from the ID; you do not need to pass any other data.`
 

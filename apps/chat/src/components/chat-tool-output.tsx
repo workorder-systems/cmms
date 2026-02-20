@@ -21,6 +21,7 @@ const LIST_GRID_TOOLS = new Set([
   "list_locations",
   "get_dashboard_open_work_orders",
   "get_dashboard_overdue_work_orders",
+  "search_similar_work_orders",
 ])
 
 /** Default catalogs so WorkOrderCard can render status/priority badges without an extra API call. */
@@ -50,6 +51,7 @@ function getDataArray(output: Record<string, unknown> | unknown[] | undefined): 
   const value = o.value
   if (Array.isArray(value)) return value as Record<string, unknown>[]
   if (o.data != null && Array.isArray(o.data)) return o.data as Record<string, unknown>[]
+  if (o.results != null && Array.isArray(o.results)) return o.results as Record<string, unknown>[]
   return null
 }
 
@@ -57,15 +59,20 @@ function getDataArray(output: Record<string, unknown> | unknown[] | undefined): 
 const COLUMN_ORDER: string[] = [
   "title",
   "description",
+  "similarityScore",
   "name",
   "status",
   "priority",
   "due_date",
+  "completedAt",
   "created_at",
   "updated_at",
   "asset_id",
   "location_id",
+  "assetId",
+  "locationId",
   "work_order_id",
+  "workOrderId",
   "tenant_id",
   "id",
 ]
@@ -101,7 +108,7 @@ function buildColumnsFromData(data: Record<string, unknown>[]): SimpleColumnDef[
 }
 
 function getRowId(row: Record<string, unknown>): string {
-  const id = row.id ?? row.work_order_id
+  const id = row.id ?? row.work_order_id ?? row.workOrderId
   if (id != null) return String(id)
   return `${row.title ?? row.name ?? ""}-${JSON.stringify(row).slice(0, 20)}`
 }

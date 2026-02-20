@@ -89,6 +89,27 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       },
     }),
 
+    search_similar_work_orders: tool({
+      description:
+        "Semantic search over completed work orders. Use when the user asks for similar past fixes, 'have we done something like this before', 'find work orders about X', or describes a problem in natural language. Returns completed work orders ranked by similarity.",
+      parameters: z.object({
+        query: z.string().describe("Free-text description of the issue or what to search for (e.g. 'pump leaking', 'motor overheating')"),
+        limit: z.number().min(1).max(20).optional().describe("Max results (default 10)"),
+      }),
+      execute: async ({ query, limit }) => {
+        try {
+          const results = await db.similarPastFixes.search({
+            queryText: query.trim(),
+            limit: limit ?? 10,
+          })
+          return JSON.stringify({ results })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          return JSON.stringify({ error: message, results: [] })
+        }
+      },
+    }),
+
     get_dashboard_metrics: tool({
       description:
         "Get dashboard metrics as chart data: work orders by status (bar chart) and priority (pie). Use when the user asks for a report, summary, or chart.",

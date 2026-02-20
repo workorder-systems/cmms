@@ -238,6 +238,22 @@ function humanReadableToolSummary(parts: AssistantPart[]): string {
   if (name === "list_locations") return "Here are the locations."
   if (name === "get_dashboard_open_work_orders") return "Here are the open work orders."
   if (name === "get_dashboard_overdue_work_orders") return "Here are the overdue work orders."
+  if (name === "search_similar_work_orders") {
+    const out = first.toolPart.output
+    let results: unknown[] | undefined
+    if (typeof out === "string") {
+      try {
+        const parsed = JSON.parse(out) as { results?: unknown[] }
+        results = parsed.results
+      } catch {
+        results = undefined
+      }
+    } else if (out != null && typeof out === "object" && "results" in out) {
+      results = (out as { results?: unknown[] }).results
+    }
+    if (Array.isArray(results) && results.length === 0) return "No similar past work orders found."
+    return "Here are similar past work orders."
+  }
   return "Here’s what I found."
 }
 

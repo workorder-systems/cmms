@@ -51,7 +51,7 @@ function toolTypeToLabel(type: string): string {
 const Tool = ({
   toolPart,
   awaitingConfirmation = false,
-  defaultOpen = true,
+  defaultOpen = false,
   className,
   customOutput,
 }: ToolProps) => {
@@ -185,73 +185,72 @@ const Tool = ({
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className={cn("rounded-lg border", className)}>
-      <div className="flex flex-col gap-2 p-3">
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 text-left"
-          >
-            {getStateIcon()}
-            <span className="font-medium">{toolTypeToLabel(toolPart.type)}</span>
-            {getStateBadge()}
-            <ChevronDown
-              className={cn("ml-auto size-4 transition-transform", isOpen && "rotate-180")}
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="flex flex-col gap-3 pt-2">
-            {input && Object.keys(input).length > 0 && (
-              <div className="flex flex-col gap-1">
-                <span className="text-muted-foreground text-xs font-medium">Input</span>
-                <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs">
-                  {Object.entries(input).map(([key, value]) => (
-                    <div key={key}>
-                      {key}: {formatValue(value)}
-                    </div>
-                  ))}
-                </pre>
-              </div>
-            )}
+    <div className="flex flex-col gap-2">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen} className={cn("rounded-lg border", className)}>
+        <div className="flex flex-col gap-2 p-3">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 text-left"
+            >
+              {getStateIcon()}
+              <span className="font-medium">{toolTypeToLabel(toolPart.type)}</span>
+              {getStateBadge()}
+              <ChevronDown
+                className={cn("ml-auto size-4 transition-transform", isOpen && "rotate-180")}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="flex flex-col gap-3 pt-2">
+              {input && Object.keys(input).length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground text-xs font-medium">Input</span>
+                  <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs">
+                    {Object.entries(input).map(([key, value]) => (
+                      <div key={key}>
+                        {key}: {formatValue(value)}
+                      </div>
+                    ))}
+                  </pre>
+                </div>
+              )}
 
-            {output && !awaitingConfirmation && (
-              <div className="flex flex-col gap-1">
-                {customOutput != null ? (
-                  customOutput
-                ) : (
-                  <>
-                    <span className="text-muted-foreground text-xs font-medium">Result</span>
-                    <div className="rounded-md border bg-muted/30 p-3">
-                      {renderFriendlyOutput(output)}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+              {output && !awaitingConfirmation && customOutput == null && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground text-xs font-medium">Result</span>
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    {renderFriendlyOutput(output)}
+                  </div>
+                </div>
+              )}
 
-            {awaitingConfirmation && (
-              <p className="text-muted-foreground text-sm">Confirm below to complete. Output will appear after confirmation.</p>
-            )}
+              {awaitingConfirmation && (
+                <p className="text-muted-foreground text-sm">Confirm below to complete. Output will appear after confirmation.</p>
+              )}
 
-            {state === "output-error" && toolPart.errorText && (
-              <div className="text-destructive text-sm">
-                <span className="font-medium">Error </span>
-                {toolPart.errorText}
-              </div>
-            )}
+              {state === "output-error" && toolPart.errorText && (
+                <div className="text-destructive text-sm">
+                  <span className="font-medium">Error </span>
+                  {toolPart.errorText}
+                </div>
+              )}
 
-            {state === "input-streaming" && (
-              <p className="text-muted-foreground text-sm">Processing tool call...</p>
-            )}
+              {state === "input-streaming" && (
+                <p className="text-muted-foreground text-sm">Processing tool call...</p>
+              )}
 
-            {toolCallId && (
-              <p className="text-muted-foreground text-xs">Call ID: {toolCallId}</p>
-            )}
-          </div>
-        </CollapsibleContent>
-      </div>
-    </Collapsible>
+              {toolCallId && (
+                <p className="text-muted-foreground text-xs">Call ID: {toolCallId}</p>
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+      {customOutput != null ? (
+        <div className="mt-1 w-full">{customOutput}</div>
+      ) : null}
+    </div>
   )
 }
 
