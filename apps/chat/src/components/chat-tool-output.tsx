@@ -55,13 +55,15 @@ function getDataArray(output: Record<string, unknown> | unknown[] | undefined): 
   return null
 }
 
-/** Preferred column order: important fields first, id/tenant_id last. */
+/** Preferred column order for work orders: title, description, status, cause, resolution first; ids last. */
 const COLUMN_ORDER: string[] = [
   "title",
   "description",
+  "status",
+  "cause",
+  "resolution",
   "similarityScore",
   "name",
-  "status",
   "priority",
   "due_date",
   "completedAt",
