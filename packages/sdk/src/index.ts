@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-export { createDbClient } from './client.js';
+export { createDbClient, createDbClientFromSupabase } from './client.js';
 export { SdkError, normalizeError } from './errors.js';
 export type { Database } from './database.types.js';
 export type { DbClient, DbClientOptions } from './types.js';

@@ -1,0 +1,255 @@
+import { tool } from "ai"
+import type { DbClient } from "@workorder-systems/sdk"
+import { z } from "zod"
+
+/** Prefix for tool results that require user confirmation before executing. */
+export const PENDING_CONFIRM_PREFIX = "__PENDING_CONFIRM:"
+
+/** Serialize a pending action for the client. Client will show confirm UI and call POST /api/chat/execute. */
+function pendingConfirm(action: string, params: Record<string, unknown>): string {
+  return PENDING_CONFIRM_PREFIX + JSON.stringify({ action, params })
+}
+
+/**
+ * Create chat tools that run on behalf of the user via the given DbClient.
+ * Read-only tools execute immediately; create/update/delete tools return a pending-confirm payload.
+ */
+export function createChatTools(db: DbClient): Record<string, ReturnType<typeof tool>> {
+  return {
+    // ---------- Read-only: execute immediately ----------
+    list_work_orders: tool({
+      description: "List work orders for the current tenant. Use to show open, overdue, or all work orders.",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.workOrders.list()
+        return JSON.stringify(rows.slice(0, 50))
+      },
+    }),
+
+    get_work_order: tool({
+      description: "Get a single work order by ID.",
+      parameters: z.object({ workOrderId: z.string().describe("Work order UUID") }),
+      execute: async ({ workOrderId }) => {
+        const row = await db.workOrders.getById(workOrderId)
+        return JSON.stringify(row ?? { error: "Not found" })
+      },
+    }),
+
+    list_assets: tool({
+      description: "List assets for the current tenant.",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.assets.list()
+        return JSON.stringify(rows.slice(0, 50))
+      },
+    }),
+
+    get_asset: tool({
+      description: "Get a single asset by ID.",
+      parameters: z.object({ assetId: z.string().describe("Asset UUID") }),
+      execute: async ({ assetId }) => {
+        const row = await db.assets.getById(assetId)
+        return JSON.stringify(row ?? { error: "Not found" })
+      },
+    }),
+
+    list_locations: tool({
+      description: "List locations for the current tenant.",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.locations.list()
+        return JSON.stringify(rows.slice(0, 50))
+      },
+    }),
+
+    get_location: tool({
+      description: "Get a single location by ID.",
+      parameters: z.object({ locationId: z.string().describe("Location UUID") }),
+      execute: async ({ locationId }) => {
+        const row = await db.locations.getById(locationId)
+        return JSON.stringify(row ?? { error: "Not found" })
+      },
+    }),
+
+    get_dashboard_open_work_orders: tool({
+      description: "Get open work orders for the dashboard (current tenant).",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.dashboard.listOpenWorkOrders()
+        return JSON.stringify(rows.slice(0, 30))
+      },
+    }),
+
+    get_dashboard_overdue_work_orders: tool({
+      description: "Get overdue work orders for the dashboard (current tenant).",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.dashboard.listOverdueWorkOrders()
+        return JSON.stringify(rows.slice(0, 30))
+      },
+    }),
+
+    list_status_catalogs: tool({
+      description: "List status catalog entries (for work orders, assets, etc.) for the current tenant.",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.catalogs.listStatuses()
+        return JSON.stringify(rows)
+      },
+    }),
+
+    list_priority_catalogs: tool({
+      description: "List priority catalog entries for the current tenant.",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.catalogs.listPriorities()
+        return JSON.stringify(rows)
+      },
+    }),
+
+    // ---------- Write: return pending confirm (client will call /api/chat/execute) ----------
+    create_work_order: tool({
+      description:
+        "Create a new work order. Requires user confirmation. Use when the user asks to create or report a work order.",
+      parameters: z.object({
+        title: z.string().describe("Short title for the work order"),
+        description: z.string().optional().describe("Optional longer description"),
+        priority: z.string().optional().describe("Priority key, e.g. high, medium, low"),
+        assetId: z.string().optional().describe("Optional asset UUID"),
+        locationId: z.string().optional().describe("Optional location UUID"),
+      }),
+      execute: async (params) => {
+        return pendingConfirm("create_work_order", params)
+      },
+    }),
+
+    transition_work_order_status: tool({
+      description:
+        "Transition a work order to a new status (e.g. start, complete). Requires user confirmation.",
+      parameters: z.object({
+        workOrderId: z.string().describe("Work order UUID"),
+        toStatusKey: z.string().describe("Target status key from status catalog"),
+      }),
+      execute: async (params) => {
+        return pendingConfirm("transition_work_order_status", params)
+      },
+    }),
+
+    complete_work_order: tool({
+      description: "Complete a work order with optional cause and resolution. Requires user confirmation.",
+      parameters: z.object({
+        workOrderId: z.string().describe("Work order UUID"),
+        cause: z.string().optional().describe("Root cause"),
+        resolution: z.string().optional().describe("Resolution notes"),
+      }),
+      execute: async (params) => {
+        return pendingConfirm("complete_work_order", params)
+      },
+    }),
+
+    create_asset: tool({
+      description: "Create a new asset. Requires user confirmation.",
+      parameters: z.object({
+        name: z.string().describe("Asset name"),
+        description: z.string().optional(),
+        assetNumber: z.string().optional(),
+        locationId: z.string().optional(),
+        status: z.string().optional().describe("e.g. active"),
+      }),
+      execute: async (params) => {
+        return pendingConfirm("create_asset", params)
+      },
+    }),
+
+    update_asset: tool({
+      description: "Update an existing asset. Requires user confirmation.",
+      parameters: z.object({
+        assetId: z.string().describe("Asset UUID"),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        locationId: z.string().optional(),
+        status: z.string().optional(),
+      }),
+      execute: async (params) => {
+        return pendingConfirm("update_asset", params)
+      },
+    }),
+  }
+}
+
+/** Actions that can be executed by POST /api/chat/execute after user confirmation. */
+export type ExecuteAction =
+  | "create_work_order"
+  | "transition_work_order_status"
+  | "complete_work_order"
+  | "create_asset"
+  | "update_asset"
+
+/** Execute a confirmed action. Call from the execute route. */
+export async function executeAction(
+  db: DbClient,
+  action: ExecuteAction,
+  params: Record<string, unknown>,
+  tenantId: string
+): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+  await db.setTenant(tenantId)
+  try {
+    switch (action) {
+      case "create_work_order": {
+        const id = await db.workOrders.create({
+          tenantId,
+          title: String(params.title ?? ""),
+          description: params.description != null ? String(params.description) : null,
+          priority: params.priority != null ? String(params.priority) : undefined,
+          assetId: params.assetId != null ? String(params.assetId) : null,
+          locationId: params.locationId != null ? String(params.locationId) : null,
+        })
+        return { ok: true, data: { workOrderId: id } }
+      }
+      case "transition_work_order_status": {
+        await db.workOrders.transitionStatus({
+          tenantId,
+          workOrderId: String(params.workOrderId),
+          toStatusKey: String(params.toStatusKey),
+        })
+        return { ok: true, data: {} }
+      }
+      case "complete_work_order": {
+        await db.workOrders.complete({
+          tenantId,
+          workOrderId: String(params.workOrderId),
+          cause: params.cause != null ? String(params.cause) : null,
+          resolution: params.resolution != null ? String(params.resolution) : null,
+        })
+        return { ok: true, data: {} }
+      }
+      case "create_asset": {
+        const id = await db.assets.create({
+          tenantId,
+          name: String(params.name ?? ""),
+          description: params.description != null ? String(params.description) : null,
+          assetNumber: params.assetNumber != null ? String(params.assetNumber) : null,
+          locationId: params.locationId != null ? String(params.locationId) : null,
+          status: params.status != null ? String(params.status) : undefined,
+        })
+        return { ok: true, data: { assetId: id } }
+      }
+      case "update_asset": {
+        await db.assets.update({
+          tenantId,
+          assetId: String(params.assetId),
+          name: params.name != null ? String(params.name) : undefined,
+          description: params.description != null ? String(params.description) : undefined,
+          locationId: params.locationId != null ? String(params.locationId) : undefined,
+          status: params.status != null ? String(params.status) : undefined,
+        })
+        return { ok: true, data: {} }
+      }
+      default:
+        return { ok: false, error: `Unknown action: ${action}` }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, error: message }
+  }
+}

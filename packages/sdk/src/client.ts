@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types.js';
 import type { DbClient, DbClientOptions } from './types.js';
@@ -45,7 +46,20 @@ export function createDbClient(
     ...options,
     db: { schema: 'public', ...options?.db },
   });
+  return buildDbClientFromSupabase(supabase);
+}
 
+/**
+ * Create a DbClient from an existing Supabase client (e.g. one already authenticated
+ * with a user session). Use this in server routes when you have set the session
+ * via auth.setSession({ access_token, refresh_token }).
+ */
+export function createDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient {
+  return buildDbClientFromSupabase(supabase);
+}
+
+// Internal: build DbClient from an existing supabase instance (used by createDbClient and createDbClientFromSupabase).
+function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient {
   const client: DbClient = {
     supabase: supabase as DbClient['supabase'],
     tenants: createTenantsResource(supabase),
@@ -77,7 +91,5 @@ export function createDbClient(
       unwrapResult(null, error as import('@supabase/supabase-js').PostgrestError | null);
     },
   };
-
-  // Attach domain resources (tenants, workOrders) in resource modules
   return client;
 }
