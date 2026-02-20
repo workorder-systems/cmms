@@ -10,6 +10,33 @@ function pendingConfirm(action: string, params: Record<string, unknown>): string
   return PENDING_CONFIRM_PREFIX + JSON.stringify({ action, params })
 }
 
+/** Escape a CSV field (wrap in quotes if contains comma, newline, or quote). */
+function csvEscape(val: unknown): string {
+  const s = val == null ? "" : String(val)
+  if (/[,"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+/** Build CSV string from array of objects. Columns from first object keys; optional column filter. */
+function toCSV(rows: Record<string, unknown>[], columns?: string[]): string {
+  if (rows.length === 0) return ""
+  const keys = columns ?? Object.keys(rows[0] as object)
+  const header = keys.map(csvEscape).join(",")
+  const body = rows
+    .map((row) => keys.map((k) => csvEscape((row as Record<string, unknown>)[k])).join(","))
+    .join("\n")
+  return `${header}\n${body}`
+}
+
+/** Minimal columns for list tools (token-efficient; no audit/metadata). */
+const WORK_ORDER_LIST_COLUMNS = ["id", "title", "description", "status", "priority", "due_date", "cause", "resolution", "assigned_to_name"]
+const ASSET_LIST_COLUMNS = ["id", "name", "description", "status"]
+const LOCATION_LIST_COLUMNS = ["id", "name", "description"]
+
+const LIST_LIMIT = 25
+const DASHBOARD_LIMIT = 20
+const SEARCH_SIMILAR_LIMIT = 10
+
 /**
  * Create chat tools that run on behalf of the user via the given DbClient.
  * Read-only tools execute immediately; create/update/delete tools return a pending-confirm payload.
@@ -22,7 +49,9 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       parameters: z.object({}),
       execute: async () => {
         const rows = await db.workOrders.list()
-        return JSON.stringify(rows.slice(0, 50))
+        const slice = (rows as Record<string, unknown>[]).slice(0, LIST_LIMIT)
+        const cols = WORK_ORDER_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
+        return toCSV(slice, cols.length ? cols : undefined)
       },
     }),
 
@@ -40,7 +69,9 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       parameters: z.object({}),
       execute: async () => {
         const rows = await db.assets.list()
-        return JSON.stringify(rows.slice(0, 50))
+        const slice = (rows as Record<string, unknown>[]).slice(0, LIST_LIMIT)
+        const cols = ASSET_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
+        return toCSV(slice, cols.length ? cols : undefined)
       },
     }),
 
@@ -58,7 +89,9 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       parameters: z.object({}),
       execute: async () => {
         const rows = await db.locations.list()
-        return JSON.stringify(rows.slice(0, 50))
+        const slice = (rows as Record<string, unknown>[]).slice(0, LIST_LIMIT)
+        const cols = LOCATION_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
+        return toCSV(slice, cols.length ? cols : undefined)
       },
     }),
 
@@ -76,7 +109,9 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       parameters: z.object({}),
       execute: async () => {
         const rows = await db.dashboard.listOpenWorkOrders()
-        return JSON.stringify(rows.slice(0, 30))
+        const slice = (rows as Record<string, unknown>[]).slice(0, DASHBOARD_LIMIT)
+        const cols = WORK_ORDER_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
+        return toCSV(slice, cols.length ? cols : undefined)
       },
     }),
 
@@ -85,7 +120,9 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       parameters: z.object({}),
       execute: async () => {
         const rows = await db.dashboard.listOverdueWorkOrders()
-        return JSON.stringify(rows.slice(0, 30))
+        const slice = (rows as Record<string, unknown>[]).slice(0, DASHBOARD_LIMIT)
+        const cols = WORK_ORDER_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
+        return toCSV(slice, cols.length ? cols : undefined)
       },
     }),
 
@@ -100,12 +137,22 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
         try {
           const results = await db.similarPastFixes.search({
             queryText: query.trim(),
-            limit: limit ?? 10,
+            limit: Math.min(limit ?? SEARCH_SIMILAR_LIMIT, SEARCH_SIMILAR_LIMIT),
           })
-          return JSON.stringify({ results })
+          if (results.length === 0) return "workOrderId,title,description,status,similarityScore\n"
+          const rows = results.map((r) => ({
+            workOrderId: r.workOrderId,
+            title: r.title,
+            description: r.description ?? "",
+            status: r.status,
+            similarityScore: r.similarityScore,
+            cause: r.cause ?? "",
+            resolution: r.resolution ?? "",
+          }))
+          return toCSV(rows as unknown as Record<string, unknown>[])
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
-          return JSON.stringify({ error: message, results: [] })
+          return `error: ${message}`
         }
       },
     }),

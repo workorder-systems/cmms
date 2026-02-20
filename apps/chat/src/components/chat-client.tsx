@@ -238,20 +238,20 @@ function humanReadableToolSummary(parts: AssistantPart[]): string {
   if (name === "list_locations") return "Here are the locations."
   if (name === "get_dashboard_open_work_orders") return "Here are the open work orders."
   if (name === "get_dashboard_overdue_work_orders") return "Here are the overdue work orders."
+  if (name === "get_asset") return "Here’s the asset."
+  if (name === "get_location") return "Here’s the location."
+  if (name === "list_status_catalogs") return "Here are the status options."
+  if (name === "list_priority_catalogs") return "Here are the priority options."
   if (name === "search_similar_work_orders") {
-    const out = first.toolPart.output
-    let results: unknown[] | undefined
+    const out = first.toolPart.output as unknown
     if (typeof out === "string") {
-      try {
-        const parsed = JSON.parse(out) as { results?: unknown[] }
-        results = parsed.results
-      } catch {
-        results = undefined
-      }
+      if (out.startsWith("error:")) return "Similar search failed."
+      const lines = out.trim().split(/\r?\n/)
+      if (lines.length < 2 || (lines.length === 2 && !lines[1]?.trim())) return "No similar past work orders found."
     } else if (out != null && typeof out === "object" && "results" in out) {
-      results = (out as { results?: unknown[] }).results
+      const results = (out as { results?: unknown[] }).results
+      if (Array.isArray(results) && results.length === 0) return "No similar past work orders found."
     }
-    if (Array.isArray(results) && results.length === 0) return "No similar past work orders found."
     return "Here are similar past work orders."
   }
   return "Here’s what I found."
