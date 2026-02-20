@@ -113,6 +113,8 @@
     "./components/auth": "./src/components/auth/index.ts",
     "./components/auth/*": "./src/components/auth/*.tsx",
     "./components/data-table/*": "./src/components/data-table/*.tsx",
+    "./components/data-grid/data-grid": "./src/components/data-grid/data-grid.tsx",
+    "./components/data-chart": "./src/components/data-chart.tsx",
     "./components/prompt-kit": "./src/components/prompt-kit/index.ts",
     "./components/prompt-kit/*": "./src/components/prompt-kit/*.tsx",
     "./hooks/*": "./src/hooks/*.ts",

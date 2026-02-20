@@ -89,6 +89,47 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       },
     }),
 
+    get_dashboard_metrics: tool({
+      description:
+        "Get dashboard metrics as chart data: work orders by status (bar chart) and priority (pie). Use when the user asks for a report, summary, or chart.",
+      parameters: z.object({}),
+      execute: async () => {
+        const rows = await db.workOrders.list()
+        const byStatus: Record<string, number> = {}
+        const byPriority: Record<string, number> = {}
+        for (const row of rows) {
+          const r = row as { status?: string; priority?: string }
+          const s = r.status ?? "unknown"
+          const p = r.priority ?? "unknown"
+          byStatus[s] = (byStatus[s] ?? 0) + 1
+          byPriority[p] = (byPriority[p] ?? 0) + 1
+        }
+        const statusData = Object.entries(byStatus).map(([status, count]) => ({ status, count }))
+        const priorityData = Object.entries(byPriority).map(([name, value]) => ({ name, value }))
+        return JSON.stringify({
+          _display: "chart",
+          charts: [
+            {
+              _chartType: "bar",
+              data: statusData,
+              categoryKey: "status",
+              valueKeys: ["count"],
+              valueLabels: { count: "Work orders" },
+              title: "Work orders by status",
+            },
+            {
+              _chartType: "pie",
+              data: priorityData,
+              categoryKey: "name",
+              valueKeys: ["value"],
+              valueLabels: { value: "Count" },
+              title: "Work orders by priority",
+            },
+          ],
+        })
+      },
+    }),
+
     list_status_catalogs: tool({
       description: "List status catalog entries (for work orders, assets, etc.) for the current tenant.",
       parameters: z.object({}),

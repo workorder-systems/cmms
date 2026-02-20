@@ -208,6 +208,8 @@ export type CMMSChatProps = {
   placeholder?: string
   /** Optional file upload handler. If provided, attach button is shown. */
   onFilesAdded?: (files: File[]) => void
+  /** Optional: render custom output for tool parts (e.g. DataGrid for list_* tools, DataChart for metrics). Return null to use default JSON output. */
+  renderToolOutput?: (toolPart: ToolPart) => React.ReactNode | null
   /** Accessibility: title for the chat (sr-only). */
   ariaTitle?: string
   /** Accessibility: description for the chat (sr-only). */
@@ -247,7 +249,8 @@ function SendButton() {
 function renderAssistantPart(
   part: AssistantPart,
   onSuggestionClick: (text: string) => void,
-  index: number
+  index: number,
+  renderToolOutput?: (toolPart: ToolPart) => React.ReactNode | null
 ) {
   const key = `${part.type}-${index}`
   switch (part.type) {
@@ -263,11 +266,13 @@ function renderAssistantPart(
       )
     case "tool": {
       const awaitingConfirmation = Boolean(part.confirm && !part.confirmed)
+      const customOutput = renderToolOutput?.(part.toolPart) ?? undefined
       const toolBlock = (
         <div className="w-full" key={key}>
           <Tool
             toolPart={part.toolPart}
             awaitingConfirmation={awaitingConfirmation}
+            customOutput={customOutput}
           />
         </div>
       )
@@ -557,6 +562,7 @@ export function CMMSChat({
   suggestedPrompts = [],
   placeholder = "Describe a problem, ask about an asset, or report downtime...",
   onFilesAdded,
+  renderToolOutput,
   ariaTitle = "Maintenance Assistant",
   ariaDescription = "Describe a problem, ask about an asset, or say what's urgent.",
   className,
@@ -612,7 +618,7 @@ export function CMMSChat({
               return (
                 <Message className={`${MESSAGE_CLASS} items-start`} key={idx}>
                   <div className="group flex w-full flex-col gap-0 space-y-2">
-                    {msg.parts?.map((p, i) => renderAssistantPart(p, handleSuggestClick, i))}
+                    {msg.parts?.map((p, i) => renderAssistantPart(p, handleSuggestClick, i, renderToolOutput))}
                     {msg.content != null && msg.content !== "" && !msg.parts?.some((p) => p.type === "text") && (
                       <MessageContent
                         className="text-foreground prose w-full min-w-0 flex-1 rounded-lg bg-transparent p-0"

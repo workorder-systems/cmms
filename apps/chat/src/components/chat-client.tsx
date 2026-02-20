@@ -10,6 +10,7 @@ import type { ToolPart } from "@workspace/ui/components/prompt-kit"
 import { useChat } from "@ai-sdk/react"
 import { useChatAuth } from "@/hooks/use-chat-auth"
 import { PENDING_CONFIRM_PREFIX } from "@/app/api/chat/tools"
+import { renderChatToolOutput } from "@/components/chat-tool-output"
 
 const WELCOME_MESSAGE: ChatMessage = {
   role: "welcome",
@@ -365,6 +366,7 @@ export function ChatClient() {
       onInputChange={setInput}
       onSubmit={onSubmit}
       onFilesAdded={onFilesAdded}
+      renderToolOutput={renderChatToolOutput}
       suggestedPrompts={SUGGESTED_PROMPTS}
       placeholder="Describe a problem, ask about an asset, or report downtime..."
       ariaTitle="Maintenance Assistant"

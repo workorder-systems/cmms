@@ -1,6 +1,5 @@
 "use client"
 
-import { Button } from "@workspace/ui/components/button"
 import {
   Collapsible,
   CollapsibleContent,
@@ -15,6 +14,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react"
+import * as React from "react"
 import { useState } from "react"
 
 export type ToolPart = {
@@ -36,6 +36,8 @@ export type ToolProps = {
   awaitingConfirmation?: boolean
   defaultOpen?: boolean
   className?: string
+  /** When provided and output is available, renders instead of the default JSON output block (e.g. DataGrid or DataChart). */
+  customOutput?: React.ReactNode
 }
 
 /** Convert snake_case tool type to human-readable title (e.g. create_work_order → Create Work Order). */
@@ -49,8 +51,9 @@ function toolTypeToLabel(type: string): string {
 const Tool = ({
   toolPart,
   awaitingConfirmation = false,
-  defaultOpen = false,
+  defaultOpen = true,
   className,
+  customOutput,
 }: ToolProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
@@ -119,10 +122,66 @@ const Tool = ({
     if (value === null) return "null"
     if (value === undefined) return "undefined"
     if (typeof value === "string") return value
-    if (typeof value === "object") {
-      return JSON.stringify(value, null, 2)
-    }
+    if (typeof value === "object") return JSON.stringify(value, null, 2)
     return String(value)
+  }
+
+  /** User-friendly output when customOutput is not provided: no raw JSON. */
+  const renderFriendlyOutput = (value: unknown): React.ReactNode => {
+    if (value === null || value === undefined) return <span className="text-muted-foreground">—</span>
+    if (typeof value === "string") {
+      return <p className="text-sm">{value}</p>
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return <p className="text-sm">{String(value)}</p>
+    }
+    if (Array.isArray(value)) {
+      const len = value.length
+      if (len === 0) return <p className="text-muted-foreground text-sm">No items</p>
+      const first = value[0]
+      const isObject = first != null && typeof first === "object" && !Array.isArray(first)
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-muted-foreground text-xs font-medium">{len} item{len !== 1 ? "s" : ""}</p>
+          {isObject && (
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {(value as Record<string, unknown>[]).slice(0, 10).map((item, i) => (
+                <li key={i} className="rounded border bg-muted/50 px-2 py-1.5">
+                  {Object.entries(item).map(([k, v]) => (
+                    <div key={k} className="flex gap-2">
+                      <span className="text-muted-foreground shrink-0">{k}:</span>
+                      <span>{typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "—")}</span>
+                    </div>
+                  ))}
+                </li>
+              ))}
+              {len > 10 && <li className="text-muted-foreground text-xs">… and {len - 10} more</li>}
+            </ul>
+          )}
+          {!isObject && <p className="text-sm">{value.slice(0, 5).map((v) => String(v)).join(", ")}{len > 5 ? " …" : ""}</p>}
+        </div>
+      )
+    }
+    if (typeof value === "object") {
+      const obj = value as Record<string, unknown>
+      const entries = Object.entries(obj).filter(([, v]) => v !== undefined && v !== null)
+      if (entries.length === 0) return <p className="text-muted-foreground text-sm">—</p>
+      return (
+        <dl className="grid gap-1.5 text-sm">
+          {entries.map(([k, v]) => (
+            <div key={k} className="flex gap-2">
+              <dt className="text-muted-foreground shrink-0 font-medium">{k}:</dt>
+              <dd className="min-w-0">
+                {typeof v === "object" && v !== null && !Array.isArray(v)
+                  ? renderFriendlyOutput(v)
+                  : <span>{String(v)}</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+    return <p className="text-sm">{String(value)}</p>
   }
 
   return (
@@ -158,10 +217,16 @@ const Tool = ({
 
             {output && !awaitingConfirmation && (
               <div className="flex flex-col gap-1">
-                <span className="text-muted-foreground text-xs font-medium">Output</span>
-                <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs">
-                  {formatValue(output)}
-                </pre>
+                {customOutput != null ? (
+                  customOutput
+                ) : (
+                  <>
+                    <span className="text-muted-foreground text-xs font-medium">Result</span>
+                    <div className="rounded-md border bg-muted/30 p-3">
+                      {renderFriendlyOutput(output)}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
