@@ -1,19 +1,16 @@
+'use client'
+
 import * as React from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { getDbClient } from '../../lib/db-client'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@workspace/ui/components/button'
 import { SignupForm } from '@workspace/ui/components/auth'
+import { getDbClient } from '@/lib/db-client'
 
-export const Route = createFileRoute('/auth/signup')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
-  }),
-  component: SignupPage,
-})
-
-function SignupPage() {
-  const { redirect } = Route.useSearch()
-  const navigate = useNavigate()
+export default function SignupPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') ?? undefined
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
@@ -39,11 +36,13 @@ function SignupPage() {
         setCheckEmail(true)
         return
       }
-      await navigate({ to: redirect ?? '/dashboard' })
+      router.push(redirect ?? '/')
     } finally {
       setLoading(false)
     }
   }
+
+  const loginHref = redirect ? `/auth/login?redirect=${encodeURIComponent(redirect)}` : '/auth/login'
 
   return (
     <SignupForm
@@ -56,13 +55,13 @@ function SignupPage() {
       loading={loading}
       checkEmail={checkEmail}
       loginSlot={
-        <Link to="/auth/login" search={{ redirect }} className="underline underline-offset-4 hover:text-foreground">
+        <Link href={loginHref} className="underline underline-offset-4 hover:text-foreground">
           Log in
         </Link>
       }
       goToLoginSlot={
         <Button asChild className="w-full" variant="outline">
-          <Link to="/auth/login" search={{ redirect }}>Go to log in</Link>
+          <Link href={loginHref}>Go to log in</Link>
         </Button>
       }
     />

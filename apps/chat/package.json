@@ -10,6 +10,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@workorder-systems/sdk": "workspace:*",
+    "@workspace/ui": "workspace:*",
     "next": "^15.5.10",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

@@ -1,14 +1,13 @@
+'use client'
+
 import * as React from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { getDbClient } from '../../lib/db-client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ResetPasswordForm } from '@workspace/ui/components/auth'
+import { getDbClient } from '@/lib/db-client'
 
-export const Route = createFileRoute('/auth/reset-password')({
-  component: ResetPasswordPage,
-})
-
-function ResetPasswordPage() {
-  const navigate = useNavigate()
+export default function ResetPasswordPage() {
+  const router = useRouter()
   const [password, setPassword] = React.useState('')
   const [confirm, setConfirm] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
@@ -35,7 +34,7 @@ function ResetPasswordPage() {
         return
       }
       setSuccess(true)
-      await navigate({ to: '/auth/login', search: { redirect: undefined } })
+      router.push('/auth/login')
     } finally {
       setLoading(false)
     }
@@ -52,7 +51,10 @@ function ResetPasswordPage() {
       loading={loading}
       success={success}
       backToLoginSlot={
-        <Link to="/auth/login" search={{ redirect: undefined }} className="underline underline-offset-4 hover:text-foreground">
+        <Link
+          href="/auth/login"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
           Back to log in
         </Link>
       }

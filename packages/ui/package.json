@@ -110,6 +110,8 @@
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./components/app-shell": "./src/components/app-shell/index.ts",
+    "./components/auth": "./src/components/auth/index.ts",
+    "./components/auth/*": "./src/components/auth/*.tsx",
     "./components/data-table/*": "./src/components/data-table/*.tsx",
     "./components/prompt-kit": "./src/components/prompt-kit/index.ts",
     "./components/prompt-kit/*": "./src/components/prompt-kit/*.tsx",

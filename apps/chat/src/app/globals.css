@@ -1,1 +1,2 @@
-@import 'tailwindcss';
+/* Use relative path; CSS @import does not resolve workspace package names in Next.js */
+@import '../../../../packages/ui/src/styles/globals.css';

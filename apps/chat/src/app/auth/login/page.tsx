@@ -1,18 +1,15 @@
+'use client'
+
 import * as React from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { getDbClient } from '../../lib/db-client'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LoginForm } from '@workspace/ui/components/auth'
+import { getDbClient } from '@/lib/db-client'
 
-export const Route = createFileRoute('/auth/login')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
-  }),
-  component: LoginPage,
-})
-
-function LoginPage() {
-  const { redirect } = Route.useSearch()
-  const navigate = useNavigate()
+export default function LoginPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') ?? undefined
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
@@ -32,7 +29,7 @@ function LoginPage() {
         setError(err.message)
         return
       }
-      await navigate({ to: redirect ?? '/dashboard' })
+      router.push(redirect ?? '/')
     } finally {
       setLoading(false)
     }
@@ -48,10 +45,13 @@ function LoginPage() {
       error={error}
       loading={loading}
       forgotPasswordSlot={
-        <Link to="/auth/forgot-password">Forgot your password?</Link>
+        <Link href="/auth/forgot-password">Forgot your password?</Link>
       }
       signUpSlot={
-        <Link to="/auth/signup" search={{ redirect }} className="underline underline-offset-4 hover:text-foreground">
+        <Link
+          href={redirect ? `/auth/signup?redirect=${encodeURIComponent(redirect)}` : '/auth/signup'}
+          className="underline underline-offset-4 hover:text-foreground"
+        >
           Sign up
         </Link>
       }
