@@ -32,6 +32,13 @@ export async function getDbClientForUser(
   const db = createDbClientFromSupabase(
     supabase as Parameters<typeof createDbClientFromSupabase>[0]
   )
+  // Set tenant context: updates user metadata (for JWT) and session var (this request only).
   await db.setTenant(tenantId)
+  // Refresh session so the new JWT includes tenant_id from user metadata (custom_access_token_hook).
+  // Without this, the next SDK request uses a different PostgREST connection and get_current_tenant_id() returns null.
+  const { error: refreshError } = await supabase.auth.refreshSession()
+  if (refreshError) {
+    throw new Error(`Session refresh failed: ${refreshError.message}`)
+  }
   return db
 }
