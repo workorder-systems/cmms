@@ -205,8 +205,8 @@ function getRowId(row: Record<string, unknown>): string {
   return `${row.title ?? row.name ?? ""}-${JSON.stringify(row).slice(0, 20)}`
 }
 
-/** Renders a WorkOrderCard from get_work_order tool output (single row; no error). */
-function ToolOutputWorkOrderCard({ row }: { row: Record<string, unknown> }) {
+/** Renders a WorkOrderCard from a work order row (shared by get_work_order output and create_work_order success). */
+function workOrderRowToCardProps(row: Record<string, unknown>) {
   const title = (row.title as string) ?? (row.work_order_title as string) ?? "Work order"
   const statusKey = (row.status as string) ?? null
   const priorityKey = (row.priority as string) ?? null
@@ -214,16 +214,38 @@ function ToolOutputWorkOrderCard({ row }: { row: Record<string, unknown> }) {
   const dueDate =
     dueDateRaw == null ? null : typeof dueDateRaw === "string" ? dueDateRaw : dueDateRaw instanceof Date ? dueDateRaw : null
   const assigneeDisplayName = (row.assigned_to_name as string) ?? null
+  return {
+    title,
+    statusKey,
+    priorityKey,
+    dueDate,
+    assigneeDisplayName,
+  }
+}
+
+/** Renders a WorkOrderCard from get_work_order tool output (single row; no error). */
+function ToolOutputWorkOrderCard({ row }: { row: Record<string, unknown> }) {
+  const props = workOrderRowToCardProps(row)
   return (
     <div className="w-full max-w-md">
       <WorkOrderCard
-        title={title}
-        statusKey={statusKey}
+        {...props}
         statusCatalog={DEFAULT_STATUS_CATALOG}
-        priorityKey={priorityKey}
         priorityCatalog={DEFAULT_PRIORITY_CATALOG}
-        dueDate={dueDate}
-        assigneeDisplayName={assigneeDisplayName}
+      />
+    </div>
+  )
+}
+
+/** Renders a WorkOrderCard for a newly created work order (e.g. after execute create_work_order). */
+export function CreatedWorkOrderCard({ workOrder }: { workOrder: Record<string, unknown> }) {
+  const props = workOrderRowToCardProps(workOrder)
+  return (
+    <div className="mt-2 w-full max-w-md">
+      <WorkOrderCard
+        {...props}
+        statusCatalog={DEFAULT_STATUS_CATALOG}
+        priorityCatalog={DEFAULT_PRIORITY_CATALOG}
       />
     </div>
   )

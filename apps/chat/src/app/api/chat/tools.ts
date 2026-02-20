@@ -313,7 +313,8 @@ export async function executeAction(
           assetId: params.assetId != null ? String(params.assetId) : null,
           locationId: params.locationId != null ? String(params.locationId) : null,
         })
-        return { ok: true, data: { workOrderId: id } }
+        const workOrder = await db.workOrders.getById(id)
+        return { ok: true, data: { workOrderId: id, workOrder: workOrder ?? null } }
       }
       case "transition_work_order_status": {
         await db.workOrders.transitionStatus({

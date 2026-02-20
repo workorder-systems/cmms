@@ -10,7 +10,7 @@ import type { ToolPart } from "@workspace/ui/components/prompt-kit"
 import { useChat } from "@ai-sdk/react"
 import { useChatAuth } from "@/hooks/use-chat-auth"
 import { PENDING_CONFIRM_PREFIX } from "@/app/api/chat/tools"
-import { renderChatToolOutput } from "@/components/chat-tool-output"
+import { renderChatToolOutput, CreatedWorkOrderCard } from "@/components/chat-tool-output"
 
 const WELCOME_MESSAGE: ChatMessage = {
   role: "welcome",
@@ -109,6 +109,7 @@ function buildAssistantParts(
   msg: UIMessage,
   confirmedToolIds: Set<string>,
   successMessages: Record<string, string>,
+  successData: Record<string, unknown>,
   onConfirm: (toolCallId: string, action: string, params: Record<string, unknown>) => () => void
 ): AssistantPart[] {
   const parts: AssistantPart[] = []
@@ -182,6 +183,17 @@ function buildAssistantParts(
 
       const confirmed = confirmedToolIds.has(toolCallId)
       const successMessage = successMessages[toolCallId] ?? undefined
+      const data = successData[toolCallId]
+      const workOrder =
+        data != null &&
+        typeof data === "object" &&
+        !Array.isArray(data) &&
+        "workOrder" in data &&
+        (data as { workOrder?: unknown }).workOrder
+      const workOrderRow =
+        workOrder != null && typeof workOrder === "object" && !Array.isArray(workOrder)
+          ? (workOrder as Record<string, unknown>)
+          : null
 
       if (pending && !confirmed) {
         parts.push({
@@ -195,12 +207,21 @@ function buildAssistantParts(
           confirmed: false,
         })
       } else if (pending && confirmed && successMessage) {
+        const successContent =
+          toolName === "create_work_order" && workOrderRow ? (
+            <div className="flex flex-col gap-2">
+              <span>Work order created.</span>
+              <CreatedWorkOrderCard workOrder={workOrderRow} />
+            </div>
+          ) : (
+            successMessage
+          )
         parts.push({
           type: "tool",
           toolPart,
           confirm: { message: "", confirmLabel: "", onConfirm: () => {} },
           confirmed: true,
-          successMessage,
+          successMessage: successContent,
         })
       } else {
         parts.push({ type: "tool", toolPart })
@@ -261,6 +282,7 @@ function mapUIMessagesToChatMessages(
   uiMessages: UIMessage[],
   confirmedToolIds: Set<string>,
   successMessages: Record<string, string>,
+  successData: Record<string, unknown>,
   onConfirm: (toolCallId: string, action: string, params: Record<string, unknown>) => () => void
 ): ChatMessage[] {
   const out: ChatMessage[] = [WELCOME_MESSAGE]
@@ -272,7 +294,7 @@ function mapUIMessagesToChatMessages(
         ""
       out.push({ role: "user", content: String(content) })
     } else if (msg.role === "assistant") {
-      const assistantParts = buildAssistantParts(msg, confirmedToolIds, successMessages, onConfirm)
+      const assistantParts = buildAssistantParts(msg, confirmedToolIds, successMessages, successData, onConfirm)
       if (assistantParts.length === 0) {
         out.push({ role: "assistant", content: msg.content ?? "" })
       } else {
@@ -287,6 +309,7 @@ export function ChatClient() {
   const { session, tenantId } = useChatAuth()
   const [confirmedToolIds, setConfirmedToolIds] = React.useState<Set<string>>(new Set())
   const [successMessages, setSuccessMessages] = React.useState<Record<string, string>>({})
+  const [successData, setSuccessData] = React.useState<Record<string, unknown>>({})
 
   const authPayload = React.useMemo(
     () => ({
@@ -343,6 +366,7 @@ export function ChatClient() {
           const data = (await res.json()) as { data?: unknown; error?: string }
           if (res.ok && data.data !== undefined) {
             setConfirmedToolIds((prev) => new Set(prev).add(toolCallId))
+            setSuccessData((prev) => ({ ...prev, [toolCallId]: data.data }))
             if (action === "create_work_order" && data.data && typeof data.data === "object" && "workOrderId" in data.data) {
               setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Work order created.` }))
             } else {
@@ -368,9 +392,10 @@ export function ChatClient() {
         messages as UIMessage[],
         confirmedToolIds,
         successMessages,
+        successData,
         onConfirm
       ),
-    [messages, confirmedToolIds, successMessages, onConfirm]
+    [messages, confirmedToolIds, successMessages, successData, onConfirm]
   )
 
   const onSubmit = () => {
