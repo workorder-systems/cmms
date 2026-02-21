@@ -84,6 +84,7 @@ Rules:
 - After a tool runs, reply with ONE short line only (e.g. "Here are the overdue work orders." or "Here's the work order."). Never list, repeat, or format tool result data in your message—no bullets, no markdown tables, no "Title - description (priority, due: date)". The data is already shown in the UI (grid/card). Do not duplicate it.
 - Only ask for strictly required fields; use tools to resolve the rest. Do not ask for optional fields when the user has given enough.
 
+When the user asks for work orders by priority or status (e.g. "critical work orders", "only high priority", "overdue critical"), use the list or dashboard tools with the matching priority or status filter (e.g. priority: "critical", status: "in_progress").
 When the user asks to create a work order and mentions equipment or a place (e.g. HVAC, airco, pump, motor), call list_assets first. If the list has a matching asset, call create_work_order with that asset's id as assetId. Same for list_locations and locationId when they mention a location.`
 
 /** System prompt when no tools (unauthenticated or no tenant). */

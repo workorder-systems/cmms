@@ -37,6 +37,23 @@ const LIST_LIMIT = 25
 const DASHBOARD_LIMIT = 20
 const SEARCH_SIMILAR_LIMIT = 10
 
+/** Filter rows by optional priority/status (match catalog key, case-insensitive). */
+function filterWorkOrders(
+  rows: Record<string, unknown>[],
+  filters: { priority?: string; status?: string }
+): Record<string, unknown>[] {
+  let out = rows
+  if (filters.priority != null && filters.priority !== "") {
+    const p = filters.priority.toLowerCase().trim()
+    out = out.filter((r) => (r.priority as string)?.toLowerCase() === p)
+  }
+  if (filters.status != null && filters.status !== "") {
+    const s = filters.status.toLowerCase().trim()
+    out = out.filter((r) => (r.status as string)?.toLowerCase() === s)
+  }
+  return out
+}
+
 /**
  * Create chat tools that run on behalf of the user via the given DbClient.
  * Read-only tools execute immediately; create/update/delete tools return a pending-confirm payload.
@@ -45,11 +62,25 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
   return {
     // ---------- Read-only: execute immediately ----------
     list_work_orders: tool({
-      description: "List work orders for the current tenant. Use to show open, overdue, or all work orders.",
-      parameters: z.object({}),
-      execute: async () => {
-        const rows = await db.workOrders.list()
-        const slice = (rows as Record<string, unknown>[]).slice(0, LIST_LIMIT)
+      description:
+        "List work orders for the current tenant. Use when the user asks for work orders (all, open, or filtered). Optional filters: priority (e.g. critical, high, medium, low) and/or status (e.g. draft, in_progress, completed).",
+      parameters: z.object({
+        priority: z
+          .string()
+          .optional()
+          .describe("Filter by priority key: critical, high, medium, low (use when user says e.g. 'only critical' or 'high priority work orders')"),
+        status: z
+          .string()
+          .optional()
+          .describe("Filter by status key: draft, in_progress, completed, etc. (use when user asks for a specific status)"),
+      }),
+      execute: async ({ priority, status }) => {
+        const rows =
+          status != null && (status as string).toLowerCase().trim() === "draft"
+            ? await db.workOrders.listIncludingDraft()
+            : await db.workOrders.list()
+        const filtered = filterWorkOrders(rows as Record<string, unknown>[], { priority, status })
+        const slice = filtered.slice(0, LIST_LIMIT)
         const cols = WORK_ORDER_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
         return toCSV(slice, cols.length ? cols : undefined)
       },
@@ -105,22 +136,36 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
     }),
 
     get_dashboard_open_work_orders: tool({
-      description: "Get open work orders for the dashboard (current tenant).",
-      parameters: z.object({}),
-      execute: async () => {
+      description:
+        "Get open work orders (not completed) for the dashboard. Use when the user asks for open work orders. Optional: filter by priority (critical, high, medium, low) when user says e.g. 'only critical open work orders'.",
+      parameters: z.object({
+        priority: z
+          .string()
+          .optional()
+          .describe("Filter by priority key: critical, high, medium, low"),
+      }),
+      execute: async ({ priority }) => {
         const rows = await db.dashboard.listOpenWorkOrders()
-        const slice = (rows as Record<string, unknown>[]).slice(0, DASHBOARD_LIMIT)
+        const filtered = filterWorkOrders(rows as Record<string, unknown>[], { priority })
+        const slice = filtered.slice(0, DASHBOARD_LIMIT)
         const cols = WORK_ORDER_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
         return toCSV(slice, cols.length ? cols : undefined)
       },
     }),
 
     get_dashboard_overdue_work_orders: tool({
-      description: "Get overdue work orders for the dashboard (current tenant).",
-      parameters: z.object({}),
-      execute: async () => {
+      description:
+        "Get overdue work orders (past due date) for the dashboard. Use when the user asks for overdue work orders. Optional: filter by priority (critical, high, medium, low) when user says e.g. 'overdue critical only'.",
+      parameters: z.object({
+        priority: z
+          .string()
+          .optional()
+          .describe("Filter by priority key: critical, high, medium, low"),
+      }),
+      execute: async ({ priority }) => {
         const rows = await db.dashboard.listOverdueWorkOrders()
-        const slice = (rows as Record<string, unknown>[]).slice(0, DASHBOARD_LIMIT)
+        const filtered = filterWorkOrders(rows as Record<string, unknown>[], { priority })
+        const slice = filtered.slice(0, DASHBOARD_LIMIT)
         const cols = WORK_ORDER_LIST_COLUMNS.filter((c) => slice[0] && c in (slice[0] as object))
         return toCSV(slice, cols.length ? cols : undefined)
       },

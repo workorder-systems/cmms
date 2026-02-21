@@ -87,8 +87,15 @@ const rpc = (supabase: SupabaseClient<Database>) =>
  */
 export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
   return {
-    /** List work orders for the current tenant (v_work_orders). */
+    /** List work orders for the current tenant (v_work_orders). Excludes draft by default to reduce noise; use listIncludingDraft() if needed. */
     async list(): Promise<WorkOrderRow[]> {
+      const { data, error } = await supabase.from('v_work_orders').select('*').neq('status', 'draft');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderRow[];
+    },
+
+    /** List work orders including draft (v_work_orders). Use when the caller needs draft work orders. */
+    async listIncludingDraft(): Promise<WorkOrderRow[]> {
       const { data, error } = await supabase.from('v_work_orders').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as WorkOrderRow[];
