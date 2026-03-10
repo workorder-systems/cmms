@@ -279,10 +279,11 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
 
     transition_work_order_status: tool({
       description:
-        "Transition a work order to a new status (e.g. start, complete). Requires user confirmation.",
+        "Transition a work order to a new status (e.g. in_progress, completed). When the user wants to complete or move one to completed, use list_work_orders with status=in_progress so completed work orders are excluded; pick the matching row by title. When the user refers by name for other status changes, use list_work_orders with an appropriate status filter. Use show_work_order_picker if multiple candidates. Requires user confirmation.",
       parameters: z.object({
-        workOrderId: z.string().describe("Work order UUID"),
-        toStatusKey: z.string().describe("Target status key from status catalog"),
+        workOrderId: z.string().describe("Work order UUID from list_work_orders (filter by status as needed) or picker; must match workOrderId"),
+        toStatusKey: z.string().describe("Target status key: draft, in_progress, completed, etc."),
+        titleForConfirm: z.string().optional().describe("That work order's title from the list; must match workOrderId"),
       }),
       execute: async (params) => {
         return pendingConfirm("transition_work_order_status", params)
@@ -290,11 +291,13 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
     }),
 
     complete_work_order: tool({
-      description: "Complete a work order with optional cause and resolution. Requires user confirmation.",
+      description:
+        "Complete a work order with optional cause and resolution, or update cause/resolution on an already-completed work order. For first-time completion: use list_work_orders with status=in_progress to find it; ask for cause/resolution if not yet provided. For adding or editing cause/resolution on an already-completed work order, call this with the work order id and the new cause/resolution (list by status=completed if needed). Use show_work_order_picker if multiple candidates. Requires user confirmation.",
       parameters: z.object({
-        workOrderId: z.string().describe("Work order UUID"),
-        cause: z.string().optional().describe("Root cause"),
-        resolution: z.string().optional().describe("Resolution notes"),
+        workOrderId: z.string().describe("Work order UUID from list (in_progress or completed) or picker"),
+        titleForConfirm: z.string().optional().describe("That work order's title from the list; must match workOrderId"),
+        cause: z.string().optional().describe("Root cause (ask the user if not yet provided; can update later on completed WO)"),
+        resolution: z.string().optional().describe("Resolution notes (ask the user if not yet provided; can update later on completed WO)"),
       }),
       execute: async (params) => {
         return pendingConfirm("complete_work_order", params)
@@ -326,6 +329,61 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
       }),
       execute: async (params) => {
         return pendingConfirm("update_asset", params)
+      },
+    }),
+
+    // ---------- Picker tools: show select UI when multiple results or unclear which entity ----------
+    show_work_order_picker: tool({
+      description:
+        "Show a select/picker in the chat so the user can choose one work order. Use when search_similar_work_orders or a list returns multiple results and it's not clear which one the user meant (e.g. 'move the replace light fixtures to completed' but several match). Pass the candidate options and the action you will run after they pick (e.g. transition_work_order_status with toStatusKey). Do not guess—call this tool when there are multiple candidates.",
+      parameters: z.object({
+        options: z
+          .array(z.object({ workOrderId: z.string(), title: z.string() }))
+          .min(1)
+          .max(20)
+          .describe("Candidate work orders from search or list"),
+        prompt: z.string().describe("Short prompt shown above the select (e.g. 'Which work order?')"),
+        followUpAction: z
+          .enum(["transition_work_order_status", "complete_work_order"])
+          .describe("Action to run after the user selects"),
+        followUpParams: z
+          .record(z.unknown())
+          .describe("Params for the action (e.g. { toStatusKey: 'completed' }). workOrderId and titleForConfirm will be filled from the selected option."),
+      }),
+      execute: async ({ options, prompt, followUpAction, followUpParams }) => {
+        return JSON.stringify({
+          _display: "picker",
+          kind: "work_order",
+          options,
+          prompt,
+          followUpAction,
+          followUpParams,
+        })
+      },
+    }),
+
+    show_asset_picker: tool({
+      description:
+        "Show a select/picker in the chat so the user can choose one asset. Use when list_assets returns multiple results and it's not clear which asset the user meant (e.g. 'create work order for the HVAC' but several HVACs exist). Do not guess—call this tool when there are multiple candidates.",
+      parameters: z.object({
+        options: z
+          .array(z.object({ assetId: z.string(), name: z.string() }))
+          .min(1)
+          .max(20)
+          .describe("Candidate assets from list"),
+        prompt: z.string().describe("Short prompt shown above the select (e.g. 'Which asset?')"),
+        followUpAction: z.string().describe("Action to run after the user selects (e.g. create_work_order)"),
+        followUpParams: z.record(z.unknown()).describe("Params for the action. assetId will be filled from the selected option."),
+      }),
+      execute: async ({ options, prompt, followUpAction, followUpParams }) => {
+        return JSON.stringify({
+          _display: "picker",
+          kind: "asset",
+          options,
+          prompt,
+          followUpAction,
+          followUpParams,
+        })
       },
     }),
   }

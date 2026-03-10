@@ -11,6 +11,13 @@ import { useChat } from "@ai-sdk/react"
 import { useChatAuth } from "@/hooks/use-chat-auth"
 import { PENDING_CONFIRM_PREFIX } from "@/app/api/chat/tools"
 import { renderChatToolOutput, CreatedWorkOrderCard } from "@/components/chat-tool-output"
+import {
+  ChatExecuteContextProvider,
+  useChatExecute,
+  type ChatExecuteContextValue,
+} from "@/components/chat-execute-context"
+
+export { useChatExecute }
 
 const WELCOME_MESSAGE: ChatMessage = {
   role: "welcome",
@@ -105,6 +112,36 @@ function normalizeToolResult(result: unknown): {
   return { output: obj ?? undefined, state: "output-available" }
 }
 
+/** Confirm message per action type (no generic "Create work order Untitled" for transitions). */
+function confirmMessageForAction(
+  action: string,
+  input: Record<string, unknown>
+): string {
+  switch (action) {
+    case "create_work_order":
+      return `Create work order "${String(input.title ?? "Untitled")}"?`
+    case "transition_work_order_status": {
+      const toStatus = String(input.toStatusKey ?? "completed")
+      const title = input.titleForConfirm ? String(input.titleForConfirm) : null
+      return title
+        ? `Move "${title}" to ${toStatus}?`
+        : `Move this work order to ${toStatus}?`
+    }
+    case "complete_work_order": {
+      const title = input.titleForConfirm ? String(input.titleForConfirm) : null
+      return title
+        ? `Complete work order "${title}" (with optional cause/resolution)?`
+        : "Complete this work order (with optional cause/resolution)?"
+    }
+    case "create_asset":
+      return `Create asset "${String(input.name ?? "Untitled")}"?`
+    case "update_asset":
+      return "Update this asset?"
+    default:
+      return "Confirm this action?"
+  }
+}
+
 function buildAssistantParts(
   msg: UIMessage,
   confirmedToolIds: Set<string>,
@@ -196,11 +233,12 @@ function buildAssistantParts(
           : null
 
       if (pending && !confirmed) {
+        const confirmMessage = confirmMessageForAction(pending.action, input)
         parts.push({
           type: "tool",
           toolPart,
           confirm: {
-            message: `Create work order "${String(input.title ?? "Untitled")}"?`,
+            message: confirmMessage,
             confirmLabel: "Confirm",
             onConfirm: onConfirm(toolCallId, pending.action, pending.params),
           },
@@ -263,6 +301,8 @@ function humanReadableToolSummary(parts: AssistantPart[]): string {
   if (name === "get_location") return "Here’s the location."
   if (name === "list_status_catalogs") return "Here are the status options."
   if (name === "list_priority_catalogs") return "Here are the priority options."
+  if (name === "show_work_order_picker") return "Which work order?"
+  if (name === "show_asset_picker") return "Which asset?"
   if (name === "search_similar_work_orders") {
     const out = first.toolPart.output as unknown
     if (typeof out === "string") {
@@ -345,45 +385,55 @@ export function ChatClient() {
   /** Guard: prevent double-execute when user clicks Confirm multiple times before first request completes. */
   const executingRef = React.useRef<Set<string>>(new Set())
 
-  const onConfirm = React.useCallback(
-    (toolCallId: string, action: string, params: Record<string, unknown>) => {
-      return async () => {
-        if (!session?.access_token || !tenantId) return
-        if (executingRef.current.has(toolCallId)) return
-        executingRef.current.add(toolCallId)
-        try {
-          const res = await fetch("/api/chat/execute", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              accessToken: session.access_token,
-              refreshToken: session.refresh_token ?? null,
-              tenantId,
-              action,
-              params,
-            }),
-          })
-          const data = (await res.json()) as { data?: unknown; error?: string }
-          if (res.ok && data.data !== undefined) {
-            setConfirmedToolIds((prev) => new Set(prev).add(toolCallId))
-            setSuccessData((prev) => ({ ...prev, [toolCallId]: data.data }))
-            if (action === "create_work_order" && data.data && typeof data.data === "object" && "workOrderId" in data.data) {
-              setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Work order created.` }))
-            } else {
-              setSuccessMessages((prev) => ({ ...prev, [toolCallId]: "Done." }))
-            }
+  const executeAndReport = React.useCallback(
+    async (action: string, params: Record<string, unknown>, toolCallId: string) => {
+      if (!session?.access_token || !tenantId) return
+      if (executingRef.current.has(toolCallId)) return
+      executingRef.current.add(toolCallId)
+      try {
+        const res = await fetch("/api/chat/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token ?? null,
+            tenantId,
+            action,
+            params,
+          }),
+        })
+        const data = (await res.json()) as { data?: unknown; error?: string }
+        if (res.ok && data.data !== undefined) {
+          setConfirmedToolIds((prev) => new Set(prev).add(toolCallId))
+          setSuccessData((prev) => ({ ...prev, [toolCallId]: data.data }))
+          if (action === "create_work_order" && data.data && typeof data.data === "object" && "workOrderId" in data.data) {
+            setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Work order created.` }))
           } else {
-            setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Error: ${data.error ?? "Failed"}` }))
+            setSuccessMessages((prev) => ({ ...prev, [toolCallId]: "Done." }))
           }
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Request failed"
-          setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Error: ${message}` }))
-        } finally {
-          executingRef.current.delete(toolCallId)
+        } else {
+          setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Error: ${data.error ?? "Failed"}` }))
         }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Request failed"
+        setSuccessMessages((prev) => ({ ...prev, [toolCallId]: `Error: ${message}` }))
+      } finally {
+        executingRef.current.delete(toolCallId)
       }
     },
     [session?.access_token, session?.refresh_token, tenantId]
+  )
+
+  const onConfirm = React.useCallback(
+    (toolCallId: string, action: string, params: Record<string, unknown>) => {
+      return () => void executeAndReport(action, params, toolCallId)
+    },
+    [executeAndReport]
+  )
+
+  const chatExecuteContextValue = React.useMemo<ChatExecuteContextValue>(
+    () => ({ executeAndReport }),
+    [executeAndReport]
   )
 
   const chatMessages = React.useMemo(
@@ -408,17 +458,19 @@ export function ChatClient() {
   }
 
   return (
-    <CMMSChat
-      messages={chatMessages}
-      inputValue={input}
-      onInputChange={setInput}
-      onSubmit={onSubmit}
-      onFilesAdded={onFilesAdded}
-      renderToolOutput={renderChatToolOutput}
-      suggestedPrompts={SUGGESTED_PROMPTS}
-      placeholder="Describe a problem, ask about an asset, or report downtime..."
-      ariaTitle="Maintenance Assistant"
-      ariaDescription="Describe a problem, ask about an asset, or say what's urgent."
-    />
+    <ChatExecuteContextProvider value={chatExecuteContextValue}>
+      <CMMSChat
+        messages={chatMessages}
+        inputValue={input}
+        onInputChange={setInput}
+        onSubmit={onSubmit}
+        onFilesAdded={onFilesAdded}
+        renderToolOutput={renderChatToolOutput}
+        suggestedPrompts={SUGGESTED_PROMPTS}
+        placeholder="Describe a problem, ask about an asset, or report downtime..."
+        ariaTitle="Maintenance Assistant"
+        ariaDescription="Describe a problem, ask about an asset, or say what's urgent."
+      />
+    </ChatExecuteContextProvider>
   )
 }

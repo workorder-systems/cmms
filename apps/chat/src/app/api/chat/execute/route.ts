@@ -39,8 +39,12 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
       })
     }
+    const errorMessage =
+      result.error?.includes("Invalid status transition from completed to completed")
+        ? "This work order is already completed. Ask to add or update cause and resolution for it."
+        : result.error
     return new Response(
-      JSON.stringify({ error: result.error }),
+      JSON.stringify({ error: errorMessage }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     )
   } catch (error) {

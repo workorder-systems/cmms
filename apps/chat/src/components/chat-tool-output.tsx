@@ -7,7 +7,9 @@ import { DataChart } from "@workspace/ui/components/data-chart"
 import { WorkOrderCard } from "@workspace/ui/components/work-order-card"
 import { AssetCard } from "@workspace/ui/components/asset-card"
 import { Item, ItemContent, ItemTitle, ItemDescription } from "@workspace/ui/components/item"
+import { Button } from "@workspace/ui/components/button"
 import type { ToolPart } from "@workspace/ui/components/prompt-kit"
+import { useChatExecute } from "@/components/chat-execute-context"
 
 /** Minimal column def for read-only grid; matches useDataGrid column shape. */
 type SimpleColumnDef = {
@@ -288,6 +290,102 @@ function ToolOutputLocationCard({ row }: { row: Record<string, unknown> }) {
   )
 }
 
+/** Picker payload from show_work_order_picker / show_asset_picker. */
+type PickerPayload = {
+  _display: "picker"
+  kind: "work_order" | "asset"
+  options: Array<{ workOrderId?: string; title?: string; assetId?: string; name?: string }>
+  prompt: string
+  followUpAction: string
+  followUpParams: Record<string, unknown>
+}
+
+/** Build confirm message for picker follow-up (transition/complete). */
+function pickerConfirmMessage(
+  action: string,
+  selected: { workOrderId?: string; title?: string; assetId?: string; name?: string },
+  followUpParams: Record<string, unknown>
+): string {
+  if (action === "transition_work_order_status") {
+    const toStatus = String(followUpParams.toStatusKey ?? "completed")
+    const title = selected.title ?? "this work order"
+    return `Move "${title}" to ${toStatus}?`
+  }
+  if (action === "complete_work_order") {
+    const title = selected.title ?? "this work order"
+    return `Complete work order "${title}"?`
+  }
+  if (action === "create_work_order" && selected.name) {
+    return `Create work order for asset "${selected.name}"?`
+  }
+  return "Confirm?"
+}
+
+/** Renders a select/picker so the user can choose one option; on confirm runs the follow-up action. */
+function ToolOutputPicker({
+  payload,
+  toolCallId,
+}: {
+  payload: PickerPayload
+  toolCallId: string | undefined
+}) {
+  const ctx = useChatExecute()
+  const [selected, setSelected] = React.useState<typeof payload.options[0] | null>(null)
+  const [confirming, setConfirming] = React.useState(false)
+
+  const onConfirm = React.useCallback(() => {
+    if (!selected || !ctx || !toolCallId) return
+    const merged =
+      payload.kind === "work_order"
+        ? { ...payload.followUpParams, workOrderId: selected.workOrderId, titleForConfirm: selected.title }
+        : { ...payload.followUpParams, assetId: selected.assetId ?? selected.workOrderId }
+    void ctx.executeAndReport(payload.followUpAction, merged, toolCallId)
+    setConfirming(false)
+    setSelected(null)
+  }, [selected, ctx, toolCallId, payload])
+
+  if (!ctx) return null
+
+  return (
+    <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+      <p className="mb-2 font-medium text-foreground">{payload.prompt}</p>
+      <div className="flex flex-col gap-1">
+        {payload.options.map((opt, i) => {
+          const label = payload.kind === "work_order" ? (opt.title ?? opt.workOrderId ?? "") : (opt.name ?? opt.assetId ?? "")
+          const id = (payload.kind === "work_order" ? opt.workOrderId : opt.assetId) ?? String(i)
+          return (
+            <Button
+              key={id}
+              variant={selected === opt ? "default" : "outline"}
+              size="sm"
+              className="justify-start text-left"
+              onClick={() => {
+                setSelected(opt)
+                setConfirming(true)
+              }}
+            >
+              {label}
+            </Button>
+          )
+        })}
+      </div>
+      {confirming && selected && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-2">
+          <span className="text-muted-foreground text-xs">
+            {pickerConfirmMessage(payload.followUpAction, selected, payload.followUpParams)}
+          </span>
+          <Button size="sm" variant="default" onClick={onConfirm}>
+            Confirm
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Renders a short success line for mutation tools (create/update/complete) when output is { ok: true, data }. */
 function ToolOutputMutationSuccess({
   toolName,
@@ -393,10 +491,34 @@ function ToolOutputCharts({ output }: { output: Record<string, unknown> }) {
  * List tools may return CSV string; we parse to array for the grid.
  * Returns null to fall back to default friendly output.
  */
+const PICKER_TOOLS = new Set(["show_work_order_picker", "show_asset_picker"])
+
 export function renderChatToolOutput(toolPart: ToolPart): React.ReactNode | null {
   if (toolPart.state !== "output-available" || toolPart.output === undefined) return null
   const raw = toolPart.output as unknown
   const toolName = (toolPart.type ?? "").toLowerCase()
+
+  // Picker: show_work_order_picker / show_asset_picker return { _display: "picker", ... }
+  if (PICKER_TOOLS.has(toolName)) {
+    let parsed: Record<string, unknown> | null = null
+    if (typeof raw === "string") {
+      try {
+        parsed = JSON.parse(raw) as Record<string, unknown>
+      } catch {
+        return null
+      }
+    } else if (raw !== null && typeof raw === "object" && !Array.isArray(raw)) {
+      parsed = raw as Record<string, unknown>
+    }
+    if (parsed?._display === "picker" && Array.isArray(parsed.options) && parsed.options.length > 0) {
+      return (
+        <ToolOutputPicker
+          payload={parsed as unknown as PickerPayload}
+          toolCallId={toolPart.toolCallId}
+        />
+      )
+    }
+  }
 
   // Helper: parse raw to single object (string → JSON, or object as-is)
   const parseSingleObject = (): Record<string, unknown> | null => {
