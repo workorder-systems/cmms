@@ -62,7 +62,7 @@ export interface CompleteWorkOrderParams {
   resolution?: string | null;
 }
 
-/** Params for logging time on a work order. */
+/** Params for logging time on a work order. Optional GPS for mobile field workflows. */
 export interface LogTimeParams {
   tenantId: string;
   workOrderId: string;
@@ -70,6 +70,10 @@ export interface LogTimeParams {
   entryDate?: string | null;
   userId?: string | null;
   description?: string | null;
+  /** Optional GPS when entry was logged (e.g. from device). */
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMetres?: number | null;
 }
 
 /** Params for updating work order attachment metadata (label/kind). Create attachments via Storage upload to bucket "attachments"; see docs/attachments-client-flow.md. */
@@ -158,7 +162,7 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
       });
     },
 
-    /** Log time on a work order. Returns the time entry UUID. */
+    /** Log time on a work order. Optional GPS (latitude, longitude, accuracyMetres) for mobile. Returns the time entry UUID. */
     async logTime(params: LogTimeParams): Promise<string> {
       return callRpc(rpc(supabase), 'rpc_log_work_order_time', {
         p_tenant_id: params.tenantId,
@@ -167,6 +171,9 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
         p_entry_date: params.entryDate ?? null,
         p_user_id: params.userId ?? null,
         p_description: params.description ?? null,
+        p_latitude: params.latitude ?? null,
+        p_longitude: params.longitude ?? null,
+        p_accuracy_metres: params.accuracyMetres ?? null,
       });
     },
 

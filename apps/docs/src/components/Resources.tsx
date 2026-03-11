@@ -213,6 +213,20 @@ const resources: Array<Resource> = [
       ],
     },
   },
+  {
+    href: '/mobile-field',
+    name: 'Mobile field',
+    description:
+      'Offline sync payload, start/stop work order, add note, register attachment; lightweight mobile views and GPS hooks.',
+    icon: MapPinIcon,
+    pattern: {
+      y: 8,
+      squares: [
+        [0, 1],
+        [1, 3],
+      ],
+    },
+  },
 ]
 
 function ResourceIcon({ icon: Icon }: { icon: Resource['icon'] }) {

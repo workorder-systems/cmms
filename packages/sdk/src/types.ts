@@ -21,6 +21,7 @@ import type { CostsResource } from './resources/costs.js';
 import type { ProjectsResource } from './resources/projects.js';
 import type { PartsInventoryResource } from './resources/parts-inventory.js';
 import type { SafetyComplianceResource } from './resources/safety-compliance.js';
+import type { MobileFieldResource } from './resources/mobile-field.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -92,4 +93,6 @@ export type DbClient = {
   partsInventory: PartsInventoryResource;
   /** Safety and compliance: inspection templates, schedules, runs, incidents, and corrective actions. Audit-ready for regulated industries. */
   safetyCompliance: SafetyComplianceResource;
+  /** Mobile field: offline sync payload, start/stop work order, add note, register attachment, and lightweight mobile views. */
+  mobile: MobileFieldResource;
 };

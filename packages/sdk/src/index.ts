@@ -243,3 +243,19 @@ export type {
   ComplianceIncidentReportParams,
   SafetyComplianceResource,
 } from './resources/safety-compliance.js';
+export type {
+  MobileWorkOrderRow,
+  MobileAssetRow,
+  MobileLocationRow,
+  MobileTimeEntryRow,
+  MobileAttachmentRow,
+  MobileCheckInRow,
+  MobileNoteRow,
+  MobileSyncPayload,
+  MobileSyncParams,
+  StartWorkOrderParams,
+  StopWorkOrderParams,
+  AddWorkOrderNoteParams,
+  RegisterWorkOrderAttachmentParams,
+  MobileFieldResource,
+} from './resources/mobile-field.js';
