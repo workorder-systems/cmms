@@ -186,6 +186,12 @@ describe('Error Handling & Edge Cases', () => {
         p_tenant_id: tenantId,
         p_location_id: fakeLocationId,
         p_name: 'Updated',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();

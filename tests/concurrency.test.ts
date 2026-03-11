@@ -337,7 +337,13 @@ describe('Concurrent Operations', () => {
       const { error } = await adminClient.rpc('rpc_update_location', {
         p_tenant_id: tenantId,
         p_location_id: parentId,
+        p_name: null,
+        p_description: null,
         p_parent_location_id: childId, // Creates cycle
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       // Should fail validation (circular reference check)

@@ -76,6 +76,12 @@ describe('RLS Policies', () => {
       const { error } = await ownerClient2.rpc('rpc_create_location', {
         p_tenant_id: tenantId1,
         p_name: 'Unauthorized Location',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: 'site',
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -98,6 +104,12 @@ describe('RLS Policies', () => {
         p_tenant_id: tenantId2,
         p_location_id: location1,
         p_name: 'Unauthorized Update',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();

@@ -9,15 +9,17 @@ export const sections = [
   { title: 'Create location', id: 'create-location' },
   { title: 'Update location', id: 'update-location' },
   { title: 'Delete location', id: 'delete-location' },
+  { title: 'Bulk import', id: 'bulk-import' },
+  { title: 'Hierarchy and portfolio views', id: 'hierarchy-portfolio-views' },
 ]
 
 # Locations
 
-Lists and gets locations for the current tenant; create, update, delete. Locations can have a parent for hierarchy. Set tenant context before calling these methods. {{ className: 'lead' }}
+Lists and gets locations for the current tenant; create, update, delete. Locations support a typed hierarchy: **region**, **site**, **building**, **floor**, **room**, **zone**. Each location has a required `location_type` (default `site`), and optional `code`, `address_line`, and `external_id`. Parent-type rules apply: e.g. room/zone under floor, floor under building, building under site, site under region. Set tenant context before calling these methods. {{ className: 'lead' }}
 
 ## List locations
 
-List all locations for the current tenant (from `v_locations`).
+List all locations for the current tenant (from `v_locations`). Rows include `location_type`, `code`, `address_line`, `external_id`.
 
 <CodeGroup title="client.locations.list()">
 
@@ -53,6 +55,10 @@ const locationId = await client.locations.create({
   name: 'Building A',
   description: 'Main building',
   parentLocationId: null,
+  locationType: 'building', // 'region' | 'site' | 'building' | 'floor' | 'room' | 'zone'; default 'site'
+  code: 'BLD-A',
+  addressLine: '123 Main St',
+  externalId: null,
 })
 // Returns string (UUID)
 ```
@@ -72,6 +78,18 @@ const locationId = await client.locations.create({
   <Property name="parentLocationId">
     Optional. Parent location UUID.
   </Property>
+  <Property name="locationType">
+    Optional. One of: region, site, building, floor, room, zone. Default <code>site</code>.
+  </Property>
+  <Property name="code">
+    Optional. Short code (unique per tenant).
+  </Property>
+  <Property name="addressLine">
+    Optional. Single-line address.
+  </Property>
+  <Property name="externalId">
+    Optional. External system id (e.g. CAFM).
+  </Property>
 </Properties>
 
 ## Update location
@@ -87,7 +105,68 @@ await client.locations.update({
   name: 'Building A (North)',
   description: null,
   parentLocationId: null,
+  locationType: null,
+  code: null,
+  addressLine: null,
+  externalId: null,
 })
+```
+
+</CodeGroup>
+
+## Bulk import
+
+Import many locations in one call. Each row must have `name`; optional fields: `description`, `parent_location_id`, `location_type` (default `site`), `code`, `address_line`, `external_id`.
+
+<CodeGroup title="client.locations.bulkImport(params)">
+
+```ts
+const result = await client.locations.bulkImport({
+  tenantId: 'uuid-of-tenant',
+  rows: [
+    { name: 'Site Alpha', location_type: 'site', code: 'SITE-A' },
+    { name: 'Building 1', parent_location_id: siteId, location_type: 'building', code: 'BLD-1' },
+    { name: 'Floor 2', parent_location_id: buildingId, location_type: 'floor', code: 'FL-2' },
+  ],
+})
+// result.created_ids, result.errors
+```
+
+</CodeGroup>
+
+## Hierarchy and portfolio views
+
+With tenant context set, query these views via the raw Supabase client for tree UIs, breadcrumbs, and multi-site dashboards.
+
+**v_location_hierarchy** — each location with `path_ids`, `path_names`, `depth` (0 = root).
+
+<CodeGroup title="Hierarchy (tree / breadcrumbs)">
+
+```ts
+const { data } = await client.supabase.from('v_location_hierarchy').select('*')
+// Filter by depth, or build tree from path_ids
+```
+
+</CodeGroup>
+
+**v_site_rollup** — one row per site with aggregated counts (buildings, floors, rooms, zones, assets, work orders).
+
+<CodeGroup title="Site rollup (multi-site KPIs)">
+
+```ts
+const { data } = await client.supabase.from('v_site_rollup').select('*')
+// site_id, site_name, building_count, floor_count, room_count, asset_count, work_order_count, ...
+```
+
+</CodeGroup>
+
+**v_portfolio_overview** — tenant-level summary plus one row per site (tenant metrics plus site breakdown).
+
+<CodeGroup title="Portfolio overview">
+
+```ts
+const { data } = await client.supabase.from('v_portfolio_overview').select('*')
+// tenant_id, tenant_name, member_count, location_count, asset_count, work_order_count, plus per-site: site_id, site_name, site_asset_count, site_work_order_count, ...
 ```
 
 </CodeGroup>
@@ -105,6 +184,9 @@ await client.locations.delete('uuid-of-tenant', 'uuid-of-location')
 </CodeGroup>
 
 <div className="not-prose flex flex-wrap gap-3">
+  <Button href="/spaces" variant="text" arrow="right">
+    <>Spaces</>
+  </Button>
   <Button href="/assets" variant="text" arrow="right">
     <>Assets</>
   </Button>

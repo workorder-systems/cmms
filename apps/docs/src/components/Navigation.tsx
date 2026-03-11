@@ -253,6 +253,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Similar Past Fixes', href: '/similar-past-fixes' },
       { title: 'Assets', href: '/assets' },
       { title: 'Locations', href: '/locations' },
+      { title: 'Spaces', href: '/spaces' },
       { title: 'Departments', href: '/departments' },
       { title: 'Labor (technicians & crews)', href: '/labor' },
       { title: 'Scheduling & dispatch', href: '/scheduling' },

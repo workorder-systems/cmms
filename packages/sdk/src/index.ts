@@ -37,10 +37,21 @@ export type {
 } from './resources/assets.js';
 export type {
   LocationRow,
+  LocationType,
   CreateLocationParams,
   UpdateLocationParams,
+  BulkImportLocationRow,
+  BulkImportLocationResult,
+  BulkImportLocationsParams,
   LocationsResource,
 } from './resources/locations.js';
+export type {
+  SpaceRow,
+  SpaceStatus,
+  CreateSpaceParams,
+  UpdateSpaceParams,
+  SpacesResource,
+} from './resources/spaces.js';
 export type {
   DepartmentRow,
   CreateDepartmentParams,

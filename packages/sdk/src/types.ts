@@ -4,6 +4,7 @@ import type { TenantsResource } from './resources/tenants.js';
 import type { WorkOrdersResource } from './resources/work-orders.js';
 import type { AssetsResource } from './resources/assets.js';
 import type { LocationsResource } from './resources/locations.js';
+import type { SpacesResource } from './resources/spaces.js';
 import type { DepartmentsResource } from './resources/departments.js';
 import type { MetersResource } from './resources/meters.js';
 import type { PluginsResource } from './resources/plugins.js';
@@ -53,6 +54,8 @@ export type DbClient = {
   assets: AssetsResource;
   /** Locations: list, get, create, update, delete. */
   locations: LocationsResource;
+  /** Spaces: room/space attributes (usage, capacity, status). List, get, create, update, delete. */
+  spaces: SpacesResource;
   /** Departments: list, get, create, update, delete. */
   departments: DepartmentsResource;
   /** Meters: list, get readings, create, update, record reading, delete. */

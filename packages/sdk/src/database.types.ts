@@ -1026,27 +1026,39 @@ export type Database = {
       }
       v_locations: {
         Row: {
+          address_line: string | null
+          code: string | null
           created_at: string | null
           description: string | null
+          external_id: string | null
           id: string | null
+          location_type: string | null
           name: string | null
           parent_location_id: string | null
           tenant_id: string | null
           updated_at: string | null
         }
         Insert: {
+          address_line?: string | null
+          code?: string | null
           created_at?: string | null
           description?: string | null
+          external_id?: string | null
           id?: string | null
+          location_type?: string | null
           name?: string | null
           parent_location_id?: string | null
           tenant_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          address_line?: string | null
+          code?: string | null
           created_at?: string | null
           description?: string | null
+          external_id?: string | null
           id?: string | null
+          location_type?: string | null
           name?: string | null
           parent_location_id?: string | null
           tenant_id?: string | null
@@ -1114,7 +1126,9 @@ export type Database = {
           last_work_order_activity_at: string | null
           location_id: string | null
           location_name: string | null
+          location_type: string | null
           parent_location_id: string | null
+          site_id: string | null
           tenant_id: string | null
           work_order_count: number | null
         }
@@ -1169,6 +1183,51 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      v_spaces: {
+        Row: {
+          id: string | null
+          tenant_id: string | null
+          location_id: string | null
+          location_name: string | null
+          location_type: string | null
+          usage_type: string | null
+          capacity: number | null
+          status: string | null
+          area_sqft: number | null
+          attributes: Record<string, unknown> | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          tenant_id?: string | null
+          location_id?: string | null
+          location_name?: string | null
+          location_type?: string | null
+          usage_type?: string | null
+          capacity?: number | null
+          status?: string | null
+          area_sqft?: number | null
+          attributes?: Record<string, unknown> | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          tenant_id?: string | null
+          location_id?: string | null
+          location_name?: string | null
+          location_type?: string | null
+          usage_type?: string | null
+          capacity?: number | null
+          status?: string | null
+          area_sqft?: number | null
+          attributes?: Record<string, unknown> | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       v_maintenance_type_catalogs: {
         Row: {
@@ -3056,10 +3115,14 @@ export type Database = {
       }
       rpc_create_location: {
         Args: {
-          p_description?: string
-          p_name: string
-          p_parent_location_id?: string
           p_tenant_id: string
+          p_name: string
+          p_description?: string | null
+          p_parent_location_id?: string | null
+          p_location_type?: string | null
+          p_code?: string | null
+          p_address_line?: string | null
+          p_external_id?: string | null
         }
         Returns: string
       }
@@ -3458,11 +3521,46 @@ export type Database = {
       }
       rpc_update_location: {
         Args: {
-          p_description?: string
-          p_location_id: string
-          p_name?: string
-          p_parent_location_id?: string
           p_tenant_id: string
+          p_location_id: string
+          p_name?: string | null
+          p_description?: string | null
+          p_parent_location_id?: string | null
+          p_location_type?: string | null
+          p_code?: string | null
+          p_address_line?: string | null
+          p_external_id?: string | null
+        }
+        Returns: undefined
+      }
+      rpc_create_space: {
+        Args: {
+          p_tenant_id: string
+          p_location_id: string
+          p_usage_type?: string | null
+          p_capacity?: number | null
+          p_status?: string | null
+          p_area_sqft?: number | null
+          p_attributes?: Record<string, unknown> | null
+        }
+        Returns: string
+      }
+      rpc_update_space: {
+        Args: {
+          p_tenant_id: string
+          p_space_id: string
+          p_usage_type?: string | null
+          p_capacity?: number | null
+          p_status?: string | null
+          p_area_sqft?: number | null
+          p_attributes?: Record<string, unknown> | null
+        }
+        Returns: undefined
+      }
+      rpc_delete_space: {
+        Args: {
+          p_tenant_id: string
+          p_space_id: string
         }
         Returns: undefined
       }

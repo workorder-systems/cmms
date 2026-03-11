@@ -9,22 +9,32 @@ import {
 import { setTenantContext } from './tenant';
 import { formatPostgrestError } from './errors.js';
 
+/** Location type for hierarchy (region, site, building, floor, room, zone). */
+export type TestLocationType = 'region' | 'site' | 'building' | 'floor' | 'room' | 'zone';
+
 /**
  * Create a test location via public RPC.
  * If name is not provided, a realistic site/building name is generated.
+ * locationType defaults to 'site'; use for hierarchy tests (e.g. site -> building -> floor -> room).
  */
 export async function createTestLocation(
   client: SupabaseClient,
   tenantId: string,
   name?: string,
-  parentId?: string
+  parentId?: string,
+  locationType: TestLocationType = 'site'
 ): Promise<string> {
   const finalName = name ?? makeLocationName();
 
   const { data, error } = await client.rpc('rpc_create_location', {
     p_tenant_id: tenantId,
     p_name: finalName,
+    p_description: null,
     p_parent_location_id: parentId || null,
+    p_location_type: locationType,
+    p_code: null,
+    p_address_line: null,
+    p_external_id: null,
   });
 
   if (error) {

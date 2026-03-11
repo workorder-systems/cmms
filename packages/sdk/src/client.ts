@@ -7,6 +7,7 @@ import { createTenantsResource } from './resources/tenants.js';
 import { createWorkOrdersResource } from './resources/work-orders.js';
 import { createAssetsResource } from './resources/assets.js';
 import { createLocationsResource } from './resources/locations.js';
+import { createSpacesResource } from './resources/spaces.js';
 import { createDepartmentsResource } from './resources/departments.js';
 import { createMetersResource } from './resources/meters.js';
 import { createPluginsResource } from './resources/plugins.js';
@@ -68,6 +69,7 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     workOrders: createWorkOrdersResource(supabase),
     assets: createAssetsResource(supabase),
     locations: createLocationsResource(supabase),
+    spaces: createSpacesResource(supabase),
     departments: createDepartmentsResource(supabase),
     meters: createMetersResource(supabase),
     plugins: createPluginsResource(supabase),

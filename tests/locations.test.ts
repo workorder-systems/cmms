@@ -64,9 +64,10 @@ describe('Locations', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const buildingId = await createTestLocation(client, tenantId, 'Building A');
-      const floorId = await createTestLocation(client, tenantId, 'Floor 1', buildingId);
-      const roomId = await createTestLocation(client, tenantId, 'Room 101', floorId);
+      const siteId = await createTestLocation(client, tenantId, 'Site', undefined, 'site');
+      const buildingId = await createTestLocation(client, tenantId, 'Building A', siteId, 'building');
+      const floorId = await createTestLocation(client, tenantId, 'Floor 1', buildingId, 'floor');
+      const roomId = await createTestLocation(client, tenantId, 'Room 101', floorId, 'room');
 
       // Verify hierarchy
       await setTenantContext(client, tenantId);
@@ -132,7 +133,12 @@ describe('Locations', () => {
       const { data, error } = await ownerClient2.rpc('rpc_create_location', {
         p_tenant_id: tenantId2,
         p_name: 'Child Location',
+        p_description: null,
         p_parent_location_id: parentLocation,
+        p_location_type: 'site',
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -151,7 +157,13 @@ describe('Locations', () => {
       const { data, error } = await ownerClient.rpc('rpc_update_location', {
         p_tenant_id: tenantId,
         p_location_id: location1,
+        p_name: null,
+        p_description: null,
         p_parent_location_id: location2,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -173,6 +185,12 @@ describe('Locations', () => {
         p_tenant_id: tenantId,
         p_location_id: locationId,
         p_name: 'New Name',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeNull();
