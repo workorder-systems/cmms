@@ -21,6 +21,7 @@ export interface CreateWorkOrderParams {
   assetId?: string | null;
   dueDate?: string | null;
   pmScheduleId?: string | null;
+  projectId?: string | null;
 }
 
 /** Single row for bulk import (title required; others optional, use catalog keys). */
@@ -121,6 +122,7 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
         p_asset_id: params.assetId ?? null,
         p_due_date: params.dueDate ?? null,
         p_pm_schedule_id: params.pmScheduleId ?? null,
+        p_project_id: params.projectId ?? null,
       });
     },
 

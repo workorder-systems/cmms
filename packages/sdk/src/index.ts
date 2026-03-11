@@ -30,6 +30,21 @@ export type {
   WorkOrdersResource,
 } from './resources/work-orders.js';
 export type {
+  WorkOrderCostRow,
+  AssetCostRow,
+  LocationCostRow,
+  DepartmentCostRow,
+  ProjectCostRow,
+  AssetLifecycleAlertRow,
+  CostRollupRow,
+  CostRollupParams,
+  AssetTcoRow,
+  AssetTcoParams,
+  AssetLifecycleAlertsParams,
+  CostsResource,
+} from './resources/costs.js';
+export type { ProjectRow, ProjectsResource } from './resources/projects.js';
+export type {
   AssetRow,
   CreateAssetParams,
   UpdateAssetParams,

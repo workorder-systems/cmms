@@ -67,6 +67,7 @@ const workOrderId = await client.workOrders.create({
   assetId: 'uuid-of-asset',
   dueDate: '2025-03-01',
   pmScheduleId: null,
+  projectId: null, // optional, for cost roll-up by project
 })
 // Returns string (UUID)
 ```
@@ -103,6 +104,9 @@ const workOrderId = await client.workOrders.create({
   </Property>
   <Property name="pmScheduleId">
     Optional. PM schedule UUID.
+  </Property>
+  <Property name="projectId">
+    Optional. Project UUID for cost roll-up by project. See [Costs & lifecycle](/costs).
   </Property>
 </Properties>
 
@@ -317,6 +321,9 @@ await client.supabase.rpc('rpc_update_work_order_attachment_metadata', {
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/tenant-context" variant="text" arrow="right">
     <>Tenant context</>
+  </Button>
+  <Button href="/costs" variant="text" arrow="right">
+    <>Costs & lifecycle</>
   </Button>
   <Button href="/assets" variant="text" arrow="right">
     <>Assets</>

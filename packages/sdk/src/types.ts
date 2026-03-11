@@ -17,6 +17,8 @@ import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js
 import type { TenantApiKeysResource } from './resources/tenant-api-keys.js';
 import type { LaborResource } from './resources/labor.js';
 import type { SchedulingResource } from './resources/scheduling.js';
+import type { CostsResource } from './resources/costs.js';
+import type { ProjectsResource } from './resources/projects.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -80,4 +82,8 @@ export type DbClient = {
   labor: LaborResource;
   /** Scheduling: schedule blocks, views by technician/crew/asset/location, schedule/update/validate/unschedule RPCs. */
   scheduling: SchedulingResource;
+  /** Costs and lifecycle: work order costs, roll-ups by asset/location/department/project, lifecycle alerts, TCO. */
+  costs: CostsResource;
+  /** Projects: list and get by id (read-only from v_projects). For cost roll-up by project. */
+  projects: ProjectsResource;
 };

@@ -1,0 +1,210 @@
+export const metadata = {
+  title: 'Costs & lifecycle',
+  description: 'Work order costs, roll-ups by asset/location/department/project, asset lifecycle alerts, and total cost of ownership.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Work order costs', id: 'work-order-costs' },
+  { title: 'Cost roll-ups', id: 'cost-rollups' },
+  { title: 'Cost rollup RPC', id: 'cost-rollup-rpc' },
+  { title: 'Asset lifecycle alerts', id: 'lifecycle-alerts' },
+  { title: 'Asset total cost of ownership', id: 'asset-tco' },
+  { title: 'Projects', id: 'projects' },
+]
+
+# Costs & lifecycle
+
+Work order costs (labor, parts, vendor), roll-ups by asset, location, department, and project, asset lifecycle alerts (warranty, EOL, contract, replacement), and total cost of ownership. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## Overview
+
+The `client.costs` resource and `client.projects` resource support:
+
+- **Work order costs** – labor (from time entries), parts, and vendor costs per work order
+- **Cost roll-ups** – by asset, location, department, or project (views and RPC with optional date filter)
+- **Lifecycle alerts** – assets with warranty, end-of-life, contract, or planned replacement due within a window
+- **Asset TCO** – total cost of ownership for a single asset (optional date range)
+- **Projects** – list and get by ID (read-only); use `projectId` when creating work orders for cost roll-up by project
+
+Labor cost comes from `work_order_time_entries` (e.g. `labor_cost_cents`). Parts and vendor costs are stored in `work_order_parts` and `work_order_vendor_costs` (see database migrations).
+
+## Work order costs
+
+Per-work-order cost totals (labor, parts, vendor, total). All amounts are in cents.
+
+<CodeGroup title="client.costs.listWorkOrderCosts()">
+
+```ts
+await client.setTenant(tenantId)
+const costs = await client.costs.listWorkOrderCosts()
+// Returns WorkOrderCostRow[] with work_order_id, labor_cents, parts_cents, vendor_cents, total_cents
+```
+
+</CodeGroup>
+
+## Cost roll-ups
+
+Pre-aggregated costs by dimension (current tenant only).
+
+<CodeGroup title="client.costs.listAssetCosts()">
+
+```ts
+const byAsset = await client.costs.listAssetCosts()
+// Returns AssetCostRow[]: asset_id, labor_cents, parts_cents, vendor_cents, total_cents, work_order_count
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.costs.listLocationCosts()">
+
+```ts
+const byLocation = await client.costs.listLocationCosts()
+// Returns LocationCostRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.costs.listDepartmentCosts()">
+
+```ts
+const byDepartment = await client.costs.listDepartmentCosts()
+// Returns DepartmentCostRow[] (via work order → asset → department)
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.costs.listProjectCosts()">
+
+```ts
+const byProject = await client.costs.listProjectCosts()
+// Returns ProjectCostRow[]
+```
+
+</CodeGroup>
+
+## Cost rollup RPC
+
+Roll-up by dimension with optional date filter on work order `completed_at`. Use when you need a single API that supports date ranges.
+
+<CodeGroup title="client.costs.costRollup(params)">
+
+```ts
+const rows = await client.costs.costRollup({
+  tenantId: 'uuid-of-tenant',
+  groupBy: 'asset', // 'asset' | 'location' | 'department' | 'project'
+  fromDate: '2025-01-01', // optional, ISO date
+  toDate: '2025-12-31',   // optional, ISO date
+})
+// Returns CostRollupRow[]: group_key, group_name, labor_cents, parts_cents, vendor_cents, total_cents, work_order_count
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="groupBy">
+    Required. One of: `asset`, `location`, `department`, `project`.
+  </Property>
+  <Property name="fromDate">
+    Optional. Filter work orders by completed_at on or after this date (ISO date string).
+  </Property>
+  <Property name="toDate">
+    Optional. Filter work orders by completed_at on or before this date (ISO date string).
+  </Property>
+</Properties>
+
+## Asset lifecycle alerts
+
+Assets with upcoming lifecycle events: warranty expiring, end-of-life approaching, service contract expiring, or planned replacement due. The view shows events within the next 365 days; the RPC lets you set the window.
+
+<CodeGroup title="client.costs.listLifecycleAlerts()">
+
+```ts
+const alerts = await client.costs.listLifecycleAlerts()
+// Returns AssetLifecycleAlertRow[]: asset_id, alert_type, reference_date, days_until
+// alert_type: 'warranty_expiring' | 'eol_approaching' | 'contract_expiring' | 'planned_replacement_due'
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.costs.assetLifecycleAlerts(params)">
+
+```ts
+const alerts = await client.costs.assetLifecycleAlerts({
+  tenantId: 'uuid-of-tenant',
+  daysAhead: 90, // optional, default 365
+})
+// Returns AssetLifecycleAlertRow[]
+```
+
+</CodeGroup>
+
+## Asset total cost of ownership
+
+Total cost (labor + parts + vendor) and work order count for a single asset, with optional date filter on work order `completed_at`.
+
+<CodeGroup title="client.costs.assetTotalCostOfOwnership(params)">
+
+```ts
+const tco = await client.costs.assetTotalCostOfOwnership({
+  tenantId: 'uuid-of-tenant',
+  assetId: 'uuid-of-asset',
+  fromDate: '2025-01-01', // optional
+  toDate: '2025-12-31',   // optional
+})
+// Returns AssetTcoRow | null: labor_cents, parts_cents, vendor_cents, total_cents, work_order_count
+```
+
+</CodeGroup>
+
+## Projects
+
+Projects are used to group work orders for cost roll-up. The SDK exposes read-only list and get by ID from `v_projects`. Create/update/delete projects via the database or future RPCs.
+
+<CodeGroup title="client.projects.list()">
+
+```ts
+const projects = await client.projects.list()
+// Returns ProjectRow[]: id, tenant_id, name, code, description, created_at, updated_at
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.projects.getById(id)">
+
+```ts
+const project = await client.projects.getById('uuid-of-project')
+// Returns ProjectRow | null
+```
+
+</CodeGroup>
+
+When creating a work order, pass `projectId` to link it to a project so it appears in project cost roll-ups.
+
+<CodeGroup title="Work order with project">
+
+```ts
+await client.workOrders.create({
+  tenantId: 'uuid-of-tenant',
+  title: 'Overhaul pump P-101',
+  projectId: 'uuid-of-project',
+  // ... other params
+})
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets (lifecycle fields)</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+  <Button href="/dashboard" variant="text" arrow="right">
+    <>Dashboard</>
+  </Button>
+</div>

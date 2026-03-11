@@ -266,39 +266,63 @@ export type Database = {
       v_assets: {
         Row: {
           asset_number: string | null
+          commissioned_at: string | null
           created_at: string | null
+          decommissioned_at: string | null
           department_id: string | null
           description: string | null
+          end_of_life_estimate: string | null
           id: string | null
           location_id: string | null
           name: string | null
+          planned_replacement_date: string | null
+          replacement_of_asset_id: string | null
+          replaced_by_asset_id: string | null
+          service_contract_expires_at: string | null
           status: string | null
           tenant_id: string | null
           updated_at: string | null
+          warranty_expires_at: string | null
         }
         Insert: {
           asset_number?: string | null
+          commissioned_at?: string | null
           created_at?: string | null
+          decommissioned_at?: string | null
           department_id?: string | null
           description?: string | null
+          end_of_life_estimate?: string | null
           id?: string | null
           location_id?: string | null
           name?: string | null
+          planned_replacement_date?: string | null
+          replacement_of_asset_id?: string | null
+          replaced_by_asset_id?: string | null
+          service_contract_expires_at?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          warranty_expires_at?: string | null
         }
         Update: {
           asset_number?: string | null
+          commissioned_at?: string | null
           created_at?: string | null
+          decommissioned_at?: string | null
           department_id?: string | null
           description?: string | null
+          end_of_life_estimate?: string | null
           id?: string | null
           location_id?: string | null
           name?: string | null
+          planned_replacement_date?: string | null
+          replacement_of_asset_id?: string | null
+          replaced_by_asset_id?: string | null
+          service_contract_expires_at?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          warranty_expires_at?: string | null
         }
         Relationships: [
           {
@@ -423,6 +447,87 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      v_asset_costs: {
+        Row: {
+          asset_id: string | null
+          labor_cents: number | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_asset_lifecycle_alerts: {
+        Row: {
+          alert_type: string | null
+          asset_id: string | null
+          days_until: number | null
+          reference_date: string | null
+          tenant_id: string | null
+        }
+        Relationships: []
+      }
+      v_department_costs: {
+        Row: {
+          department_id: string | null
+          labor_cents: number | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_location_costs: {
+        Row: {
+          labor_cents: number | null
+          location_id: string | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_project_costs: {
+        Row: {
+          labor_cents: number | null
+          parts_cents: number | null
+          project_id: string | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_projects: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          name: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      v_work_order_costs: {
+        Row: {
+          labor_cents: number | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_id: string | null
+        }
+        Relationships: []
       }
       v_audit_entity_changes: {
         Row: {
@@ -2600,6 +2705,7 @@ export type Database = {
           maintenance_type: string | null
           pm_schedule_id: string | null
           priority: string | null
+          project_id: string | null
           resolution: string | null
           status: string | null
           tenant_id: string | null
@@ -3092,6 +3198,50 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_asset_lifecycle_alerts: {
+        Args: {
+          p_days_ahead?: number
+          p_tenant_id: string
+        }
+        Returns: {
+          asset_id: string
+          alert_type: string
+          reference_date: string
+          days_until: number
+        }[]
+      }
+      rpc_asset_total_cost_of_ownership: {
+        Args: {
+          p_asset_id: string
+          p_from_date?: string
+          p_tenant_id: string
+          p_to_date?: string
+        }
+        Returns: {
+          labor_cents: number
+          parts_cents: number
+          vendor_cents: number
+          total_cents: number
+          work_order_count: number
+        }[]
+      }
+      rpc_cost_rollup: {
+        Args: {
+          p_from_date?: string
+          p_group_by: string
+          p_tenant_id: string
+          p_to_date?: string
+        }
+        Returns: {
+          group_key: string | null
+          group_name: string | null
+          labor_cents: number
+          parts_cents: number
+          vendor_cents: number
+          total_cents: number
+          work_order_count: number
+        }[]
+      }
       rpc_create_asset: {
         Args: {
           p_asset_number?: string
@@ -3246,6 +3396,7 @@ export type Database = {
           p_maintenance_type?: string
           p_pm_schedule_id?: string
           p_priority?: string
+          p_project_id?: string
           p_tenant_id: string
           p_title: string
         }
