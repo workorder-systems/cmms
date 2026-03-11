@@ -112,8 +112,8 @@ describe('Locations', () => {
 
       expect(error).toBeNull();
       expect(locations).toBeDefined();
-      expect(locations.length).toBe(1);
-      expect(locations[0].id).toBe(location1);
+      expect(locations!.length).toBe(1);
+      expect(locations![0].id).toBe(location1);
     });
   });
 
@@ -207,6 +207,53 @@ describe('Locations', () => {
     });
   });
 
+  describe('Spaces', () => {
+    it('should create space via rpc_create_space and read from v_spaces', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const locationId = await createTestLocation(client, tenantId, 'Room 101', undefined, 'room');
+      await setTenantContext(client, tenantId);
+
+      const { data: spaceId, error: createError } = await client.rpc('rpc_create_space', {
+        p_tenant_id: tenantId,
+        p_location_id: locationId,
+        p_usage_type: 'office',
+        p_capacity: 4,
+        p_status: 'available',
+        p_area_sqft: 120,
+        p_attributes: null,
+      });
+
+      expect(createError).toBeNull();
+      expect(spaceId).toBeDefined();
+      expect(typeof spaceId).toBe('string');
+
+      const { data: row, error: viewError } = await client
+        .from('v_spaces')
+        .select('id, usage_type, capacity, status')
+        .eq('id', spaceId)
+        .single();
+
+      expect(viewError).toBeNull();
+      expect(row?.usage_type).toBe('office');
+      expect(row?.capacity).toBe(4);
+      expect(row?.status).toBe('available');
+    });
+
+    it('should query v_spaces scoped to current tenant', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data: list, error } = await client.from('v_spaces').select('id, tenant_id');
+      expect(error).toBeNull();
+      expect(Array.isArray(list)).toBe(true);
+      for (const r of list ?? []) {
+        expect(r.tenant_id).toBe(tenantId);
+      }
+    });
+  });
+
   describe('Location Deletion', () => {
     it('should delete location', async () => {
       const { user } = await createTestUser(client);
@@ -252,7 +299,8 @@ describe('Locations', () => {
         .eq('id', childId)
         .single();
 
-      expect(child.parent_location_id).toBeNull();
+      expect(child).toBeDefined();
+      expect(child!.parent_location_id).toBeNull();
     });
   });
 });

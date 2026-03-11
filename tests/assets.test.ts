@@ -280,6 +280,30 @@ describe('Assets', () => {
     });
   });
 
+  describe('Asset lifecycle and costs', () => {
+    it('should query v_asset_costs and v_asset_lifecycle_alerts without error', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { error: costsError } = await client.from('v_asset_costs').select('asset_id').limit(1);
+      expect(costsError).toBeNull();
+
+      const { error: alertsError } = await client.from('v_asset_lifecycle_alerts').select('asset_id').limit(1);
+      expect(alertsError).toBeNull();
+    });
+
+    it('should query v_projects without error', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data, error } = await client.from('v_projects').select('id, tenant_id').limit(5);
+      expect(error).toBeNull();
+      expect(Array.isArray(data)).toBe(true);
+    });
+  });
+
   describe('Asset Deletion', () => {
     it('should delete asset', async () => {
       const { user } = await createTestUser(client);

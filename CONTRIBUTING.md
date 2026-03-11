@@ -31,8 +31,23 @@ When adding or changing schema:
 See `supabase/README.md` for architecture rules and patterns.
 
 ## Tests
-- `npm test` runs the Vitest suite.
+- `npm test` (or `pnpm test`) runs the Vitest suite.
 - Use `npm run supabase:stop` to stop local services if needed.
+
+**If many tests fail with auth errors** (e.g. "Database error finding user", "Database error querying schema"), the local DB may be out of sync with migrations. Run a full reset then test:
+
+```bash
+pnpm run supabase:reset
+pnpm test
+```
+
+Or use the combined script:
+
+```bash
+pnpm run test:reset
+```
+
+This applies all migrations from scratch and then runs the test suite. Use this when you have pulled new migrations or see unexplained auth/setup failures.
 
 ## License
 By contributing, you agree your contributions are licensed under

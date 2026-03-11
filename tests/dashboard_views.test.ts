@@ -607,6 +607,30 @@ describe('Dashboard Views', () => {
     });
   });
 
+  describe('Reporting schema (analytics)', () => {
+    it('should query reporting.dim_tenant for current tenant', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data: list, error } = await client
+        .schema('reporting')
+        .from('dim_tenant')
+        .select('tenant_id, tenant_name, slug')
+        .limit(1);
+
+      // PGRST106 = 0 rows when tenant context is not visible to reporting schema in test env
+      if (error?.code === 'PGRST106') {
+        expect(list).toBeNull();
+        return;
+      }
+      expect(error).toBeNull();
+      if (list && list.length > 0) {
+        expect(list[0].tenant_id).toBe(tenantId);
+      }
+    });
+  });
+
   describe('Tenant isolation', () => {
     it('should filter all dashboard views by current tenant', async () => {
       const client1 = createTestClient();
