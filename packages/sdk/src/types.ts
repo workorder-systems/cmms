@@ -15,6 +15,7 @@ import type { AuditResource } from './resources/audit.js';
 import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
 import type { TenantApiKeysResource } from './resources/tenant-api-keys.js';
 import type { LaborResource } from './resources/labor.js';
+import type { SchedulingResource } from './resources/scheduling.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -74,4 +75,6 @@ export type DbClient = {
   tenantApiKeys: TenantApiKeysResource;
   /** Labor: technicians, crews, skills, certifications, availability, shifts, assignments, labor actuals, capacity, and scheduling RPCs. */
   labor: LaborResource;
+  /** Scheduling: schedule blocks, views by technician/crew/asset/location, schedule/update/validate/unschedule RPCs. */
+  scheduling: SchedulingResource;
 };

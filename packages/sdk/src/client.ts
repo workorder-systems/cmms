@@ -18,6 +18,7 @@ import { createAuditResource } from './resources/audit.js';
 import { createSimilarPastFixesResource } from './resources/similar-past-fixes.js';
 import { createTenantApiKeysResource } from './resources/tenant-api-keys.js';
 import { createLaborResource } from './resources/labor.js';
+import { createSchedulingResource } from './resources/scheduling.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -78,6 +79,7 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     similarPastFixes: createSimilarPastFixesResource(supabase),
     tenantApiKeys: createTenantApiKeysResource(supabase),
     labor: createLaborResource(supabase),
+    scheduling: createSchedulingResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',

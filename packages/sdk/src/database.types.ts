@@ -2868,6 +2868,116 @@ export type Database = {
         }
         Relationships: []
       }
+      v_schedule_blocks: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_technician: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_crew: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_asset: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_location: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       refresh_analytics_views: { Args: never; Returns: undefined }
@@ -3240,6 +3350,52 @@ export type Database = {
       rpc_set_tenant_context: {
         Args: { p_tenant_id: string }
         Returns: undefined
+      }
+      rpc_schedule_work_order: {
+        Args: {
+          p_work_order_id: string
+          p_technician_id?: string | null
+          p_crew_id?: string | null
+          p_start_at: string
+          p_end_at: string
+          p_location_id?: string | null
+          p_asset_id?: string | null
+        }
+        Returns: string
+      }
+      rpc_unschedule_work_order: {
+        Args: {
+          p_schedule_block_id?: string | null
+          p_work_order_id?: string | null
+        }
+        Returns: undefined
+      }
+      rpc_update_schedule_block: {
+        Args: {
+          p_schedule_block_id: string
+          p_technician_id?: string | null
+          p_crew_id?: string | null
+          p_start_at?: string | null
+          p_end_at?: string | null
+          p_location_id?: string | null
+          p_asset_id?: string | null
+        }
+        Returns: string
+      }
+      rpc_validate_schedule: {
+        Args: {
+          p_technician_id?: string | null
+          p_crew_id?: string | null
+          p_start_at?: string | null
+          p_end_at?: string | null
+          p_work_order_id?: string | null
+          p_exclude_block_id?: string | null
+        }
+        Returns: {
+          check_type: string
+          severity: string
+          message: string
+        }[]
       }
       rpc_similar_past_work_orders: {
         Args: {

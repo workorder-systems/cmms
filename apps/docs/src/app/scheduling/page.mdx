@@ -1,0 +1,182 @@
+export const metadata = {
+  title: 'Scheduling & dispatch',
+  description: 'Schedule work orders onto calendars/boards by technician, crew, asset, or location. Create, update, validate, and unschedule blocks.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'List by technician, crew, asset, location', id: 'list-views' },
+  { title: 'Schedule work order', id: 'schedule-work-order' },
+  { title: 'Update schedule block', id: 'update-block' },
+  { title: 'Validate schedule', id: 'validate-schedule' },
+  { title: 'Unschedule work order', id: 'unschedule' },
+]
+
+# Scheduling & dispatch
+
+Schedule work orders onto calendars or boards by technician, crew, asset, or location. Use the `client.scheduling` resource to list blocks, schedule or reassign work (drag-and-drop style), validate slots, and unschedule. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## Overview
+
+The `client.scheduling` resource provides:
+
+- **Views** – List schedule blocks for the current tenant, optionally filtered by technician, crew, asset, or location. Use for calendar/board UIs; filter by date range in the client.
+- **Schedule** – Create or replace a schedule block for a work order (assign to a technician or crew, set start/end time).
+- **Update** – Change a block’s time, technician/crew, or location/asset (reassign or move on the board).
+- **Validate** – Check a candidate slot for shift conflicts, schedule block conflicts, and SLA (due date). Returns a list of issues (warning/error/info).
+- **Unschedule** – Remove the schedule block for a work order (by block id or work order id). Assignments are left as-is; only the slot is removed.
+
+One block per work order is assumed: scheduling again for the same work order replaces the existing block.
+
+## List by technician, crew, asset, location
+
+List schedule blocks from the appropriate view. Apply date-range filtering in the client (e.g. filter rows where `start_at`/`end_at` fall in the visible range).
+
+<CodeGroup title="client.scheduling.listScheduleBlocks()">
+
+```ts
+await client.setTenant(tenantId)
+const blocks = await client.scheduling.listScheduleBlocks()
+// Returns ScheduleBlockRow[] (all blocks for tenant)
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.scheduling.listScheduleByTechnician(technicianId?)">
+
+```ts
+const byTech = await client.scheduling.listScheduleByTechnician()
+const forOne = await client.scheduling.listScheduleByTechnician('uuid-of-technician')
+// Returns ScheduleBlockRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.scheduling.listScheduleByCrew(crewId?)">
+
+```ts
+const byCrew = await client.scheduling.listScheduleByCrew()
+const forOne = await client.scheduling.listScheduleByCrew('uuid-of-crew')
+// Returns ScheduleBlockRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.scheduling.listScheduleByAsset(assetId?) / listScheduleByLocation(locationId?)">
+
+```ts
+const byAsset = await client.scheduling.listScheduleByAsset('uuid-of-asset')
+const byLocation = await client.scheduling.listScheduleByLocation('uuid-of-location')
+// Returns ScheduleBlockRow[]
+```
+
+</CodeGroup>
+
+Each row includes `work_order_title`, `work_order_status`, `work_order_priority`, `work_order_due_date`, and `effective_location_id` / `effective_asset_id` for display.
+
+## Schedule work order
+
+Create a schedule block for a work order. Exactly one of `technicianId` or `crewId` must be set. Replaces any existing block for that work order.
+
+<CodeGroup title="client.scheduling.scheduleWorkOrder(params)">
+
+```ts
+const blockId = await client.scheduling.scheduleWorkOrder({
+  workOrderId: 'uuid-of-work-order',
+  technicianId: 'uuid-of-technician', // or crewId, not both
+  startAt: '2026-03-15T08:00:00Z',
+  endAt: '2026-03-15T10:00:00Z',
+  locationId: null,   // optional; defaults from work order
+  assetId: null,      // optional; defaults from work order
+})
+// Returns string (new schedule block id)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="workOrderId">Required. Work order UUID.</Property>
+  <Property name="technicianId">Optional. Technician UUID. Exactly one of technicianId or crewId required.</Property>
+  <Property name="crewId">Optional. Crew UUID. Exactly one of technicianId or crewId required.</Property>
+  <Property name="startAt">Required. Block start (ISO timestamptz).</Property>
+  <Property name="endAt">Required. Block end (ISO timestamptz). Must be after startAt.</Property>
+  <Property name="locationId">Optional. Override location for board grouping.</Property>
+  <Property name="assetId">Optional. Override asset for board grouping.</Property>
+</Properties>
+
+## Update schedule block
+
+Update a block’s time, technician/crew, or location/asset. Use for drag-and-drop reassignment or rescheduling.
+
+<CodeGroup title="client.scheduling.updateScheduleBlock(params)">
+
+```ts
+await client.scheduling.updateScheduleBlock({
+  scheduleBlockId: 'uuid-of-block',
+  startAt: '2026-03-15T09:00:00Z',
+  endAt: '2026-03-15T11:00:00Z',
+  technicianId: 'uuid-of-another-technician', // optional; maintains technician XOR crew
+})
+// Returns string (schedule block id)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="scheduleBlockId">Required. Schedule block UUID.</Property>
+  <Property name="technicianId">Optional. New technician. Cannot set both technicianId and crewId.</Property>
+  <Property name="crewId">Optional. New crew. Cannot set both technicianId and crewId.</Property>
+  <Property name="startAt">Optional. New block start.</Property>
+  <Property name="endAt">Optional. New block end.</Property>
+  <Property name="locationId">Optional. New location for board.</Property>
+  <Property name="assetId">Optional. New asset for board.</Property>
+</Properties>
+
+## Validate schedule
+
+Check a candidate slot for conflicts and SLA. Pass technician (and optionally work order and exclude block id when updating). Returns a list of issues: conflict, sla, priority, or input errors.
+
+<CodeGroup title="client.scheduling.validateSchedule(params)">
+
+```ts
+const issues = await client.scheduling.validateSchedule({
+  technicianId: 'uuid-of-technician',
+  startAt: '2026-03-15T08:00:00Z',
+  endAt: '2026-03-15T10:00:00Z',
+  workOrderId: 'uuid-of-work-order',  // optional; for SLA and priority
+  excludeBlockId: 'uuid-of-block',    // optional; when updating, exclude this block from conflict check
+})
+// Returns ValidateScheduleIssueRow[] { check_type, severity, message }
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="technicianId">Optional. Technician UUID. Validation runs for technician only (crew can be extended later).</Property>
+  <Property name="crewId">Optional. Crew UUID. Currently no conflict/availability checks for crew-only.</Property>
+  <Property name="startAt">Optional. Candidate slot start.</Property>
+  <Property name="endAt">Optional. Candidate slot end.</Property>
+  <Property name="workOrderId">Optional. Work order for SLA (due_date) and priority.</Property>
+  <Property name="excludeBlockId">Optional. When updating a block, pass its id to avoid self-conflict.</Property>
+</Properties>
+
+Severity values: `error`, `warning`, `info`. Check types: `conflict`, `sla`, `priority`, `input`.
+
+## Unschedule work order
+
+Remove the schedule block for a work order. You can pass the schedule block id or the work order id. Work order assignments are not removed; only the scheduled slot is deleted.
+
+<CodeGroup title="client.scheduling.unscheduleWorkOrder(params)">
+
+```ts
+await client.scheduling.unscheduleWorkOrder({ scheduleBlockId: 'uuid-of-block' })
+// or
+await client.scheduling.unscheduleWorkOrder({ workOrderId: 'uuid-of-work-order' })
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="scheduleBlockId">Optional. Schedule block UUID to delete.</Property>
+  <Property name="workOrderId">Optional. Work order UUID; deletes the block for that work order. One of scheduleBlockId or workOrderId must be set.</Property>
+</Properties>

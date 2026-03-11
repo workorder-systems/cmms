@@ -156,3 +156,11 @@ export type {
   GeneratedShiftRow,
   LaborResource,
 } from './resources/labor.js';
+export type {
+  ScheduleBlockRow,
+  ScheduleWorkOrderParams,
+  UpdateScheduleBlockParams,
+  ValidateScheduleParams,
+  ValidateScheduleIssueRow,
+  SchedulingResource,
+} from './resources/scheduling.js';
