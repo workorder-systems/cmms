@@ -172,6 +172,20 @@ const resources: Array<Resource> = [
     },
   },
   {
+    href: '/analytics',
+    name: 'Analytics reporting',
+    description:
+      'Reporting schema: dimensions, facts, KPIs (MTTR, MTBF, PM compliance, utilization, backlog). BI and warehouse contract.',
+    icon: DocumentIcon,
+    pattern: {
+      y: -4,
+      squares: [
+        [-1, 2],
+        [1, 4],
+      ],
+    },
+  },
+  {
     href: '/audit',
     name: 'Audit',
     description:
