@@ -20,6 +20,7 @@ import { UsersIcon } from '@/components/icons/UsersIcon'
 import { ListIcon } from '@/components/icons/ListIcon'
 import { CalendarIcon } from '@/components/icons/CalendarIcon'
 import { DocumentIcon } from '@/components/icons/DocumentIcon'
+import { ClipboardIcon } from '@/components/icons/ClipboardIcon'
 
 interface Resource {
   href: string
@@ -181,6 +182,20 @@ const resources: Array<Resource> = [
       squares: [
         [0, 1],
         [1, 3],
+      ],
+    },
+  },
+  {
+    href: '/safety-compliance',
+    name: 'Safety & compliance',
+    description:
+      'Inspection templates, runs, and results; incidents and corrective actions; compliance reporting.',
+    icon: ClipboardIcon,
+    pattern: {
+      y: 12,
+      squares: [
+        [0, 2],
+        [1, 4],
       ],
     },
   },

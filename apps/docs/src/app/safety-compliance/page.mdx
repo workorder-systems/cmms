@@ -1,0 +1,248 @@
+export const metadata = {
+  title: 'Safety & compliance',
+  description: 'Inspection templates, runs, and results; incidents and corrective actions; audit-ready compliance reporting.',
+}
+
+export const sections = [
+  { title: 'List inspections and incidents', id: 'list-inspections-and-incidents' },
+  { title: 'Inspection templates and schedules', id: 'inspection-templates-and-schedules' },
+  { title: 'Inspection runs and completion', id: 'inspection-runs-and-completion' },
+  { title: 'Incidents and corrective actions', id: 'incidents-and-corrective-actions' },
+  { title: 'Compliance reporting', id: 'compliance-reporting' },
+]
+
+# Safety & compliance
+
+Inspection templates, checklists, schedules, and runs tied to assets, locations, and work orders; incidents and near-misses with corrective actions; compliance reporting for regulated environments (F&B, pharma, healthcare). Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List inspections and incidents
+
+<CodeGroup title="List inspection and incident views">
+
+```ts
+await client.setTenant(tenantId)
+
+const templates = await client.safetyCompliance.listTemplates()
+// InspectionTemplateRow[] (includes item_count)
+
+const templateItems = await client.safetyCompliance.listTemplateItems()
+// InspectionTemplateItemRow[]
+
+const schedules = await client.safetyCompliance.listSchedules()
+// InspectionScheduleRow[]
+
+const runs = await client.safetyCompliance.listRuns()
+// InspectionRunRow[]
+
+const runItems = await client.safetyCompliance.listRunItems()
+// InspectionRunItemRow[]
+
+const incidents = await client.safetyCompliance.listIncidents()
+// IncidentRow[]
+
+const actions = await client.safetyCompliance.listIncidentActions()
+// IncidentActionRow[]
+```
+
+</CodeGroup>
+
+## Inspection templates and schedules
+
+Create and update inspection templates (e.g. daily safety round, GMP checklist). Template create/update requires `tenant.admin`. Checklist items are passed as an array.
+
+<CodeGroup title="client.safetyCompliance.createTemplate(params)">
+
+```ts
+const templateId = await client.safetyCompliance.createTemplate({
+  tenantId,
+  name: 'Daily safety round',
+  description: 'Walk-through checklist for production floor',
+  category: 'safety',
+  triggerConfig: { frequency: 'daily' },
+  checklistItems: [
+    { description: 'Emergency exits clear', required: true },
+    { description: 'Spill kit present and dated', required: true },
+    { description: 'PPE station stocked', required: false },
+  ],
+})
+// Returns string (template UUID)
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.safetyCompliance.updateTemplate(params)">
+
+```ts
+await client.safetyCompliance.updateTemplate({
+  tenantId,
+  templateId,
+  name: 'Daily safety round (Zone A)',
+  checklistItems: [/* replace all items */],
+})
+```
+
+</CodeGroup>
+
+Create and update inspection schedules. At least one of `assetId` or `locationId` is required.
+
+<CodeGroup title="client.safetyCompliance.createSchedule / updateSchedule">
+
+```ts
+const scheduleId = await client.safetyCompliance.createSchedule({
+  tenantId,
+  templateId,
+  title: 'Daily safety – Building 1',
+  locationId: 'uuid-of-location',
+  triggerConfig: { interval_days: 1 },
+  nextDueAt: '2026-03-17T08:00:00Z',
+})
+
+await client.safetyCompliance.updateSchedule({
+  tenantId,
+  scheduleId,
+  nextDueAt: '2026-03-18T08:00:00Z',
+  isActive: true,
+})
+```
+
+</CodeGroup>
+
+## Inspection runs and completion
+
+Create an inspection run (scheduled or ad hoc). At least one of `assetId` or `locationId` is required. Optionally link to a work order or schedule.
+
+<CodeGroup title="client.safetyCompliance.createRun / updateRun">
+
+```ts
+const runId = await client.safetyCompliance.createRun({
+  tenantId,
+  templateId,
+  workOrderId: 'uuid-of-wo', // optional
+  locationId: 'uuid-of-location',
+  scheduledAt: '2026-03-17T08:00:00Z',
+  notes: 'Routine weekly inspection',
+})
+
+await client.safetyCompliance.updateRun({
+  tenantId,
+  runId,
+  status: 'in_progress',
+  startedAt: new Date().toISOString(),
+  conductedBy: currentUserId,
+})
+```
+
+</CodeGroup>
+
+Complete a run and optionally submit item results (pass/fail/na/not_checked).
+
+<CodeGroup title="client.safetyCompliance.completeRun(params)">
+
+```ts
+await client.safetyCompliance.completeRun({
+  tenantId,
+  runId,
+  itemResults: [
+    { template_item_id: 'uuid-of-item-1', result: 'pass', notes: null },
+    { template_item_id: 'uuid-of-item-2', result: 'fail', notes: 'Spill kit expired' },
+    { template_item_id: 'uuid-of-item-3', result: 'na' },
+  ],
+})
+```
+
+</CodeGroup>
+
+## Incidents and corrective actions
+
+Create and update incidents (type: `incident`, `near_miss`, or `event`; severity: `low`, `medium`, `high`, `critical`).
+
+<CodeGroup title="client.safetyCompliance.createIncident / updateIncident / closeIncident">
+
+```ts
+const incidentId = await client.safetyCompliance.createIncident({
+  tenantId,
+  title: 'Minor spill in corridor B',
+  type: 'incident',
+  severity: 'low',
+  description: 'Water spill near cooler; cleaned within 15 min',
+  occurredAt: new Date().toISOString(),
+  locationId: 'uuid-of-location',
+})
+
+await client.safetyCompliance.updateIncident({
+  tenantId,
+  incidentId,
+  status: 'investigating',
+})
+
+await client.safetyCompliance.closeIncident({
+  tenantId,
+  incidentId,
+  status: 'closed',
+})
+```
+
+</CodeGroup>
+
+Add and manage corrective/preventive/containment actions.
+
+<CodeGroup title="client.safetyCompliance.createIncidentAction / updateIncidentAction / completeIncidentAction">
+
+```ts
+const actionId = await client.safetyCompliance.createIncidentAction({
+  tenantId,
+  incidentId,
+  description: 'Review cooler maintenance schedule',
+  actionType: 'corrective',
+  dueDate: '2026-03-24',
+  assignedTo: 'uuid-of-user',
+})
+
+await client.safetyCompliance.updateIncidentAction({
+  tenantId,
+  actionId,
+  status: 'in_progress',
+})
+
+await client.safetyCompliance.completeIncidentAction({
+  tenantId,
+  actionId,
+})
+```
+
+</CodeGroup>
+
+## Compliance reporting
+
+Read-only RPCs for audit and compliance reports: inspection history with pass/fail counts, and incident report with action counts.
+
+<CodeGroup title="client.safetyCompliance.complianceInspectionHistory">
+
+```ts
+const history = await client.safetyCompliance.complianceInspectionHistory({
+  tenantId,
+  fromDate: '2026-03-01',
+  toDate: '2026-03-31',
+  assetId: null,      // optional filter
+  locationId: null,   // optional filter
+})
+// ComplianceInspectionHistoryRow[]: run_id, template_name, asset_name, location_name, status, scheduled_at, completed_at, conducted_by_name, pass_count, fail_count, na_count, not_checked_count
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.safetyCompliance.complianceIncidentReport">
+
+```ts
+const report = await client.safetyCompliance.complianceIncidentReport({
+  tenantId,
+  fromDate: '2026-03-01',
+  toDate: '2026-03-31',
+  severity: null, // optional: 'low' | 'medium' | 'high' | 'critical'
+})
+// ComplianceIncidentReportRow[]: incident_id, type, severity, title, occurred_at, status, closed_at, action_count, action_pending_count, action_completed_count
+```
+
+</CodeGroup>
+
+All changes to inspection and incident data are written to the audit log (`audit.entity_changes`) for audit-ready histories in regulated environments.

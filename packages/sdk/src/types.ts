@@ -20,6 +20,7 @@ import type { SchedulingResource } from './resources/scheduling.js';
 import type { CostsResource } from './resources/costs.js';
 import type { ProjectsResource } from './resources/projects.js';
 import type { PartsInventoryResource } from './resources/parts-inventory.js';
+import type { SafetyComplianceResource } from './resources/safety-compliance.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -89,4 +90,6 @@ export type DbClient = {
   projects: ProjectsResource;
   /** Parts and inventory: catalog, suppliers, stock, reservations, usage, and purchasing (POs, receipts). */
   partsInventory: PartsInventoryResource;
+  /** Safety and compliance: inspection templates, schedules, runs, incidents, and corrective actions. Audit-ready for regulated industries. */
+  safetyCompliance: SafetyComplianceResource;
 };

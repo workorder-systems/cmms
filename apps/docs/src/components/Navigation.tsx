@@ -265,6 +265,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Costs & lifecycle', href: '/costs' },
       { title: 'Parts & inventory', href: '/parts-inventory' },
       { title: 'Audit', href: '/audit' },
+      { title: 'Safety & compliance', href: '/safety-compliance' },
     ],
   },
 ]
