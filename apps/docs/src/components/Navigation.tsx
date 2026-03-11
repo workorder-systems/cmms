@@ -254,6 +254,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Assets', href: '/assets' },
       { title: 'Locations', href: '/locations' },
       { title: 'Departments', href: '/departments' },
+      { title: 'Labor (technicians & crews)', href: '/labor' },
       { title: 'Meters', href: '/meters' },
       { title: 'Plugins', href: '/plugins' },
       { title: 'Catalogs', href: '/catalogs' },

@@ -14,6 +14,7 @@ import type { DashboardResource } from './resources/dashboard.js';
 import type { AuditResource } from './resources/audit.js';
 import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
 import type { TenantApiKeysResource } from './resources/tenant-api-keys.js';
+import type { LaborResource } from './resources/labor.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -71,4 +72,6 @@ export type DbClient = {
   similarPastFixes: SimilarPastFixesResource;
   /** Tenant API keys: create, list, revoke. For IoT / machine access (e.g. ingest-meter-reading Edge Function). */
   tenantApiKeys: TenantApiKeysResource;
+  /** Labor: technicians, crews, skills, certifications, availability, shifts, assignments, labor actuals, capacity, and scheduling RPCs. */
+  labor: LaborResource;
 };

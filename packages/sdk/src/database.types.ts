@@ -2681,6 +2681,193 @@ export type Database = {
           },
         ]
       }
+      v_technicians: {
+        Row: {
+          id: string
+          tenant_id: string
+          user_id: string
+          employee_number: string | null
+          default_crew_id: string | null
+          department_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_crews: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          description: string | null
+          lead_technician_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_crew_members: {
+        Row: {
+          id: number
+          tenant_id: string
+          crew_id: string
+          technician_id: string
+          role: string | null
+          joined_at: string
+          left_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_skill_catalogs: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          code: string | null
+          category: string | null
+          display_order: number
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_certification_catalogs: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          code: string | null
+          expiry_required: boolean
+          validity_days: number | null
+          display_order: number
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_technician_skills: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          skill_id: string
+          proficiency: string | null
+          created_at: string
+        }
+        Relationships: []
+      }
+      v_technician_certifications: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          certification_id: string
+          issued_at: string
+          expires_at: string | null
+          issued_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_availability_patterns: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          day_of_week: number
+          start_time: string
+          end_time: string
+          timezone: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_availability_overrides: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          override_date: string
+          is_available: boolean
+          start_time: string | null
+          end_time: string | null
+          reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_shifts: {
+        Row: {
+          id: string
+          tenant_id: string
+          technician_id: string | null
+          crew_id: string | null
+          start_at: string
+          end_at: string
+          shift_type: string
+          label: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_shift_templates: {
+        Row: {
+          id: string
+          tenant_id: string
+          crew_id: string | null
+          technician_id: string | null
+          day_of_week: number
+          start_time: string
+          end_time: string
+          shift_type: string
+          label: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_work_order_assignments: {
+        Row: {
+          id: number
+          tenant_id: string
+          work_order_id: string
+          technician_id: string
+          assigned_at: string
+          created_at: string
+        }
+        Relationships: []
+      }
+      v_work_order_labor_actuals: {
+        Row: {
+          tenant_id: string
+          work_order_id: string
+          technician_id: string | null
+          user_id: string | null
+          entry_count: number
+          total_minutes: number | null
+          total_labor_cost_cents: number | null
+          first_entry_date: string | null
+          last_entry_date: string | null
+        }
+        Relationships: []
+      }
+      v_technician_capacity: {
+        Row: {
+          tenant_id: string
+          technician_id: string
+          shift_date: string
+          shift_count: number
+          scheduled_minutes: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       refresh_analytics_views: { Args: never; Returns: undefined }
@@ -2712,6 +2899,21 @@ export type Database = {
         Returns: undefined
       }
       rpc_clear_tenant_context: { Args: never; Returns: undefined }
+      rpc_check_shift_conflicts: {
+        Args: {
+          p_technician_id: string
+          p_start_at: string
+          p_end_at: string
+          p_exclude_shift_id?: string | null
+        }
+        Returns: {
+          id: string
+          start_at: string
+          end_at: string
+          shift_type: string
+          label: string | null
+        }[]
+      }
       rpc_complete_work_order: {
         Args: {
           p_cause?: string
@@ -2876,6 +3078,26 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_create_tenant_api_key: {
+        Args: { p_tenant_id: string; p_name: string }
+        Returns: Record<string, unknown>
+      }
+      rpc_generate_shifts_from_templates: {
+        Args: {
+          p_tenant_id: string
+          p_start_date: string
+          p_end_date: string
+        }
+        Returns: {
+          id: string
+          technician_id: string | null
+          crew_id: string | null
+          start_at: string
+          end_at: string
+          shift_type: string
+          label: string | null
+        }[]
+      }
       rpc_delete_asset: {
         Args: { p_asset_id: string; p_tenant_id: string }
         Returns: undefined
@@ -2938,6 +3160,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_list_tenant_api_keys: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          id: string
+          name: string
+          keyPrefix: string
+          createdAt: string
+          lastUsedAt: string | null
+          expiresAt: string | null
+        }[]
+      }
       rpc_log_work_order_time: {
         Args: {
           p_description?: string
@@ -2990,6 +3223,10 @@ export type Database = {
           p_tenant_id: string
           p_user_id: string
         }
+        Returns: undefined
+      }
+      rpc_revoke_tenant_api_key: {
+        Args: { p_tenant_id: string; p_key_id: string }
         Returns: undefined
       }
       rpc_set_audit_retention_config: {

@@ -48,7 +48,7 @@ export function createTenantApiKeysResource(supabase: SupabaseClient<Database>) 
         p_tenant_id: tenantId,
       });
       if (error) throw normalizeError(error);
-      return (data ?? []) as TenantApiKeyRow[];
+      return (data ?? []) as unknown as TenantApiKeyRow[];
     },
 
     /**
