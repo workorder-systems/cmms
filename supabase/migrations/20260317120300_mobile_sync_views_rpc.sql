@@ -181,7 +181,7 @@ create or replace function public.rpc_mobile_sync(
 )
 returns jsonb
 language plpgsql
-stable
+volatile
 security definer
 set search_path = ''
 as $$

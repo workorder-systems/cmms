@@ -32,7 +32,7 @@ describe('Work Order Attachments', () => {
     it('upload to attachments bucket creates attachment row via trigger', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -60,7 +60,7 @@ describe('Work Order Attachments', () => {
     it('upload without label/kind yields null label and kind', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -83,7 +83,7 @@ describe('Work Order Attachments', () => {
     it('sets label and kind after upload', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -107,7 +107,7 @@ describe('Work Order Attachments', () => {
     it('accepts valid kind format (a-z0-9_)', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -129,7 +129,7 @@ describe('Work Order Attachments', () => {
     it('rejects label length > 255 when updating via view', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -151,7 +151,7 @@ describe('Work Order Attachments', () => {
     it('rejects invalid kind format when updating via view', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -174,7 +174,7 @@ describe('Work Order Attachments', () => {
     it('view returns bucket_id and storage_path for signed URLs', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -201,7 +201,7 @@ describe('Work Order Attachments', () => {
     it('view orders by created_at desc', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId1 = await createTestAttachment(
         client,
@@ -234,7 +234,7 @@ describe('Work Order Attachments', () => {
     it('createSignedUrl returns URL for attachment row', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -257,14 +257,14 @@ describe('Work Order Attachments', () => {
   describe('RLS', () => {
     it('users see only attachments in their tenant', async () => {
       const user1Client = createTestClient();
-      await createTestUser(user1Client);
+      const { user: user1 } = await createTestUser(user1Client);
       const tenantId1 = await createTestTenant(user1Client);
-      const workOrderId1 = await createTestWorkOrder(user1Client, tenantId1, 'WO 1');
+      const workOrderId1 = await createTestWorkOrder(user1Client, tenantId1, 'WO 1', undefined, 'medium', user1.id);
 
       const user2Client = createTestClient();
-      await createTestUser(user2Client);
+      const { user: user2 } = await createTestUser(user2Client);
       const tenantId2 = await createTestTenant(user2Client);
-      const workOrderId2 = await createTestWorkOrder(user2Client, tenantId2, 'WO 2');
+      const workOrderId2 = await createTestWorkOrder(user2Client, tenantId2, 'WO 2', undefined, 'medium', user2.id);
 
       const attachmentId1 = await createTestAttachment(
         user1Client,
@@ -293,7 +293,7 @@ describe('Work Order Attachments', () => {
     it('users can upload when they can edit the work order (assigned or workorder.edit)', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -308,7 +308,7 @@ describe('Work Order Attachments', () => {
     it('users can update their own attachment label via view', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -366,7 +366,7 @@ describe('Work Order Attachments', () => {
     it('users can delete their own attachment via view', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,
@@ -392,9 +392,9 @@ describe('Work Order Attachments', () => {
 
     it('anon cannot access v_work_order_attachments', async () => {
       const ownerClient = createTestClient();
-      await createTestUser(ownerClient);
+      const { user } = await createTestUser(ownerClient);
       const tenantId = await createTestTenant(ownerClient);
-      const workOrderId = await createTestWorkOrder(ownerClient, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(ownerClient, tenantId, 'Test WO', undefined, 'medium', user.id);
       const attachmentId = await createTestAttachment(
         ownerClient,
         tenantId,
@@ -416,14 +416,14 @@ describe('Work Order Attachments', () => {
   describe('Tenant isolation', () => {
     it('view only returns attachments for current tenant context', async () => {
       const client1 = createTestClient();
-      await createTestUser(client1);
+      const { user: user1 } = await createTestUser(client1);
       const tenantId1 = await createTestTenant(client1);
-      const workOrderId1 = await createTestWorkOrder(client1, tenantId1, 'WO 1');
+      const workOrderId1 = await createTestWorkOrder(client1, tenantId1, 'WO 1', undefined, 'medium', user1.id);
 
       const client2 = createTestClient();
-      await createTestUser(client2);
+      const { user: user2 } = await createTestUser(client2);
       const tenantId2 = await createTestTenant(client2);
-      const workOrderId2 = await createTestWorkOrder(client2, tenantId2, 'WO 2');
+      const workOrderId2 = await createTestWorkOrder(client2, tenantId2, 'WO 2', undefined, 'medium', user2.id);
 
       const attachmentId1 = await createTestAttachment(
         client1,
@@ -454,7 +454,7 @@ describe('Work Order Attachments', () => {
     it('attachment creation (trigger insert) is audited', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO');
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Test WO', undefined, 'medium', user.id);
 
       const attachmentId = await createTestAttachment(
         client,

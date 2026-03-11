@@ -367,13 +367,15 @@ describe('Mobile field', () => {
       const wo2 = await createTestWorkOrder(client2, tenantId2, 'T2 WO');
 
       await setTenantContext(client2, tenantId2);
-      const { data: payload } = await client2.rpc('rpc_mobile_sync', {
+      const { data: payload, error } = await client2.rpc('rpc_mobile_sync', {
         p_tenant_id: tenantId2,
         p_updated_after: null,
         p_limit: 100,
         p_technician_id: null,
       });
 
+      expect(error).toBeNull();
+      expect(payload).toBeDefined();
       const workOrders = (payload as { work_orders: { id: string; tenant_id: string }[] }).work_orders;
       const ids = workOrders.map((wo) => wo.id);
       expect(ids).toContain(wo2);

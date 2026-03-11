@@ -329,6 +329,9 @@ export async function createTestAttachment(
   const storagePath = `${tenantId}/${workOrderId}/${crypto.randomUUID()}_${filename}`;
   const body = Buffer.from('test');
 
+  // Set tenant context before upload so Storage RLS and trigger path see consistent auth/session
+  await setTenantContext(client, tenantId);
+
   const { error: uploadError } = await client.storage
     .from('attachments')
     .upload(storagePath, body, {
