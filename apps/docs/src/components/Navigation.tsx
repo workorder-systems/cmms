@@ -263,6 +263,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'PM (preventive maintenance)', href: '/pm' },
       { title: 'Dashboard', href: '/dashboard' },
       { title: 'Costs & lifecycle', href: '/costs' },
+      { title: 'Parts & inventory', href: '/parts-inventory' },
       { title: 'Audit', href: '/audit' },
     ],
   },

@@ -19,6 +19,7 @@ import type { LaborResource } from './resources/labor.js';
 import type { SchedulingResource } from './resources/scheduling.js';
 import type { CostsResource } from './resources/costs.js';
 import type { ProjectsResource } from './resources/projects.js';
+import type { PartsInventoryResource } from './resources/parts-inventory.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -86,4 +87,6 @@ export type DbClient = {
   costs: CostsResource;
   /** Projects: list and get by id (read-only from v_projects). For cost roll-up by project. */
   projects: ProjectsResource;
+  /** Parts and inventory: catalog, suppliers, stock, reservations, usage, and purchasing (POs, receipts). */
+  partsInventory: PartsInventoryResource;
 };

@@ -22,6 +22,7 @@ import { createLaborResource } from './resources/labor.js';
 import { createSchedulingResource } from './resources/scheduling.js';
 import { createCostsResource } from './resources/costs.js';
 import { createProjectsResource } from './resources/projects.js';
+import { createPartsInventoryResource } from './resources/parts-inventory.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -86,6 +87,7 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     scheduling: createSchedulingResource(supabase),
     costs: createCostsResource(supabase),
     projects: createProjectsResource(supabase),
+    partsInventory: createPartsInventoryResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',
