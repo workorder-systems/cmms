@@ -71,10 +71,9 @@ type NavItem = {
   items: { title: string; to: string }[] | null
 }
 
-/** CMMS sidebar nav: matches SDK resources (work orders, assets, locations, PM, dashboard, catalogs, departments, users, roles). */
+/** CMMS sidebar nav: operations, then configuration (catalogs, team, settings). */
 const CMMS_NAV: {
   operations: NavItem[]
-  team: NavItem[]
   configuration: NavItem[]
 } = {
   operations: [
@@ -109,13 +108,9 @@ const CMMS_NAV: {
       items: null,
     },
   ],
-  team: [
-    { title: 'Departments', to: '/dashboard/departments', icon: Users, items: null },
-    { title: 'Users', to: '/dashboard/users', icon: Users, items: null },
-    { title: 'Roles', to: '/dashboard/roles', icon: Shield, items: null },
-  ],
   configuration: [
     { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags, items: null },
+    { title: 'Team', to: '/dashboard/team', icon: Users, items: null },
     { title: 'Settings', to: '/dashboard/settings', icon: Settings2, items: null },
   ],
 }
@@ -285,53 +280,6 @@ function DashboardLayoutInner() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )
-          )}
-        </SidebarMenu>
-      </SidebarGroup>
-      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-        <SidebarGroupLabel>Team</SidebarGroupLabel>
-        <SidebarMenu>
-          {CMMS_NAV.team.map((item) =>
-            item.items ? (
-              <Collapsible
-                key={item.title}
-                asChild
-                defaultOpen={false}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={item.title}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                      <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {item.items.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            <Link to={subItem.to}>
-                              <span>{subItem.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            ) : (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link to={item.to}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ),
           )}
         </SidebarMenu>
       </SidebarGroup>
