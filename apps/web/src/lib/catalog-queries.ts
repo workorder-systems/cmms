@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { DbClient } from '@workorder-systems/sdk'
+import { getTenantIdFromSession } from './tenant-context'
 
 /** 1 hour – catalogs change rarely; avoid refetch on every navigation. */
 export const CATALOG_STALE_TIME_MS = 1000 * 60 * 60
@@ -12,8 +13,8 @@ export const catalogQueryKeys = {
 }
 
 /**
- * When catalog returns [], it usually means tenant or JWT is out of sync (e.g. tenant_id
- * not in JWT). Sync tenant context and session once, then refetch.
+ * When catalog returns [], it may mean tenant or JWT is out of sync. If JWT already
+ * has this tenant_id, skip setTenant (avoid redundant RPC) and just return the result.
  */
 async function catalogQueryFnWithRecovery<T>(
   client: DbClient,
@@ -23,9 +24,12 @@ async function catalogQueryFnWithRecovery<T>(
   const tenantId = typeof queryKey[2] === 'string' ? queryKey[2] : null
   const result = await listFn()
   if (result.length === 0 && tenantId) {
-    await client.setTenant(tenantId)
-    await client.supabase.auth.refreshSession()
-    return listFn()
+    const { data: { session } } = await client.supabase.auth.getSession()
+    if (getTenantIdFromSession(session) !== tenantId) {
+      await client.setTenant(tenantId)
+      await client.supabase.auth.refreshSession()
+      return listFn()
+    }
   }
   return result
 }

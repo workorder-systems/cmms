@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { DbClient } from '@workorder-systems/sdk'
 import { prefetchCatalogs } from './catalog-queries'
 import { DASHBOARD_TENANT_STORAGE_KEY } from './tenant-storage'
+import { getTenantIdFromSession } from './tenant-context'
 
 export type DashboardRouteContext = {
   queryClient: QueryClient
@@ -22,8 +23,9 @@ export type DashboardRouteContext = {
 
 /**
  * Ensures tenant context is set before loading a dashboard route (SSR-safe).
- * Reads tenant from localStorage, calls setTenant, then refreshes session so JWT
- * carries tenant_id for tenant-scoped views/RPCs.
+ * Reads tenant from localStorage. If the session JWT already has that tenant_id
+ * (from a previous setTenant + refresh), skips rpc_set_tenant_context and refresh
+ * to avoid redundant RPCs. Otherwise calls setTenant then refreshes session.
  * No-op on server or when no tenant is stored.
  */
 export async function ensureTenantContext(
@@ -32,6 +34,8 @@ export async function ensureTenantContext(
   if (typeof window === 'undefined') return
   const tenantId = window.localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
   if (!tenantId) return
+  const { data: { session } } = await context.dbClient.supabase.auth.getSession()
+  if (getTenantIdFromSession(session) === tenantId) return
   await context.dbClient.setTenant(tenantId)
   await context.dbClient.supabase.auth.refreshSession()
 }
@@ -46,7 +50,10 @@ export async function ensureTenantContextWithCatalogs(
   if (typeof window === 'undefined') return
   const tenantId = window.localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
   if (!tenantId) return
-  await context.dbClient.setTenant(tenantId)
-  await context.dbClient.supabase.auth.refreshSession()
+  const { data: { session } } = await context.dbClient.supabase.auth.getSession()
+  if (getTenantIdFromSession(session) !== tenantId) {
+    await context.dbClient.setTenant(tenantId)
+    await context.dbClient.supabase.auth.refreshSession()
+  }
   await prefetchCatalogs(context.queryClient, context.dbClient, tenantId)
 }

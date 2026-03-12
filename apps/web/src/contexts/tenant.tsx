@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { getDbClient } from '../lib/db-client'
 import { DASHBOARD_TENANT_STORAGE_KEY } from '../lib/tenant-storage'
+import { getTenantIdFromSession } from '../lib/tenant-context'
 import type { TenantRow } from '@workorder-systems/sdk'
 
 function getStoredTenantId(): string | null {
@@ -96,15 +97,21 @@ export function useTenant() {
     if (!targetId) return
     initialSyncDone.current = true
     setActiveTenantIdSync(targetId)
-    client
-      .setTenant(targetId)
-      .then(() => client.supabase.auth.refreshSession())
-      .then(() => {
+    client.supabase.auth.getSession().then(({ data: { session } }) => {
+      if (getTenantIdFromSession(session) === targetId) {
         queryClient.invalidateQueries({ queryKey: ['catalogs'] })
-      })
-      .catch(() => {
-        initialSyncDone.current = false
-      })
+        return
+      }
+      client
+        .setTenant(targetId)
+        .then(() => client.supabase.auth.refreshSession())
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['catalogs'] })
+        })
+        .catch(() => {
+          initialSyncDone.current = false
+        })
+    })
   }, [isLoadingTenants, tenants, client, setActiveTenantIdSync, queryClient])
 
   return {
