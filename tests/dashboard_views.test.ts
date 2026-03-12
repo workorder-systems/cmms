@@ -619,15 +619,10 @@ describe('Dashboard Views', () => {
         .select('tenant_id, tenant_name, slug')
         .limit(1);
 
-      // PGRST106 = 0 rows when tenant context is not visible to reporting schema in test env
-      if (error?.code === 'PGRST106') {
-        expect(list).toBeNull();
-        return;
-      }
       expect(error).toBeNull();
-      if (list && list.length > 0) {
-        expect(list[0].tenant_id).toBe(tenantId);
-      }
+      expect(list).not.toBeNull();
+      expect(list?.length).toBe(1);
+      expect(list?.[0].tenant_id).toBe(tenantId);
     });
   });
 

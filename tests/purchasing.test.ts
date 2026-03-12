@@ -6,7 +6,13 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { getOrCreateSharedUser } from './helpers/auth';
 import { getOrCreateSharedTenant } from './helpers/tenant';
+import { shortSlug } from './helpers/faker';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+/** Unique order number to avoid 23505 on (tenant_id, order_number) across runs. */
+function uniqueOrderNumber(prefix = 'PO'): string {
+  return `${prefix}-${shortSlug()}`;
+}
 
 describe('Purchasing', () => {
   let client: SupabaseClient;
@@ -21,9 +27,10 @@ describe('Purchasing', () => {
       await getOrCreateSharedUser(client, { scopeKey: __filename });
       const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
-      const { data: supplierId } = await client.rpc('rpc_create_supplier', {
+      const supplierName = `Vendor-${shortSlug()}`;
+      const { data: supplierId, error: supplierError } = await client.rpc('rpc_create_supplier', {
         p_tenant_id: tenantId,
-        p_name: 'Vendor A',
+        p_name: supplierName,
         p_code: null,
         p_external_id: null,
         p_contact_name: null,
@@ -31,9 +38,13 @@ describe('Purchasing', () => {
         p_phone: null,
         p_address_line: null,
       });
-      const { data: partId } = await client.rpc('rpc_create_part', {
+      expect(supplierError).toBeNull();
+      expect(supplierId).toBeDefined();
+
+      const partNumber = `PO-PART-${shortSlug()}`;
+      const { data: partId, error: partError } = await client.rpc('rpc_create_part', {
         p_tenant_id: tenantId,
-        p_part_number: 'PO-PART-1',
+        p_part_number: partNumber,
         p_name: null,
         p_description: null,
         p_unit: 'each',
@@ -44,11 +55,14 @@ describe('Purchasing', () => {
         p_max_quantity: null,
         p_lead_time_days: null,
       });
+      expect(partError).toBeNull();
+      expect(partId).toBeDefined();
 
+      const orderNumber = uniqueOrderNumber();
       const { data: poId, error } = await client.rpc('rpc_create_purchase_order', {
         p_tenant_id: tenantId,
         p_supplier_id: supplierId,
-        p_order_number: 'PO-001',
+        p_order_number: orderNumber,
         p_order_date: null,
         p_expected_delivery_date: null,
         p_external_id: null,
@@ -67,7 +81,7 @@ describe('Purchasing', () => {
         .maybeSingle();
 
       expect(viewError).toBeNull();
-      expect(rows?.order_number).toBe('PO-001');
+      expect(rows?.order_number).toBe(orderNumber);
     });
 
     it('should query v_open_purchase_orders and v_purchase_order_receipt_status without error', async () => {
@@ -101,10 +115,11 @@ describe('Purchasing', () => {
         p_phone: null,
         p_address_line: null,
       });
-      const { data: poId } = await client1.rpc('rpc_create_purchase_order', {
+      const orderNumberT1 = uniqueOrderNumber('T1-PO');
+      const { data: poId, error: createError } = await client1.rpc('rpc_create_purchase_order', {
         p_tenant_id: tenantId1,
         p_supplier_id: supplierId,
-        p_order_number: 'T1-PO',
+        p_order_number: orderNumberT1,
         p_order_date: null,
         p_expected_delivery_date: null,
         p_external_id: null,
@@ -112,9 +127,13 @@ describe('Purchasing', () => {
         p_lines: [],
       });
 
+      expect(createError).toBeNull();
+      expect(poId).toBeDefined();
+      expect(typeof poId).toBe('string');
+
       const client2 = createTestClient();
       await getOrCreateSharedUser(client2, { scopeKey: __filename, roleKey: 'tenant2' });
-      const tenantId2 = await getOrCreateSharedTenant(client2, {
+      await getOrCreateSharedTenant(client2, {
         scopeKey: __filename,
         tenantKey: 'tenant2',
       });

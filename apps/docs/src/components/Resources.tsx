@@ -21,6 +21,9 @@ import { ListIcon } from '@/components/icons/ListIcon'
 import { CalendarIcon } from '@/components/icons/CalendarIcon'
 import { DocumentIcon } from '@/components/icons/DocumentIcon'
 import { ClipboardIcon } from '@/components/icons/ClipboardIcon'
+import { MagnifyingGlassIcon } from '@/components/icons/MagnifyingGlassIcon'
+import { CartIcon } from '@/components/icons/CartIcon'
+import { ShapesIcon } from '@/components/icons/ShapesIcon'
 
 interface Resource {
   href: string
@@ -33,199 +36,185 @@ interface Resource {
   >
 }
 
-const resources: Array<Resource> = [
+const defaultPattern = {
+  y: 16,
+  squares: [
+    [0, 1],
+    [1, 3],
+  ] as [number, number][],
+}
+
+const resourceCategories: Array<{ title: string; resources: Array<Resource> }> = [
   {
-    href: '/tenants',
-    name: 'Tenants',
-    description:
-      'List tenants, create tenants, invite users, assign roles.',
-    icon: UsersIcon,
-    pattern: {
-      y: 16,
-      squares: [
-        [0, 1],
-        [1, 3],
-      ],
-    },
+    title: 'Tenants & organization',
+    resources: [
+      {
+        href: '/tenants',
+        name: 'Tenants',
+        description: 'List tenants, create tenants, invite users, assign roles.',
+        icon: UsersIcon,
+        pattern: { ...defaultPattern },
+      },
+      {
+        href: '/departments',
+        name: 'Departments',
+        description: 'List, create, update, and delete departments.',
+        icon: FolderIcon,
+        pattern: { y: 22, squares: [[0, 1]] },
+      },
+      {
+        href: '/labor',
+        name: 'Labor',
+        description: 'Technicians, crews, skills, certifications, shifts, assignments.',
+        icon: UsersIcon,
+        pattern: { y: -6, squares: [[-1, 2], [1, 3]] },
+      },
+      {
+        href: '/catalogs',
+        name: 'Catalogs',
+        description: 'Statuses, priorities, maintenance types, and workflow graph.',
+        icon: ListIcon,
+        pattern: { y: 8, squares: [[0, 1], [1, 3]] },
+      },
+    ],
   },
   {
-    href: '/work-orders',
-    name: 'Work orders',
-    description:
-      'List, create, transition, complete, log time; list attachments, update attachment metadata.',
-    icon: BoltIcon,
-    pattern: {
-      y: -6,
-      squares: [
-        [-1, 2],
-        [1, 3],
-      ],
-    },
+    title: 'Work orders & dispatch',
+    resources: [
+      {
+        href: '/work-orders',
+        name: 'Work orders',
+        description:
+          'List, create, transition, complete, log time; attachments and metadata.',
+        icon: BoltIcon,
+        pattern: { y: -6, squares: [[-1, 2], [1, 3]] },
+      },
+      {
+        href: '/similar-past-fixes',
+        name: 'Similar past fixes',
+        description: 'Search by text or work order for similar historical fixes.',
+        icon: MagnifyingGlassIcon,
+        pattern: { y: 12, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/scheduling',
+        name: 'Scheduling & dispatch',
+        description: 'Schedule blocks, assign work orders, validate and unschedule.',
+        icon: CalendarIcon,
+        pattern: { y: 24, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/mobile-field',
+        name: 'Mobile field',
+        description: 'Offline sync, start/stop work order, notes, attachments; mobile views.',
+        icon: MapPinIcon,
+        pattern: { y: 8, squares: [[0, 1], [1, 3]] },
+      },
+    ],
   },
   {
-    href: '/assets',
-    name: 'Assets',
-    description:
-      'List, create, update, and delete assets.',
-    icon: PackageIcon,
-    pattern: {
-      y: 32,
-      squares: [
-        [0, 2],
-        [1, 4],
-      ],
-    },
+    title: 'Places & assets',
+    resources: [
+      {
+        href: '/locations',
+        name: 'Locations',
+        description: 'List, create, update, delete; hierarchy and site rollups.',
+        icon: MapPinIcon,
+        pattern: { y: 22, squares: [[0, 1]] },
+      },
+      {
+        href: '/spaces',
+        name: 'Spaces',
+        description: 'List, create, update, delete spaces by location.',
+        icon: ShapesIcon,
+        pattern: { y: 32, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/assets',
+        name: 'Assets',
+        description: 'List, create, update, and delete assets.',
+        icon: PackageIcon,
+        pattern: { y: 32, squares: [[0, 2], [1, 4]] },
+      },
+    ],
   },
   {
-    href: '/locations',
-    name: 'Locations',
-    description:
-      'List, create, update, and delete locations.',
-    icon: MapPinIcon,
-    pattern: {
-      y: 22,
-      squares: [[0, 1]],
-    },
+    title: 'Maintenance & meters',
+    resources: [
+      {
+        href: '/meters',
+        name: 'Meters',
+        description: 'List meters and readings; create, update, record, delete.',
+        icon: CogIcon,
+        pattern: { y: -6, squares: [[-1, 2], [1, 3]] },
+      },
+      {
+        href: '/pm',
+        name: 'PM (preventive maintenance)',
+        description: 'Templates, schedules; due, overdue, upcoming, and history.',
+        icon: CalendarIcon,
+        pattern: { y: 24, squares: [[0, 2], [1, 4]] },
+      },
+    ],
   },
   {
-    href: '/departments',
-    name: 'Departments',
-    description:
-      'List, create, update, and delete departments.',
-    icon: FolderIcon,
-    pattern: {
-      y: 16,
-      squares: [
-        [0, 1],
-        [1, 3],
-      ],
-    },
+    title: 'Reporting & compliance',
+    resources: [
+      {
+        href: '/dashboard',
+        name: 'Dashboard',
+        description: 'Metrics, MTTR, open/overdue work orders, and summaries.',
+        icon: BoltIcon,
+        pattern: { y: -8, squares: [[-1, 1], [1, 3]] },
+      },
+      {
+        href: '/analytics',
+        name: 'Analytics reporting',
+        description: 'Dimensions, facts, KPIs; BI and warehouse contract.',
+        icon: DocumentIcon,
+        pattern: { y: -4, squares: [[-1, 2], [1, 4]] },
+      },
+      {
+        href: '/costs',
+        name: 'Costs & lifecycle',
+        description: 'Work order, asset, location costs; lifecycle alerts and TCO.',
+        icon: DocumentIcon,
+        pattern: { y: 18, squares: [[0, 1], [1, 3]] },
+      },
+      {
+        href: '/audit',
+        name: 'Audit',
+        description: 'Entity and permission change logs; retention config.',
+        icon: DocumentIcon,
+        pattern: { y: 18, squares: [[0, 1], [1, 3]] },
+      },
+      {
+        href: '/safety-compliance',
+        name: 'Safety & compliance',
+        description: 'Inspections, runs, incidents, corrective actions, reporting.',
+        icon: ClipboardIcon,
+        pattern: { y: 12, squares: [[0, 2], [1, 4]] },
+      },
+    ],
   },
   {
-    href: '/meters',
-    name: 'Meters',
-    description:
-      'List meters and readings; create, update, record readings, delete meters.',
-    icon: CogIcon,
-    pattern: {
-      y: -6,
-      squares: [
-        [-1, 2],
-        [1, 3],
-      ],
-    },
-  },
-  {
-    href: '/plugins',
-    name: 'Plugins',
-    description:
-      'List catalog and tenant installations; install, update, uninstall (tenant.admin).',
-    icon: SquaresPlusIcon,
-    pattern: {
-      y: 16,
-      squares: [
-        [0, 2],
-        [1, 4],
-      ],
-    },
-  },
-  {
-    href: '/catalogs',
-    name: 'Catalogs',
-    description:
-      'List and manage statuses, priorities, maintenance types, and workflow graph.',
-    icon: ListIcon,
-    pattern: {
-      y: 8,
-      squares: [
-        [0, 1],
-        [1, 3],
-      ],
-    },
-  },
-  {
-    href: '/pm',
-    name: 'Preventive maintenance',
-    description:
-      'Manage PM templates and schedules; list due, overdue, upcoming, and history.',
-    icon: CalendarIcon,
-    pattern: {
-      y: 24,
-      squares: [
-        [0, 2],
-        [1, 4],
-      ],
-    },
-  },
-  {
-    href: '/dashboard',
-    name: 'Dashboard',
-    description:
-      'Read dashboard metrics, MTTR, open/overdue work orders, and summaries.',
-    icon: BoltIcon,
-    pattern: {
-      y: -8,
-      squares: [
-        [-1, 1],
-        [1, 3],
-      ],
-    },
-  },
-  {
-    href: '/analytics',
-    name: 'Analytics reporting',
-    description:
-      'Reporting schema: dimensions, facts, KPIs (MTTR, MTBF, PM compliance, utilization, backlog). BI and warehouse contract.',
-    icon: DocumentIcon,
-    pattern: {
-      y: -4,
-      squares: [
-        [-1, 2],
-        [1, 4],
-      ],
-    },
-  },
-  {
-    href: '/audit',
-    name: 'Audit',
-    description:
-      'Read entity and permission change logs; manage audit retention config.',
-    icon: DocumentIcon,
-    pattern: {
-      y: 18,
-      squares: [
-        [0, 1],
-        [1, 3],
-      ],
-    },
-  },
-  {
-    href: '/safety-compliance',
-    name: 'Safety & compliance',
-    description:
-      'Inspection templates, runs, and results; incidents and corrective actions; compliance reporting.',
-    icon: ClipboardIcon,
-    pattern: {
-      y: 12,
-      squares: [
-        [0, 2],
-        [1, 4],
-      ],
-    },
-  },
-  {
-    href: '/mobile-field',
-    name: 'Mobile field',
-    description:
-      'Offline sync payload, start/stop work order, add note, register attachment; lightweight mobile views and GPS hooks.',
-    icon: MapPinIcon,
-    pattern: {
-      y: 8,
-      squares: [
-        [0, 1],
-        [1, 3],
-      ],
-    },
+    title: 'Inventory & plugins',
+    resources: [
+      {
+        href: '/parts-inventory',
+        name: 'Parts & inventory',
+        description: 'Parts, stock, suppliers, reservations, POs, requisitions.',
+        icon: CartIcon,
+        pattern: { y: 16, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/plugins',
+        name: 'Plugins',
+        description: 'Catalog and tenant installations; install, update, uninstall.',
+        icon: SquaresPlusIcon,
+        pattern: { y: 16, squares: [[0, 2], [1, 4]] },
+      },
+    ],
   },
 ]
 
@@ -323,9 +312,21 @@ export function Resources() {
       <Heading level={2} id="resources">
         Resources
       </Heading>
-      <div className="not-prose mt-4 grid grid-cols-1 gap-8 border-t border-zinc-900/5 pt-10 sm:grid-cols-2 xl:grid-cols-4 dark:border-white/5">
-        {resources.map((resource) => (
-          <Resource key={resource.href} resource={resource} />
+      <div className="mt-4 border-t border-zinc-900/5 pt-10 dark:border-white/5">
+        {resourceCategories.map((category) => (
+          <section
+            key={category.title}
+            className="mb-14 last:mb-0"
+          >
+            <h3 className="mb-4 text-base font-semibold text-zinc-900 dark:text-white">
+              {category.title}
+            </h3>
+            <div className="not-prose grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-4">
+              {category.resources.map((resource) => (
+                <Resource key={resource.href} resource={resource} />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </div>
