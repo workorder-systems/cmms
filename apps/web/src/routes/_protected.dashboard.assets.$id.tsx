@@ -1,15 +1,17 @@
 import * as React from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Wrench, ClipboardList, Gauge, Plus, Activity } from 'lucide-react'
+import { Wrench, ClipboardList, Gauge, Plus, Activity, Edit, Trash2 } from 'lucide-react'
 import type { AssetRow, AssetMeterRow, MeterReadingRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
 import { catalogQueryOptions } from '../lib/catalog-queries'
+import { useHasPermission } from '../hooks/use-permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@workspace/ui/components/card'
 import { Label } from '@workspace/ui/components/label'
 import { Input } from '@workspace/ui/components/input'
+import { Textarea } from '@workspace/ui/components/textarea'
 import { Button } from '@workspace/ui/components/button'
 import {
   Select,
@@ -70,12 +72,24 @@ export const Route = createFileRoute('/_protected/dashboard/assets/$id')({
 
 function AssetDetailPage() {
   const { id } = Route.useParams()
+  const navigate = useNavigate()
   const client = getDbClient()
   const queryClient = useQueryClient()
   const { activeTenantId } = useTenant()
+  const { hasPermission: canEditAsset } = useHasPermission('assets.update')
+  const { hasPermission: canDeleteAsset } = useHasPermission('assets.delete')
 
   const [addMeterOpen, setAddMeterOpen] = React.useState(false)
   const [recordReadingMeter, setRecordReadingMeter] = React.useState<AssetMeterRow | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+
+  const [editName, setEditName] = React.useState('')
+  const [editDescription, setEditDescription] = React.useState('')
+  const [editAssetNumber, setEditAssetNumber] = React.useState('')
+  const [editLocationId, setEditLocationId] = React.useState('')
+  const [editDepartmentId, setEditDepartmentId] = React.useState('')
+  const [editStatus, setEditStatus] = React.useState('')
 
   const { data: asset, isLoading, isError, error } = useQuery({
     queryKey: ['asset', id],
@@ -272,6 +286,48 @@ function AssetDetailPage() {
     onError: (err: Error) => toast.error(err.message),
   })
 
+  React.useEffect(() => {
+    if (asset) {
+      setEditName(asset.name ?? '')
+      setEditDescription(asset.description ?? '')
+      setEditAssetNumber(asset.asset_number ?? '')
+      setEditLocationId(asset.location_id ?? '')
+      setEditDepartmentId(asset.department_id ?? '')
+      setEditStatus(asset.status ?? 'active')
+    }
+  }, [asset])
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      client.assets.update({
+        tenantId: activeTenantId!,
+        assetId: id,
+        name: editName.trim() || null,
+        description: editDescription.trim() || null,
+        assetNumber: editAssetNumber.trim() || null,
+        locationId: editLocationId || null,
+        departmentId: editDepartmentId || null,
+        status: editStatus || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['asset', id] })
+      queryClient.invalidateQueries({ queryKey: ['assets', activeTenantId] })
+      setIsEditDialogOpen(false)
+      toast.success('Asset updated')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => client.assets.delete(activeTenantId!, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets', activeTenantId] })
+      toast.success('Asset deleted')
+      navigate({ to: '/dashboard/assets' })
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
   const recordReadingMutation = useMutation({
     mutationFn: (params: { meterId: string; readingValue: number; readingDate?: string | null; notes?: string | null }) =>
       client.meters.recordReading({
@@ -314,9 +370,25 @@ function AssetDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
-      <h1 className="truncate text-xl font-semibold">
-        {asset.name ?? 'Asset'}
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="truncate text-xl font-semibold">
+          {asset.name ?? 'Asset'}
+        </h1>
+        <div className="flex gap-2">
+          {canEditAsset && (
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )}
+          {canDeleteAsset && (
+            <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* StatCards: open work orders + per-meter with optional sparkline (gradient style) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -515,6 +587,128 @@ function AssetDetailPage() {
           isPending={recordReadingMutation.isPending}
         />
       )}
+
+      {/* Edit Asset Dialog */}
+      <ResponsiveDialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Edit Asset</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>Update asset information</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Asset name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-asset-number">Asset Number</Label>
+              <Input
+                id="edit-asset-number"
+                value={editAssetNumber}
+                onChange={(e) => setEditAssetNumber(e.target.value)}
+                placeholder="Asset number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Asset description"
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetStatusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-location">Location</Label>
+                <Select value={editLocationId} onValueChange={setEditLocationId}>
+                  <SelectTrigger id="edit-location">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id as string}>
+                        {loc.name ?? loc.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Select value={editDepartmentId} onValueChange={setEditDepartmentId}>
+                  <SelectTrigger id="edit-department">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id as string}>
+                        {dept.name ?? dept.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <ResponsiveDialogFooter>
+            <ResponsiveDialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </ResponsiveDialogClose>
+            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Updating…' : 'Update'}
+            </Button>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
+
+      {/* Delete Asset Dialog */}
+      <ResponsiveDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Delete Asset</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
+              Are you sure you want to delete this asset? This action cannot be undone.
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogFooter>
+            <ResponsiveDialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </ResponsiveDialogClose>
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   )
 }

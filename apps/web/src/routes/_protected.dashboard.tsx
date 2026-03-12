@@ -50,6 +50,12 @@ import {
   Tags,
   Users,
   Wrench,
+  Calendar,
+  DollarSign,
+  FolderKanban,
+  Package,
+  Puzzle,
+  FileText,
 } from 'lucide-react'
 import {
   Avatar,
@@ -108,15 +114,57 @@ const CMMS_NAV: {
       icon: CalendarCheck,
       items: null,
     },
+    {
+      title: 'Schedule',
+      to: '/dashboard/schedule',
+      icon: Calendar,
+      items: null,
+    },
+    {
+      title: 'Costs',
+      to: '/dashboard/costs',
+      icon: DollarSign,
+      items: null,
+    },
+    {
+      title: 'Projects',
+      to: '/dashboard/projects',
+      icon: FolderKanban,
+      items: null,
+    },
+    {
+      title: 'Parts & Inventory',
+      to: '/dashboard/parts',
+      icon: Package,
+      items: null,
+    },
+    {
+      title: 'Safety & Compliance',
+      to: '/dashboard/safety',
+      icon: Shield,
+      items: null,
+    },
   ],
   team: [
     { title: 'Departments', to: '/dashboard/departments', icon: Users, items: null },
     { title: 'Users', to: '/dashboard/users', icon: Users, items: null },
     { title: 'Roles', to: '/dashboard/roles', icon: Shield, items: null },
+    { title: 'Technicians', to: '/dashboard/technicians', icon: Users, items: null },
+    { title: 'Crews', to: '/dashboard/crews', icon: Users, items: null },
   ],
   configuration: [
     { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags, items: null },
-    { title: 'Settings', to: '/dashboard/settings', icon: Settings2, items: null },
+    {
+      title: 'Settings',
+      to: '/dashboard/settings',
+      icon: Settings2,
+      items: [
+        { title: 'API Keys', to: '/dashboard/settings/api' },
+        { title: 'Meters', to: '/dashboard/settings/meters' },
+        { title: 'Plugins', to: '/dashboard/settings/plugins' },
+        { title: 'Audit', to: '/dashboard/settings/audit' },
+      ],
+    },
   ],
 }
 

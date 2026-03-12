@@ -1,12 +1,24 @@
 import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { MapPin, Plus, Upload } from 'lucide-react'
 import type { LocationRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContext } from '../lib/route-loaders'
+import { useHasPermission } from '../hooks/use-permissions'
+import { Input } from '@workspace/ui/components/input'
+import { Textarea } from '@workspace/ui/components/textarea'
+import { Label } from '@workspace/ui/components/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@workspace/ui/components/select'
+import { toast } from 'sonner'
 import {
   DEFAULT_PAGE_SIZE,
   createDataTableQueryKeys,
@@ -40,6 +52,7 @@ export const Route = createFileRoute('/_protected/dashboard/locations/')({
 function LocationsPage() {
   const { activeTenantId } = useTenant()
   const client = getDbClient()
+  const { hasPermission: canCreateLocation } = useHasPermission('locations.create')
 
   const { data: locations = [], isLoading, isError, error } = useQuery({
     queryKey: ['locations', activeTenantId],
@@ -55,9 +68,33 @@ function LocationsPage() {
     return map
   }, [locations])
 
+  const queryClient = useQueryClient()
   const isCreateModalOpen = useLocationsPageStore((s) => s.isCreateModalOpen)
   const openCreateModal = useLocationsPageStore((s) => s.openCreateModal)
   const closeCreateModal = useLocationsPageStore((s) => s.closeCreateModal)
+
+  const [createName, setCreateName] = React.useState('')
+  const [createDescription, setCreateDescription] = React.useState('')
+  const [createParentLocationId, setCreateParentLocationId] = React.useState('')
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      client.locations.create({
+        tenantId: activeTenantId!,
+        name: createName.trim(),
+        description: createDescription.trim() || null,
+        parentLocationId: createParentLocationId || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations', activeTenantId] })
+      toast.success('Location created')
+      setCreateName('')
+      setCreateDescription('')
+      setCreateParentLocationId('')
+      closeCreateModal()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
 
   const columns = React.useMemo<ColumnDef<LocationRow>[]>(
     () => [
@@ -67,9 +104,21 @@ function LocationsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Name" />
         ),
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue('name') ?? '—'}</span>
-        ),
+        cell: ({ row }) => {
+          const location = row.original
+          const name = row.getValue('name') as string | null
+          return location.id ? (
+            <Link
+              to="/dashboard/locations/$id"
+              params={{ id: location.id }}
+              className="font-medium text-primary hover:underline"
+            >
+              {name ?? '—'}
+            </Link>
+          ) : (
+            <span className="font-medium">{name ?? '—'}</span>
+          )
+        },
         meta: {
           label: 'Name',
           placeholder: 'Search names...',
@@ -156,40 +205,102 @@ function LocationsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+    <div className="flex flex-1 flex-col gap-6 p-6 pt-8">
       <ExtensionPoint name="header.right">
         <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost">
+          <Button asChild size="default" variant="outline" className="shadow-sm">
             <Link to="/dashboard/locations/import">
               <Upload className="size-4" />
             </Link>
           </Button>
-          <Button onClick={openCreateModal} size="sm" variant="outline">
-            <Plus className="size-4" />
-            New location
-          </Button>
+          {canCreateLocation && (
+            <Button onClick={openCreateModal} size="default" className="shadow-sm">
+              <Plus className="size-4" />
+              New location
+            </Button>
+          )}
         </div>
       </ExtensionPoint>
 
-      <DataTable table={table}>
-        <DataTableToolbar table={table} />
-      </DataTable>
+      <div className="rounded-xl border-2 border-border/50 bg-card shadow-sm">
+        <DataTable table={table}>
+          <DataTableToolbar table={table} />
+        </DataTable>
+      </div>
 
       <ResponsiveDialog
         open={isCreateModalOpen}
-        onOpenChange={(open) => !open && closeCreateModal()}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeCreateModal()
+            setCreateName('')
+            setCreateDescription('')
+            setCreateParentLocationId('')
+          }
+        }}
       >
         <ResponsiveDialogContent>
           <ResponsiveDialogHeader>
             <ResponsiveDialogTitle>New location</ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
-              Create a new location. Form can be implemented here.
+              Create a new location
             </ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-name">Name *</Label>
+              <Input
+                id="create-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder="Location name"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-description">Description</Label>
+              <Textarea
+                id="create-description"
+                value={createDescription}
+                onChange={(e) => setCreateDescription(e.target.value)}
+                placeholder="Location description"
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-parent">Parent Location</Label>
+              <Select value={createParentLocationId} onValueChange={setCreateParentLocationId}>
+                <SelectTrigger id="create-parent">
+                  <SelectValue placeholder="Select parent location (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id as string}>
+                      {loc.name ?? loc.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <ResponsiveDialogFooter>
             <ResponsiveDialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </ResponsiveDialogClose>
+            <Button
+              onClick={() => {
+                if (!createName.trim()) {
+                  toast.error('Name is required')
+                  return
+                }
+                createMutation.mutate()
+              }}
+              disabled={createMutation.isPending || !createName.trim()}
+            >
+              {createMutation.isPending ? 'Creating…' : 'Create'}
+            </Button>
           </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
       </ResponsiveDialog>

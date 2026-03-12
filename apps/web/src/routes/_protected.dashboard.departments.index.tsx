@@ -1,12 +1,17 @@
 import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Upload, Users } from 'lucide-react'
 import type { DepartmentRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContext } from '../lib/route-loaders'
+import { useHasPermission } from '../hooks/use-permissions'
+import { Input } from '@workspace/ui/components/input'
+import { Textarea } from '@workspace/ui/components/textarea'
+import { Label } from '@workspace/ui/components/label'
+import { toast } from 'sonner'
 import {
   DEFAULT_PAGE_SIZE,
   createDataTableQueryKeys,
@@ -40,6 +45,7 @@ export const Route = createFileRoute('/_protected/dashboard/departments/')({
 function DepartmentsPage() {
   const { activeTenantId } = useTenant()
   const client = getDbClient()
+  const { hasPermission: canCreateDepartment } = useHasPermission('departments.create')
 
   const { data: departments = [], isLoading, isError, error } = useQuery({
     queryKey: ['departments', activeTenantId],
@@ -47,9 +53,33 @@ function DepartmentsPage() {
     enabled: !!activeTenantId,
   })
 
+  const queryClient = useQueryClient()
   const isCreateModalOpen = useDepartmentsPageStore((s) => s.isCreateModalOpen)
   const openCreateModal = useDepartmentsPageStore((s) => s.openCreateModal)
   const closeCreateModal = useDepartmentsPageStore((s) => s.closeCreateModal)
+
+  const [createName, setCreateName] = React.useState('')
+  const [createDescription, setCreateDescription] = React.useState('')
+  const [createCode, setCreateCode] = React.useState('')
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      client.departments.create({
+        tenantId: activeTenantId!,
+        name: createName.trim(),
+        description: createDescription.trim() || null,
+        code: createCode.trim() || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments', activeTenantId] })
+      toast.success('Department created')
+      setCreateName('')
+      setCreateDescription('')
+      setCreateCode('')
+      closeCreateModal()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
 
   const columns = React.useMemo<ColumnDef<DepartmentRow>[]>(
     () => [
@@ -59,9 +89,21 @@ function DepartmentsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} label="Name" />
         ),
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue('name') ?? '—'}</span>
-        ),
+        cell: ({ row }) => {
+          const department = row.original
+          const name = row.getValue('name') as string | null
+          return department.id ? (
+            <Link
+              to="/dashboard/departments/$id"
+              params={{ id: department.id }}
+              className="font-medium text-primary hover:underline"
+            >
+              {name ?? '—'}
+            </Link>
+          ) : (
+            <span className="font-medium">{name ?? '—'}</span>
+          )
+        },
         meta: {
           label: 'Name',
           placeholder: 'Search names...',
@@ -155,10 +197,12 @@ function DepartmentsPage() {
               <Upload className="size-4" />
             </Link>
           </Button>
-          <Button onClick={openCreateModal} size="sm" variant="outline">
-            <Plus className="size-4" />
-            New department
-          </Button>
+          {canCreateDepartment && (
+            <Button onClick={openCreateModal} size="sm" variant="outline">
+              <Plus className="size-4" />
+              New department
+            </Button>
+          )}
         </div>
       </ExtensionPoint>
 
@@ -168,19 +212,70 @@ function DepartmentsPage() {
 
       <ResponsiveDialog
         open={isCreateModalOpen}
-        onOpenChange={(open) => !open && closeCreateModal()}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeCreateModal()
+            setCreateName('')
+            setCreateDescription('')
+            setCreateCode('')
+          }
+        }}
       >
         <ResponsiveDialogContent>
           <ResponsiveDialogHeader>
             <ResponsiveDialogTitle>New department</ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
-              Create a new department. Form can be implemented here.
+              Create a new department
             </ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-name">Name *</Label>
+              <Input
+                id="create-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder="Department name"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-code">Code</Label>
+              <Input
+                id="create-code"
+                value={createCode}
+                onChange={(e) => setCreateCode(e.target.value)}
+                placeholder="Department code"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-description">Description</Label>
+              <Textarea
+                id="create-description"
+                value={createDescription}
+                onChange={(e) => setCreateDescription(e.target.value)}
+                placeholder="Department description"
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+          </div>
           <ResponsiveDialogFooter>
             <ResponsiveDialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </ResponsiveDialogClose>
+            <Button
+              onClick={() => {
+                if (!createName.trim()) {
+                  toast.error('Name is required')
+                  return
+                }
+                createMutation.mutate()
+              }}
+              disabled={createMutation.isPending || !createName.trim()}
+            >
+              {createMutation.isPending ? 'Creating…' : 'Create'}
+            </Button>
           </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
       </ResponsiveDialog>

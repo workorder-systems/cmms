@@ -1,13 +1,15 @@
 import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef, Row } from '@tanstack/react-table'
-import { useQuery } from '@tanstack/react-query'
-import { Plus, Upload, Wrench } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { Plus, Upload, Wrench, Loader2 } from 'lucide-react'
 import type { AssetRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { useHasPermission } from '../hooks/use-permissions'
 import { StatusBadge } from '../components/status-badge'
 import {
   DEFAULT_PAGE_SIZE,
@@ -22,6 +24,16 @@ import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-tabl
 import { useDataTable } from '@workspace/ui/hooks/use-data-table'
 import { Button } from '@workspace/ui/components/button'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
+import { Input } from '@workspace/ui/components/input'
+import { Label } from '@workspace/ui/components/label'
+import { Textarea } from '@workspace/ui/components/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@workspace/ui/components/select'
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -50,6 +62,7 @@ export const Route = createFileRoute('/_protected/dashboard/assets/')({
 function AssetsPage() {
   const { activeTenantId } = useTenant()
   const client = getDbClient()
+  const { hasPermission: canCreateAsset } = useHasPermission('assets.create')
 
   const { data: assets = [], isLoading, isError, error } = useQuery({
     queryKey: ['assets', activeTenantId],
@@ -113,9 +126,42 @@ function AssetsPage() {
     return map
   }, [departments])
 
+  const queryClient = useQueryClient()
   const isCreateModalOpen = useAssetsPageStore((s) => s.isCreateModalOpen)
   const openCreateModal = useAssetsPageStore((s) => s.openCreateModal)
   const closeCreateModal = useAssetsPageStore((s) => s.closeCreateModal)
+
+  const [createName, setCreateName] = React.useState('')
+  const [createDescription, setCreateDescription] = React.useState('')
+  const [createAssetNumber, setCreateAssetNumber] = React.useState('')
+  const [createLocationId, setCreateLocationId] = React.useState('')
+  const [createDepartmentId, setCreateDepartmentId] = React.useState('')
+  const [createStatus, setCreateStatus] = React.useState('active')
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      client.assets.create({
+        tenantId: activeTenantId!,
+        name: createName.trim(),
+        description: createDescription.trim() || null,
+        assetNumber: createAssetNumber.trim() || null,
+        locationId: createLocationId || null,
+        departmentId: createDepartmentId || null,
+        status: createStatus || 'active',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets', activeTenantId] })
+      toast.success('Asset created')
+      setCreateName('')
+      setCreateDescription('')
+      setCreateAssetNumber('')
+      setCreateLocationId('')
+      setCreateDepartmentId('')
+      setCreateStatus('active')
+      closeCreateModal()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
 
   const columns = React.useMemo<ColumnDef<AssetRow>[]>(
     () => [
@@ -265,10 +311,12 @@ function AssetsPage() {
               <Upload className="size-4" />
             </Link>
           </Button>
-          <Button onClick={openCreateModal} size="sm" variant="outline">
-            <Plus className="size-4" />
-            New asset
-          </Button>
+          {canCreateAsset && (
+            <Button onClick={openCreateModal} size="sm" variant="outline">
+              <Plus className="size-4" />
+              New asset
+            </Button>
+          )}
         </div>
       </ExtensionPoint>
 
@@ -279,19 +327,122 @@ function AssetsPage() {
       {/* Create asset modal */}
       <ResponsiveDialog
         open={isCreateModalOpen}
-        onOpenChange={(open) => !open && closeCreateModal()}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeCreateModal()
+            setCreateName('')
+            setCreateDescription('')
+            setCreateAssetNumber('')
+            setCreateLocationId('')
+            setCreateDepartmentId('')
+            setCreateStatus('active')
+          }
+        }}
       >
         <ResponsiveDialogContent>
           <ResponsiveDialogHeader>
             <ResponsiveDialogTitle>New asset</ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
-              Create a new asset. Form can be implemented here.
+              Create a new asset
             </ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-name">Name *</Label>
+              <Input
+                id="create-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder="Asset name"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-asset-number">Asset Number</Label>
+              <Input
+                id="create-asset-number"
+                value={createAssetNumber}
+                onChange={(e) => setCreateAssetNumber(e.target.value)}
+                placeholder="Asset number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-description">Description</Label>
+              <Textarea
+                id="create-description"
+                value={createDescription}
+                onChange={(e) => setCreateDescription(e.target.value)}
+                placeholder="Asset description"
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-status">Status</Label>
+              <Select value={createStatus} onValueChange={setCreateStatus}>
+                <SelectTrigger id="create-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetStatusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="create-location">Location</Label>
+                <Select value={createLocationId} onValueChange={setCreateLocationId}>
+                  <SelectTrigger id="create-location">
+                    <SelectValue placeholder="Select location (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id as string}>
+                        {loc.name ?? loc.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-department">Department</Label>
+                <Select value={createDepartmentId} onValueChange={setCreateDepartmentId}>
+                  <SelectTrigger id="create-department">
+                    <SelectValue placeholder="Select department (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id as string}>
+                        {dept.name ?? dept.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
           <ResponsiveDialogFooter>
             <ResponsiveDialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </ResponsiveDialogClose>
+            <Button
+              onClick={() => {
+                if (!createName.trim()) {
+                  toast.error('Name is required')
+                  return
+                }
+                createMutation.mutate()
+              }}
+              disabled={createMutation.isPending || !createName.trim()}
+            >
+              {createMutation.isPending ? 'Creating…' : 'Create'}
+            </Button>
           </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
       </ResponsiveDialog>

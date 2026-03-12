@@ -29,9 +29,18 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          "--border-radius": "0.75rem",
         } as React.CSSProperties
       }
+      toastOptions={{
+        classNames: {
+          toast: "border-2 shadow-lg",
+          success: "border-green-500/20 bg-green-50 dark:bg-green-950/20",
+          error: "border-destructive/20 bg-destructive/5",
+          warning: "border-warning/20 bg-warning/5",
+          info: "border-primary/20 bg-primary/5",
+        },
+      }}
       {...props}
     />
   )

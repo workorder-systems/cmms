@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { DbClient } from '@workorder-systems/sdk'
 import { prefetchCatalogs } from './catalog-queries'
+import { prefetchDashboard } from './dashboard-queries'
 import { DASHBOARD_TENANT_STORAGE_KEY } from './tenant-storage'
 
 export type DashboardRouteContext = {
@@ -37,4 +38,19 @@ export async function ensureTenantContextWithCatalogs(
   await context.dbClient.setTenant(tenantId)
   await context.dbClient.supabase.auth.refreshSession()
   await prefetchCatalogs(context.queryClient, context.dbClient, tenantId)
+}
+
+/**
+ * Like ensureTenantContext but also prefetches dashboard data.
+ * Use for the dashboard home route.
+ */
+export async function ensureTenantContextWithDashboard(
+  context: DashboardRouteContext
+): Promise<void> {
+  if (typeof window === 'undefined') return
+  const tenantId = window.localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
+  if (!tenantId) return
+  await context.dbClient.setTenant(tenantId)
+  await context.dbClient.supabase.auth.refreshSession()
+  await prefetchDashboard(context.queryClient, context.dbClient, tenantId)
 }

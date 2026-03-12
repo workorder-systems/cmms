@@ -1,12 +1,14 @@
 import * as React from 'react'
 import { Link, Outlet, createFileRoute, useRouterState } from '@tanstack/react-router'
-import { KeyRound, Gauge } from 'lucide-react'
+import { KeyRound, Gauge, Puzzle, FileText } from 'lucide-react'
 import { cn } from '@workspace/ui/lib/utils'
 import { ensureTenantContext } from '../lib/route-loaders'
 
 const SETTINGS_NAV = [
   { title: 'API keys', to: '/dashboard/settings/api', icon: KeyRound },
   { title: 'Meters', to: '/dashboard/settings/meters', icon: Gauge },
+  { title: 'Plugins', to: '/dashboard/settings/plugins', icon: Puzzle },
+  { title: 'Audit', to: '/dashboard/settings/audit', icon: FileText },
 ] as const
 
 export const Route = createFileRoute('/_protected/dashboard/settings')({

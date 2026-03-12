@@ -58,8 +58,8 @@ export function PriorityBadge({
     <Badge
       variant="outline"
       className={cn(
-        'border font-medium',
-        !color && 'bg-muted text-muted-foreground border-transparent',
+        'border-2 font-semibold px-3 py-1',
+        !color && 'bg-muted/50 text-muted-foreground border-border/50',
         className
       )}
       style={Object.keys(style).length > 0 ? style : undefined}

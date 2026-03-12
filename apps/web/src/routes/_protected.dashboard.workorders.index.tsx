@@ -2,12 +2,13 @@ import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef, Row } from '@tanstack/react-table'
 import { useQuery } from '@tanstack/react-query'
-import { ClipboardList, Plus, Upload } from 'lucide-react'
+import { ClipboardList, Plus, Upload, FileText } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { useHasPermission } from '../hooks/use-permissions'
 import {
   DEFAULT_PAGE_SIZE,
   createDataTableQueryKeys,
@@ -23,6 +24,8 @@ import { DataTableSkeleton } from '@workspace/ui/components/data-table/data-tabl
 import { useDataTable } from '@workspace/ui/hooks/use-data-table'
 import { Button } from '@workspace/ui/components/button'
 import { ExtensionPoint } from '@workspace/ui/components/app-shell'
+import { Label } from '@workspace/ui/components/label'
+import { Switch } from '@workspace/ui/components/switch'
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -44,10 +47,12 @@ const QUERY_KEYS = createDataTableQueryKeys('workOrders')
 function WorkOrdersPage() {
   const { activeTenantId } = useTenant()
   const client = getDbClient()
+  const { hasPermission: canCreateWorkOrder } = useHasPermission('work_orders.create')
+  const [includeDrafts, setIncludeDrafts] = React.useState(false)
 
   const { data: workOrders = [], isLoading, isError, error } = useQuery({
-    queryKey: ['work-orders', activeTenantId],
-    queryFn: () => client.workOrders.list(),
+    queryKey: ['work-orders', activeTenantId, includeDrafts],
+    queryFn: () => (includeDrafts ? client.workOrders.listIncludingDraft() : client.workOrders.list()),
     enabled: !!activeTenantId,
   })
 
@@ -285,47 +290,66 @@ function WorkOrdersPage() {
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="space-y-2">
+          <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-64 animate-pulse rounded bg-muted" />
+        </div>
         <DataTableSkeleton columnCount={6} rowCount={10} />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <ExtensionPoint name="header.right">
-        <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/dashboard/workorders/import">
-              <Upload className="size-4" />
-            </Link>
-          </Button>
-          <Button onClick={openCreateModal} size="sm" variant="outline">
-            <Plus className="size-4" />
-            New
-          </Button>
+    <div className="flex flex-1 flex-col gap-6 p-6 pt-8">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1.5">
+          <h1 className="text-3xl font-bold tracking-tight">Work Orders</h1>
+          <p className="text-base text-muted-foreground">
+            Manage and track all work orders
+          </p>
         </div>
-      </ExtensionPoint>
+        <ExtensionPoint name="header.right">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-lg border-2 border-border/50 bg-card px-4 py-2 shadow-sm transition-all hover:border-primary/20 hover:shadow">
+              <Switch
+                id="include-drafts"
+                checked={includeDrafts}
+                onCheckedChange={setIncludeDrafts}
+              />
+              <Label htmlFor="include-drafts" className="text-sm font-medium cursor-pointer">
+                Include drafts
+              </Label>
+            </div>
+            <Button
+              asChild
+              size="default"
+              variant="outline"
+              title="Import work orders from CSV"
+              className="shadow-sm"
+            >
+              <Link to="/dashboard/workorders/import">
+                <Upload className="size-4" />
+                <span className="sr-only md:not-sr-only md:ml-2">Import</span>
+              </Link>
+            </Button>
+            {canCreateWorkOrder && (
+              <Button asChild size="default" className="gap-2 shadow-sm">
+                <Link to="/dashboard/workorders/new">
+                  <Plus className="size-4" />
+                  <span className="hidden sm:inline">New Work Order</span>
+                  <span className="sm:hidden">New</span>
+                </Link>
+              </Button>
+            )}
+          </div>
+        </ExtensionPoint>
+      </div>
 
-      <DataTable table={table}>
-        <DataTableToolbar table={table} />
-      </DataTable>
-
-      {/* Create work order modal */}
-      <ResponsiveDialog open={isCreateModalOpen} onOpenChange={(open) => !open && closeCreateModal()}>
-        <ResponsiveDialogContent>
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>New work order</ResponsiveDialogTitle>
-            <ResponsiveDialogDescription>
-              Create a new work order. Form can be implemented here.
-            </ResponsiveDialogDescription>
-          </ResponsiveDialogHeader>
-          <ResponsiveDialogFooter>
-            <ResponsiveDialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </ResponsiveDialogClose>
-          </ResponsiveDialogFooter>
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+      <div className="rounded-xl border-2 border-border/50 bg-card shadow-sm">
+        <DataTable table={table}>
+          <DataTableToolbar table={table} />
+        </DataTable>
+      </div>
     </div>
   )
 }

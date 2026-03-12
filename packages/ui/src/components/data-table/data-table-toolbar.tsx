@@ -38,7 +38,7 @@ export function DataTableToolbar<TData>({
       role="toolbar"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full flex-wrap items-start justify-between gap-2 p-1",
+        "flex w-full flex-wrap items-start justify-between gap-3 p-4 border-b border-border/50 bg-muted/30",
         className,
       )}
       {...props}
