@@ -1,6 +1,11 @@
 /** Default page size for dashboard data tables (list pages). */
 export const DEFAULT_PAGE_SIZE = 10
 
+/** Query key for work orders list; use with tenant id for cache invalidation/refetch. */
+export function workOrdersListQueryKey(tenantId: string | null | undefined) {
+  return tenantId ? (['work-orders', tenantId] as const) : (['work-orders'] as const)
+}
+
 /** Query key names used by useDataTable for URL sync (pagination, sort, filters). */
 export type DataTableQueryKeys = {
   page: string

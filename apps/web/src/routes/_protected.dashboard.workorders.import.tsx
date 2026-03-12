@@ -1,11 +1,12 @@
 import * as React from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
+import { workOrdersListQueryKey } from '../lib/data-table-query-keys'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
 import { generateImportRowId } from '../lib/import-row-id'
 import { parseCsv } from '../lib/csv-import'
@@ -221,10 +222,10 @@ function WorkOrdersImportPage() {
     return getCsvTemplate(statusKeys, priorityKeys)
   }, [statusOptions, priorityOptions])
 
-  const onImport = React.useCallback(
-    async (rows: WorkOrderImportRow[], context: { skipped: number }) => {
-      if (!activeTenantId || rows.length === 0) return
-      const payload = rows.map((row) => ({
+  const bulkImportMutation = useMutation({
+    mutationFn: async (payload: { rows: WorkOrderImportRow[]; skipped: number }) => {
+      if (!activeTenantId) throw new Error('No tenant')
+      const rows = payload.rows.map((row) => ({
         title: (row.title ?? '').trim(),
         description: (row.description ?? '').trim() || null,
         cause: (row.cause ?? '').trim() || null,
@@ -233,14 +234,13 @@ function WorkOrdersImportPage() {
         priority: (row.priority ?? defaultPriorityKey).trim() || defaultPriorityKey,
         due_date: (row.due_date ?? '').trim() || null,
       }))
-      const result = await client.workOrders.bulkImport({
-        tenantId: activeTenantId,
-        rows: payload,
-      })
+      return client.workOrders.bulkImport({ tenantId: activeTenantId, rows })
+    },
+    onSuccess: async (result, variables) => {
       const ok = result.created_ids.length
       const failed = result.errors.length
-      if (context.skipped > 0) {
-        toast.info(`Skipped ${context.skipped} row(s) with empty title`)
+      if (variables.skipped > 0) {
+        toast.info(`Skipped ${variables.skipped} row(s) with empty title`)
       }
       if (failed > 0) {
         const messages = result.errors
@@ -252,10 +252,21 @@ function WorkOrdersImportPage() {
       } else {
         toast.success(`Imported ${ok} work order${ok !== 1 ? 's' : ''}`)
       }
-      await queryClient.invalidateQueries({ queryKey: ['work-orders', activeTenantId] })
-      if (ok > 0) navigate({ to: '/dashboard/workorders' })
+      const queryKey = workOrdersListQueryKey(activeTenantId)
+      queryClient.invalidateQueries({ queryKey })
+      await queryClient.refetchQueries({ queryKey })
+      if (ok > 0) {
+        navigate({ to: '/dashboard/workorders' })
+      }
     },
-    [activeTenantId, client.workOrders, defaultPriorityKey, queryClient, navigate],
+  })
+
+  const onImport = React.useCallback(
+    async (rows: WorkOrderImportRow[], context: { skipped: number }) => {
+      if (!activeTenantId || rows.length === 0) return
+      await bulkImportMutation.mutateAsync({ rows, skipped: context.skipped })
+    },
+    [activeTenantId, bulkImportMutation],
   )
 
   return (

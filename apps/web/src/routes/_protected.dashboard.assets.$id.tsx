@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Wrench, ClipboardList, Gauge, Plus, Activity } from 'lucide-react'
 import type { AssetRow, AssetMeterRow, MeterReadingRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
+import { workOrdersListQueryKey } from '../lib/data-table-query-keys'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
 import { catalogQueryOptions } from '../lib/catalog-queries'
@@ -65,6 +66,13 @@ const SPARKLINE_READINGS_COUNT = 20
 
 export const Route = createFileRoute('/_protected/dashboard/assets/$id')({
   beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
+  loader: async ({ context, params }) => {
+    if (typeof window === 'undefined' || !params.id) return
+    await context.queryClient.prefetchQuery({
+      queryKey: ['asset', params.id],
+      queryFn: () => context.dbClient.assets.getById(params.id),
+    })
+  },
   component: AssetDetailPage,
 })
 
@@ -101,7 +109,7 @@ function AssetDetailPage() {
   })
 
   const { data: workOrders = [], isLoading: workOrdersLoading } = useQuery({
-    queryKey: ['work-orders', activeTenantId],
+    queryKey: workOrdersListQueryKey(activeTenantId),
     queryFn: () => client.workOrders.list(),
     enabled: !!activeTenantId && !!asset,
   })
@@ -203,7 +211,7 @@ function AssetDetailPage() {
             <Link
               to="/dashboard/workorders/$id"
               params={{ id: wo.id ?? '' }}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-foreground hover:underline"
             >
               {wo.title ?? 'Untitled'}
             </Link>

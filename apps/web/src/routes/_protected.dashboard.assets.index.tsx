@@ -8,6 +8,7 @@ import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { DASHBOARD_TENANT_STORAGE_KEY } from '../lib/tenant-storage'
 import { StatusBadge } from '../components/status-badge'
 import {
   DEFAULT_PAGE_SIZE,
@@ -44,6 +45,25 @@ const FALLBACK_ASSET_STATUS_OPTIONS = [
 
 export const Route = createFileRoute('/_protected/dashboard/assets/')({
   beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
+  loader: async ({ context }) => {
+    if (typeof window === 'undefined') return
+    const tenantId = window.localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
+    if (!tenantId) return
+    await Promise.all([
+      context.queryClient.prefetchQuery({
+        queryKey: ['assets', tenantId],
+        queryFn: () => context.dbClient.assets.list(),
+      }),
+      context.queryClient.prefetchQuery({
+        queryKey: ['locations', tenantId],
+        queryFn: () => context.dbClient.locations.list(),
+      }),
+      context.queryClient.prefetchQuery({
+        queryKey: ['departments', tenantId],
+        queryFn: () => context.dbClient.departments.list(),
+      }),
+    ])
+  },
   component: AssetsPage,
 })
 
@@ -132,7 +152,7 @@ function AssetsPage() {
             <Link
               to="/dashboard/assets/$id"
               params={{ id: asset.id }}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-foreground hover:underline"
             >
               {name}
             </Link>

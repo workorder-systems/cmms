@@ -8,9 +8,11 @@ import { getDbClient } from '../lib/db-client'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
+import { DASHBOARD_TENANT_STORAGE_KEY } from '../lib/tenant-storage'
 import {
   DEFAULT_PAGE_SIZE,
   createDataTableQueryKeys,
+  workOrdersListQueryKey,
 } from '../lib/data-table-query-keys'
 import { DataTableErrorMessage } from '../components/data-table-error-message'
 import { StatusBadge } from '../components/status-badge'
@@ -35,6 +37,15 @@ import {
 
 export const Route = createFileRoute('/_protected/dashboard/workorders/')({
   beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
+  loader: async ({ context }) => {
+    if (typeof window === 'undefined') return
+    const tenantId = window.localStorage.getItem(DASHBOARD_TENANT_STORAGE_KEY)
+    if (!tenantId) return
+    await context.queryClient.prefetchQuery({
+      queryKey: workOrdersListQueryKey(tenantId),
+      queryFn: () => context.dbClient.workOrders.list(),
+    })
+  },
   component: WorkOrdersPage,
 })
 
@@ -46,7 +57,7 @@ function WorkOrdersPage() {
   const client = getDbClient()
 
   const { data: workOrders = [], isLoading, isError, error } = useQuery({
-    queryKey: ['work-orders', activeTenantId],
+    queryKey: workOrdersListQueryKey(activeTenantId),
     queryFn: () => client.workOrders.list(),
     enabled: !!activeTenantId,
   })
@@ -120,7 +131,7 @@ function WorkOrdersPage() {
             <Link
               to="/dashboard/workorders/$id"
               params={{ id }}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-foreground hover:underline"
             >
               {title ?? '—'}
             </Link>

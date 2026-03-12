@@ -9,6 +9,18 @@ export type DashboardRouteContext = {
 }
 
 /**
+ * Router + Query strategy for a fast feel:
+ * - _protected beforeLoad: auth + prefetch tenants (so layout has tenant list).
+ * - List/detail routes: beforeLoad sets tenant context and (where needed) prefetches catalogs.
+ * - Loaders (work orders list, assets list, work order $id, asset $id): prefetch the main
+ *   query into the same cache keys that useQuery uses, so when the route renders the data
+ *   is already there (no loading flash). With defaultPreload: 'intent', hovering a link
+ *   runs the target route's beforeLoad + loader, so data is often ready before the click.
+ * - TanStack Query default staleTime (see query-config) avoids refetches on remount/focus;
+ *   after mutations we invalidate/refetch so the UI stays correct.
+ */
+
+/**
  * Ensures tenant context is set before loading a dashboard route (SSR-safe).
  * Reads tenant from localStorage, calls setTenant, then refreshes session so JWT
  * carries tenant_id for tenant-scoped views/RPCs.

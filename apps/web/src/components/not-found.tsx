@@ -36,7 +36,7 @@ export function NotFound() {
         </InputGroup>
         <EmptyDescription>
           Need help? <a href="#">Contact support</a> or{' '}
-          <Link to="/" className="underline underline-offset-4 hover:text-primary">
+          <Link to="/" className="underline underline-offset-4 hover:opacity-90">
             go home
           </Link>
         </EmptyDescription>

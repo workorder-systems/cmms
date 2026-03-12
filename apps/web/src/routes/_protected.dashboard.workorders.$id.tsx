@@ -6,6 +6,7 @@ import { getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import { ClipboardList, History, Loader2 } from 'lucide-react'
 import type { WorkOrderRow, SimilarPastFixResult } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
+import { workOrdersListQueryKey } from '../lib/data-table-query-keys'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
 import { catalogQueryOptions } from '../lib/catalog-queries'
@@ -23,6 +24,13 @@ import { toast } from 'sonner'
 
 export const Route = createFileRoute('/_protected/dashboard/workorders/$id')({
   beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
+  loader: async ({ context, params }) => {
+    if (typeof window === 'undefined' || !params.id) return
+    await context.queryClient.prefetchQuery({
+      queryKey: ['work-order', params.id],
+      queryFn: () => context.dbClient.workOrders.getById(params.id),
+    })
+  },
   component: WorkOrderDetailPage,
 })
 
@@ -65,7 +73,7 @@ function WorkOrderDetailPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-order', id] })
-      queryClient.invalidateQueries({ queryKey: ['work-orders', activeTenantId] })
+      queryClient.invalidateQueries({ queryKey: workOrdersListQueryKey(activeTenantId) })
       toast.success('Work order completed')
     },
     onError: (err: Error) => toast.error(err.message),
@@ -88,7 +96,7 @@ function WorkOrderDetailPage() {
             <Link
               to="/dashboard/workorders/$id"
               params={{ id: fix.workOrderId }}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-foreground hover:underline"
             >
               {fix.title || 'Untitled'}
             </Link>

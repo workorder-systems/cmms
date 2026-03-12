@@ -7,16 +7,19 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import { getDbClient } from './lib/db-client'
 import { AuthProvider } from './contexts/auth'
+import { queryClientDefaultOptions } from './lib/query-config'
 import { catalogPersister, shouldDehydrateCatalogQuery } from './lib/query-persist'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: queryClientDefaultOptions,
+})
 const dbClient = getDbClient()
 
 const router = createRouter({
   routeTree,
   context: { queryClient, dbClient },
   defaultPreload: 'intent',
-  defaultPreloadStaleTime: 0,
+  defaultPreloadStaleTime: queryClientDefaultOptions.queries.staleTime,
   scrollRestoration: true,
 })
 
