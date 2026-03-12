@@ -14,49 +14,43 @@ function AuthLayout({
   return (
     <div
       className={cn(
-        'relative min-h-screen overflow-hidden bg-gradient-to-b from-background via-background to-muted/20',
+        'grid min-h-svh lg:grid-cols-2',
         className
       )}
       {...props}
     >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-6 right-6 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl" />
+      <div className="flex flex-col gap-4 p-6 md:p-10">
+        <div className="flex items-center justify-center gap-2 md:justify-start">
+          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Wrench className="size-4" />
+          </div>
+          <span className="font-medium">WorkOrder Systems</span>
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-sm">{children}</div>
+        </div>
       </div>
-      <div className="relative mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 lg:grid-cols-2 lg:items-center lg:px-8">
-        <aside className="hidden rounded-2xl border bg-card/80 p-8 shadow-lg backdrop-blur lg:block">
-          <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground">
-            Maintenance OS
-          </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-            Keep facilities reliable without the spreadsheet maze.
-          </h1>
-          <p className="mt-4 text-sm text-muted-foreground">
-            One place for work orders, assets, locations, and tenant-scoped
-            team access.
-          </p>
-          <ul className="mt-8 space-y-4 text-sm">
-            <li className="flex items-start gap-3">
-              <div className="rounded-md bg-primary/10 p-2 text-primary">
-                <Wrench className="size-4" />
-              </div>
-              <span>Structured workflows for request, assignment, and closure.</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-md bg-primary/10 p-2 text-primary">
-                <Building2 className="size-4" />
-              </div>
-              <span>Built-in multi-tenant boundaries for clean data isolation.</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <div className="rounded-md bg-primary/10 p-2 text-primary">
-                <ShieldCheck className="size-4" />
-              </div>
-              <span>Role-aware access and secure auth flows out of the box.</span>
-            </li>
-          </ul>
-        </aside>
-        <div className="mx-auto w-full max-w-md">{children}</div>
+      <div className="relative hidden overflow-hidden bg-muted lg:block">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.18),transparent_40%),radial-gradient(circle_at_80%_30%,hsl(var(--primary)/0.12),transparent_42%),linear-gradient(135deg,hsl(var(--muted)),hsl(var(--background)))]" />
+        <div className="absolute inset-x-0 bottom-0 p-10">
+          <div className="max-w-md rounded-xl border bg-background/70 p-6 backdrop-blur">
+            <h2 className="text-lg font-semibold">Built for maintenance teams</h2>
+            <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <Wrench className="mt-0.5 size-4 text-primary" />
+                Keep work orders moving from request to completion.
+              </li>
+              <li className="flex items-start gap-2">
+                <Building2 className="mt-0.5 size-4 text-primary" />
+                Manage assets and locations across all sites.
+              </li>
+              <li className="flex items-start gap-2">
+                <ShieldCheck className="mt-0.5 size-4 text-primary" />
+                Secure tenant-scoped access for every team member.
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   )

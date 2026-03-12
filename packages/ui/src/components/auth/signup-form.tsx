@@ -7,15 +7,8 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
+  FieldSeparator,
 } from '@workspace/ui/components/field'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@workspace/ui/components/card'
 import { Alert, AlertDescription } from '@workspace/ui/components/alert'
 
 export interface SignupFormProps {
@@ -54,72 +47,74 @@ function SignupForm({
   creatingLabel = 'Creating account…',
 }: SignupFormProps) {
   return (
-    <Card className="w-full max-w-md border-border/70 bg-card/90 shadow-xl backdrop-blur">
-      <CardHeader className="space-y-2">
-        <CardTitle className="text-2xl">Create your workspace</CardTitle>
-        <CardDescription>
-          Set up your account to start tracking work, assets, and teams.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={onSubmit}>
-        <CardContent>
-          {checkEmail && (
-            <Alert className="mb-4">
-              <AlertDescription>
-                Check your email to confirm your account, then sign in.
-              </AlertDescription>
-            </Alert>
-          )}
-          {error != null && error !== '' && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {!checkEmail && (
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="signup-email">Email</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="m@example.com"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => onEmailChange(e.target.value)}
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="signup-password">Password</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => onPasswordChange(e.target.value)}
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? creatingLabel : submitLabel}
-                </Button>
-                <FieldDescription className="text-center">
-                  Already have an account? {loginSlot}
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-          )}
-        </CardContent>
-        {checkEmail && goToLoginSlot != null && (
-          <CardFooter>{goToLoginSlot}</CardFooter>
+    <form className="flex w-full flex-col gap-6" onSubmit={onSubmit}>
+      <FieldGroup>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h1 className="text-2xl font-bold">Create your account</h1>
+          <p className="text-sm text-balance text-muted-foreground">
+            Set up WorkOrder Systems for your maintenance operation.
+          </p>
+        </div>
+
+        {checkEmail && (
+          <Alert>
+            <AlertDescription>
+              Check your email to confirm your account, then sign in.
+            </AlertDescription>
+          </Alert>
         )}
-      </form>
-    </Card>
+        {error != null && error !== '' && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {!checkEmail ? (
+          <>
+            <Field>
+              <FieldLabel htmlFor="signup-email">Email</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="signup-email"
+                  type="email"
+                  placeholder="m@example.com"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => onEmailChange(e.target.value)}
+                  required
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="signup-password">Password</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="signup-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => onPasswordChange(e.target.value)}
+                  required
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? creatingLabel : submitLabel}
+              </Button>
+            </Field>
+            <FieldSeparator />
+            <Field>
+              <FieldDescription className="text-center">
+                Already have an account? {loginSlot}
+              </FieldDescription>
+            </Field>
+          </>
+        ) : (
+          goToLoginSlot != null && <Field>{goToLoginSlot}</Field>
+        )}
+      </FieldGroup>
+    </form>
   )
 }
 

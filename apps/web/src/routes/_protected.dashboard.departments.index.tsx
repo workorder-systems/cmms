@@ -150,12 +150,13 @@ function DepartmentsPage() {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <ExtensionPoint name="header.right">
         <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost">
+          <Button asChild size="sm" variant="outline">
             <Link to="/dashboard/departments/import">
               <Upload className="size-4" />
+              Import
             </Link>
           </Button>
-          <Button onClick={openCreateModal} size="sm" variant="outline">
+          <Button onClick={openCreateModal} size="sm">
             <Plus className="size-4" />
             New department
           </Button>

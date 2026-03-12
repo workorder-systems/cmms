@@ -301,7 +301,7 @@ function UsersPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <ExtensionPoint name="header.right">
-        <Button onClick={openInviteModal} size="sm" variant="outline">
+        <Button onClick={openInviteModal} size="sm">
           <Plus className="size-4" />
           Invite user
         </Button>

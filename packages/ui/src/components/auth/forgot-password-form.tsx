@@ -7,15 +7,8 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
+  FieldSeparator,
 } from '@workspace/ui/components/field'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@workspace/ui/components/card'
 import { Alert, AlertDescription } from '@workspace/ui/components/alert'
 
 export interface ForgotPasswordFormProps {
@@ -49,57 +42,57 @@ function ForgotPasswordForm({
   sendingLabel = 'Sending…',
 }: ForgotPasswordFormProps) {
   return (
-    <Card className="w-full max-w-md border-border/70 bg-card/90 shadow-xl backdrop-blur">
-      <CardHeader className="space-y-2">
-        <CardTitle className="text-2xl">Reset your password</CardTitle>
-        <CardDescription>
-          Enter your email and we&apos;ll send you a link to reset your password.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={onSubmit}>
-        <CardContent>
-          {sent && (
-            <Alert className="mb-4">
-              <AlertDescription>Check your email for the reset link.</AlertDescription>
-            </Alert>
-          )}
-          {error != null && error !== '' && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {!sent && (
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="forgot-email">Email</FieldLabel>
-                <FieldContent>
-                  <Input
-                    id="forgot-email"
-                    type="email"
-                    placeholder="m@example.com"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => onEmailChange(e.target.value)}
-                    required
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? sendingLabel : submitLabel}
-                </Button>
-                <FieldDescription className="text-center">
-                  {backToLoginSlot}
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-          )}
-        </CardContent>
-        {sent && backToLoginButtonSlot != null && (
-          <CardFooter>{backToLoginButtonSlot}</CardFooter>
+    <form className="flex w-full flex-col gap-6" onSubmit={onSubmit}>
+      <FieldGroup>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h1 className="text-2xl font-bold">Reset your password</h1>
+          <p className="text-sm text-balance text-muted-foreground">
+            Enter your email and we&apos;ll send you a recovery link.
+          </p>
+        </div>
+        {sent && (
+          <Alert>
+            <AlertDescription>Check your email for the reset link.</AlertDescription>
+          </Alert>
         )}
-      </form>
-    </Card>
+        {error != null && error !== '' && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {!sent ? (
+          <>
+            <Field>
+              <FieldLabel htmlFor="forgot-email">Email</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="m@example.com"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => onEmailChange(e.target.value)}
+                  required
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? sendingLabel : submitLabel}
+              </Button>
+            </Field>
+            <FieldSeparator />
+            <Field>
+              <FieldDescription className="text-center">
+                {backToLoginSlot}
+              </FieldDescription>
+            </Field>
+          </>
+        ) : (
+          backToLoginButtonSlot != null && <Field>{backToLoginButtonSlot}</Field>
+        )}
+      </FieldGroup>
+    </form>
   )
 }
 

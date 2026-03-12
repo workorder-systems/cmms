@@ -131,7 +131,7 @@ function SettingsApiPage() {
     <>
       <ExtensionPoint name="header.right">
         <div className="flex items-center justify-between gap-2">
-          <Button onClick={() => setCreateOpen(true)} size="sm" variant="outline">
+          <Button onClick={() => setCreateOpen(true)} size="sm">
             <Plus className="size-4" />
             Create key
           </Button>
