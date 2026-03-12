@@ -50,10 +50,12 @@ function LoginForm({
   signingInLabel = 'Signing in…',
 }: LoginFormProps) {
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Log in</CardTitle>
-        <CardDescription>Sign in with your email and password.</CardDescription>
+    <Card className="w-full max-w-md border-border/70 bg-card/90 shadow-xl backdrop-blur">
+      <CardHeader className="space-y-2">
+        <CardTitle className="text-2xl">Welcome back</CardTitle>
+        <CardDescription>
+          Sign in to manage your maintenance operations.
+        </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent>

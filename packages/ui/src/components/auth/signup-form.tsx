@@ -54,10 +54,12 @@ function SignupForm({
   creatingLabel = 'Creating account…',
 }: SignupFormProps) {
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Sign up</CardTitle>
-        <CardDescription>Create an account with your email and password.</CardDescription>
+    <Card className="w-full max-w-md border-border/70 bg-card/90 shadow-xl backdrop-blur">
+      <CardHeader className="space-y-2">
+        <CardTitle className="text-2xl">Create your workspace</CardTitle>
+        <CardDescription>
+          Set up your account to start tracking work, assets, and teams.
+        </CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent>

@@ -51,9 +51,9 @@ function ResetPasswordForm({
   redirectingLabel = 'Redirecting…',
 }: ResetPasswordFormProps) {
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Set new password</CardTitle>
+    <Card className="w-full max-w-md border-border/70 bg-card/90 shadow-xl backdrop-blur">
+      <CardHeader className="space-y-2">
+        <CardTitle className="text-2xl">Set a new password</CardTitle>
         <CardDescription>
           Enter your new password below. You arrived here from the reset link in your email.
         </CardDescription>

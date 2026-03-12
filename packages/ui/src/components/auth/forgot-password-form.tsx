@@ -49,9 +49,9 @@ function ForgotPasswordForm({
   sendingLabel = 'Sending…',
 }: ForgotPasswordFormProps) {
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Forgot password</CardTitle>
+    <Card className="w-full max-w-md border-border/70 bg-card/90 shadow-xl backdrop-blur">
+      <CardHeader className="space-y-2">
+        <CardTitle className="text-2xl">Reset your password</CardTitle>
         <CardDescription>
           Enter your email and we&apos;ll send you a link to reset your password.
         </CardDescription>
