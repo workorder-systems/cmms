@@ -101,7 +101,7 @@ export function AppShell({
             <PortalTarget name="header.right" />
           </div>
         </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 pt-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 pt-0 @container/main">
           <PortalTarget name="page.header" />
           <div className="min-h-0 w-full min-w-0 flex-1 overflow-x-hidden">
             {children}

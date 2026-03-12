@@ -1,20 +1,22 @@
 import * as React from 'react'
 import { Link, Outlet, createFileRoute, useRouterState } from '@tanstack/react-router'
-import { KeyRound, Gauge } from 'lucide-react'
+import { ArrowRightLeft, Flag, ListOrdered, Wrench } from 'lucide-react'
 import { cn } from '@workspace/ui/lib/utils'
-import { ensureTenantContext } from '../lib/route-loaders'
+import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
 
-const SETTINGS_NAV = [
-  { title: 'API keys', to: '/dashboard/settings/api', icon: KeyRound },
-  { title: 'Meters', to: '/dashboard/settings/meters', icon: Gauge },
+const CATALOGS_NAV = [
+  { title: 'Statuses', to: '/dashboard/catalogs/statuses', icon: ListOrdered },
+  { title: 'Priorities', to: '/dashboard/catalogs/priorities', icon: Flag },
+  { title: 'Maintenance types', to: '/dashboard/catalogs/maintenance-types', icon: Wrench },
+  { title: 'Transitions', to: '/dashboard/catalogs/transitions', icon: ArrowRightLeft },
 ] as const
 
-export const Route = createFileRoute('/_protected/dashboard/settings')({
-  beforeLoad: async ({ context }) => ensureTenantContext(context),
-  component: SettingsLayout,
+export const Route = createFileRoute('/_protected/dashboard/catalogs')({
+  beforeLoad: async ({ context }) => ensureTenantContextWithCatalogs(context),
+  component: CatalogsLayout,
 })
 
-function SettingsLayout() {
+function CatalogsLayout() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
 
@@ -22,9 +24,9 @@ function SettingsLayout() {
     <div className="flex min-h-0 flex-1 flex-col gap-6 p-6 @md/main:flex-row">
       <nav
         className="flex shrink-0 flex-col gap-1 @md/main:w-48"
-        aria-label="Settings"
+        aria-label="Catalogs"
       >
-        {SETTINGS_NAV.map((item) => {
+        {CATALOGS_NAV.map((item) => {
           const isActive = pathname === item.to
           return (
             <Link

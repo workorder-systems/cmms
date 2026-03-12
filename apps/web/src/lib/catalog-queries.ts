@@ -10,6 +10,9 @@ export const CATALOG_GC_TIME_MS = 1000 * 60 * 60 * 24
 export const catalogQueryKeys = {
   statuses: (tenantId: string) => ['catalogs', 'statuses', tenantId] as const,
   priorities: (tenantId: string) => ['catalogs', 'priorities', tenantId] as const,
+  maintenanceTypes: (tenantId: string) =>
+    ['catalogs', 'maintenanceTypes', tenantId] as const,
+  transitions: (tenantId: string) => ['catalogs', 'transitions', tenantId] as const,
 }
 
 /**
@@ -53,6 +56,24 @@ export const catalogQueryOptions = {
     staleTime: CATALOG_STALE_TIME_MS,
     gcTime: CATALOG_GC_TIME_MS,
   }),
+  maintenanceTypes: (tenantId: string, client: DbClient) => ({
+    queryKey: catalogQueryKeys.maintenanceTypes(tenantId),
+    queryFn: ({ queryKey }: { queryKey: readonly unknown[] }) =>
+      catalogQueryFnWithRecovery(client, queryKey, () =>
+        client.catalogs.listMaintenanceTypes()
+      ),
+    staleTime: CATALOG_STALE_TIME_MS,
+    gcTime: CATALOG_GC_TIME_MS,
+  }),
+  transitions: (tenantId: string, client: DbClient) => ({
+    queryKey: catalogQueryKeys.transitions(tenantId),
+    queryFn: ({ queryKey }: { queryKey: readonly unknown[] }) =>
+      catalogQueryFnWithRecovery(client, queryKey, () =>
+        client.catalogs.listStatusTransitions()
+      ),
+    staleTime: CATALOG_STALE_TIME_MS,
+    gcTime: CATALOG_GC_TIME_MS,
+  }),
 }
 
 /**
@@ -67,5 +88,11 @@ export async function prefetchCatalogs(
   await Promise.all([
     queryClient.prefetchQuery(catalogQueryOptions.statuses(tenantId, dbClient)),
     queryClient.prefetchQuery(catalogQueryOptions.priorities(tenantId, dbClient)),
+    queryClient.prefetchQuery(
+      catalogQueryOptions.maintenanceTypes(tenantId, dbClient)
+    ),
+    queryClient.prefetchQuery(
+      catalogQueryOptions.transitions(tenantId, dbClient)
+    ),
   ])
 }
