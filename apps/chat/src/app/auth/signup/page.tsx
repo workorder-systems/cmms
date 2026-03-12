@@ -7,7 +7,7 @@ import { Button } from '@workspace/ui/components/button'
 import { SignupForm } from '@workspace/ui/components/auth'
 import { getDbClient } from '@/lib/db-client'
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? undefined
@@ -65,5 +65,25 @@ export default function SignupPage() {
         </Button>
       }
     />
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <SignupForm
+          email=""
+          password=""
+          onEmailChange={() => {}}
+          onPasswordChange={() => {}}
+          onSubmit={() => {}}
+          loading
+          loginSlot={<Link href="/auth/login">Log in</Link>}
+        />
+      }
+    >
+      <SignupPageContent />
+    </React.Suspense>
   )
 }

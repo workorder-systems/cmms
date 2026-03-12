@@ -14,7 +14,10 @@ function matchJsxTag(code: string) {
     return null
   }
 
-  const [fullMatch, tagName, attributes, selfClosing] = match
+  const fullMatch = match[0]
+  const tagName = match[1] ?? ""
+  const attributes = match[2] ?? ""
+  const selfClosing = match[3]
 
   const type = selfClosing
     ? "self-closing"
@@ -42,7 +45,7 @@ function completeJsxTag(code: string) {
     if (!match) break
     const { tagName, type, endIndex } = match
 
-    if (type === "opening") {
+    if (type === "opening" && tagName) {
       stack.push(tagName)
     } else if (type === "closing") {
       stack.pop()

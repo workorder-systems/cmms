@@ -1,9 +1,15 @@
 import type { ComponentType } from "react";
-import type { ColumnSort } from "@tanstack/react-table";
+import type { ColumnFilter, ColumnSort } from "@tanstack/react-table";
+
+import type { FilterOperator } from "../config/data-table";
 
 export type ExtendedColumnSort<TData> = ColumnSort & {
   id: keyof TData | string;
 };
+
+export interface ExtendedColumnFilter<TData> extends ColumnFilter {
+  operator: FilterOperator;
+}
 
 export interface QueryKeys {
   page?: string;
@@ -11,6 +17,15 @@ export interface QueryKeys {
   sort?: string;
   filters?: string;
   joinOperator?: string;
+}
+
+export type { FilterOperator, FilterVariant } from "../config/data-table";
+
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TData> {
+    queryKeys?: QueryKeys;
+  }
 }
 
 /** Option for select/multiSelect filters. Optional color shows a dot in the faceted filter. */

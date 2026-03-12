@@ -54,7 +54,7 @@ Or send a NOTIFY: `docker exec supabase_db_database psql -U postgres -c "NOTIFY 
 
 ### Building
 
-- `pnpm build` — builds all packages. The SDK builds successfully. The web app `tsc -b` has pre-existing TS errors in storybook stories and data-table types. The Vite dev server works fine regardless.
+- `pnpm build` — builds all packages. The SDK builds successfully. The web app runs `vite build` only (no `tsc -b`) so the bundle builds despite pre-existing TS errors in `packages/ui` (Storybook stories, data-table types). To type-check the web app and UI: `pnpm --filter work-order-systems-web typecheck` (will report ~240 errors until UI/stories are fixed).
 
 ### Database
 

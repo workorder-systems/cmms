@@ -54,11 +54,14 @@ function filterWorkOrders(
   return out
 }
 
+/** Tool type used by streamText; result is unknown to satisfy SDK's experimental_toToolResultContent. */
+type ChatTool = ReturnType<typeof tool<z.ZodTypeAny, unknown>>
+
 /**
  * Create chat tools that run on behalf of the user via the given DbClient.
  * Read-only tools execute immediately; create/update/delete tools return a pending-confirm payload.
  */
-export function createChatTools(db: DbClient): Record<string, ReturnType<typeof tool>> {
+export function createChatTools(db: DbClient): Record<string, ChatTool> {
   return {
     // ---------- Read-only: execute immediately ----------
     list_work_orders: tool({
@@ -386,7 +389,7 @@ export function createChatTools(db: DbClient): Record<string, ReturnType<typeof 
         })
       },
     }),
-  }
+  } as unknown as Record<string, ChatTool>
 }
 
 /** Actions that can be executed by POST /api/chat/execute after user confirmation. */

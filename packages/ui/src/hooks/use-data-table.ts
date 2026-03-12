@@ -29,9 +29,9 @@ import {
 } from "nuqs";
 import * as React from "react";
 
+import { getSortingStateParser } from "../lib/parsers";
+import type { ExtendedColumnSort, QueryKeys } from "../types/data-table";
 import { useDebouncedCallback } from "./use-debounced-callback";
-import { getSortingStateParser } from "@workspace/ui/lib/parsers";
-import type { ExtendedColumnSort, QueryKeys } from "@workspace/ui/types/data-table";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";
@@ -156,11 +156,13 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     );
   }, [columns]);
 
+  const columnIdsArray = React.useMemo(() => Array.from(columnIds), [columnIds]);
+
   const [sorting, setSorting] = useQueryState(
     sortKey,
-    getSortingStateParser<TData>(columnIds)
+    getSortingStateParser<TData>(columnIdsArray)
       .withOptions(queryStateOptions)
-      .withDefault(initialState?.sorting ?? []),
+      .withDefault((initialState?.sorting ?? []) as ExtendedColumnSort<TData>[]),
   );
 
   const onSortingChange = React.useCallback(
@@ -187,7 +189,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     return filterableColumns.reduce<
       Record<string, SingleParser<string> | SingleParser<string[]>>
     >((acc, column) => {
-      if (column.meta?.options) {
+      const meta = column.meta as { options?: unknown } | undefined;
+      if (meta?.options) {
         acc[column.id ?? ""] = parseAsArrayOf(
           parseAsString,
           ARRAY_SEPARATOR,

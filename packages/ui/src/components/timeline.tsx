@@ -240,6 +240,7 @@ export function Timeline({
 
       const firstCard = cards[0];
       const lastCard = cards[cards.length - 1];
+      if (!firstCard || !lastCard) return;
 
       // Calculate heights
       const firstHeight = firstCard.getBoundingClientRect().height;

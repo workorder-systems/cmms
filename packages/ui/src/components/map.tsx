@@ -394,11 +394,12 @@ function MapLayers({
 
         // Set initial selected tile layer
         if (tileLayers.length > 0 && !selectedTileLayer) {
+            const first = tileLayers[0]
             const validDefaultValue =
                 defaultTileLayer &&
                 tileLayers.some((layer) => layer.name === defaultTileLayer)
                     ? defaultTileLayer
-                    : tileLayers[0].name
+                    : first?.name
             setSelectedTileLayer(validDefaultValue)
         }
 

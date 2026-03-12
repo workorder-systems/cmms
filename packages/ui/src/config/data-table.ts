@@ -80,3 +80,6 @@ export const dataTableConfig = {
   ] as const,
   joinOperators: ["and", "or"] as const,
 };
+
+export type FilterVariant = (typeof dataTableConfig.filterVariants)[number];
+export type FilterOperator = (typeof dataTableConfig.operators)[number];

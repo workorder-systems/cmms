@@ -20,7 +20,7 @@ export const catalogPersister = createAsyncStoragePersister({
 
 /** Only persist catalog queries so work orders and tenants are not stored in IndexedDB. */
 export function shouldDehydrateCatalogQuery(query: {
-  queryKey: unknown[]
+  queryKey: readonly unknown[]
   state: { status: string; data?: unknown }
 }): boolean {
   if (query.state.status !== 'success' || !Array.isArray(query.queryKey) || query.queryKey[0] !== 'catalogs') {

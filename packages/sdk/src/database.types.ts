@@ -3143,6 +3143,324 @@ export type Database = {
         }
         Relationships: []
       }
+      v_parts_with_stock: {
+        Row: {
+          id: string
+          tenant_id: string
+          part_number: string
+          name: string | null
+          description: string | null
+          unit: string
+          preferred_supplier_id: string | null
+          external_id: string | null
+          reorder_point: number | null
+          min_quantity: number | null
+          max_quantity: number | null
+          lead_time_days: number | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          total_on_hand: number
+          total_reserved: number
+          available: number
+        }
+        Relationships: []
+      }
+      v_stock_by_location: {
+        Row: {
+          tenant_id: string
+          part_id: string
+          inventory_location_id: string
+          quantity: number
+          updated_at: string
+          part_number: string
+          part_name: string | null
+          unit: string
+          location_name: string
+          location_code: string | null
+          location_type: string
+        }
+        Relationships: []
+      }
+      v_parts: {
+        Row: {
+          id: string
+          tenant_id: string
+          part_number: string
+          name: string | null
+          description: string | null
+          unit: string
+          preferred_supplier_id: string | null
+          external_id: string | null
+          reorder_point: number | null
+          min_quantity: number | null
+          max_quantity: number | null
+          lead_time_days: number | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_suppliers: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          code: string | null
+          external_id: string | null
+          contact_name: string | null
+          email: string | null
+          phone: string | null
+          address_line: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_inventory_locations: {
+        Row: {
+          id: string
+          tenant_id: string
+          parent_id: string | null
+          location_id: string | null
+          name: string
+          code: string | null
+          type: string
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_stock_levels: {
+        Row: {
+          tenant_id: string
+          part_id: string
+          inventory_location_id: string
+          quantity: number
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_part_reservations: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          part_id: string
+          inventory_location_id: string | null
+          quantity: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_part_usage: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          part_id: string
+          inventory_location_id: string | null
+          quantity_used: number
+          used_at: string
+          used_by: string | null
+          created_at: string
+        }
+        Relationships: []
+      }
+      v_open_requisitions: {
+        Row: {
+          id: string
+          tenant_id: string
+          status: string
+          requested_by: string | null
+          requested_at: string
+          due_date: string | null
+          notes: string | null
+          approved_by: string | null
+          approved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_open_purchase_orders: {
+        Row: {
+          id: string
+          tenant_id: string
+          supplier_id: string
+          status: string
+          order_number: string
+          order_date: string
+          expected_delivery_date: string | null
+          external_id: string | null
+          notes: string | null
+          invoice_number: string | null
+          invoice_date: string | null
+          external_invoice_id: string | null
+          created_at: string
+          updated_at: string
+          supplier_name: string
+          supplier_code: string | null
+        }
+        Relationships: []
+      }
+      v_purchase_order_receipt_status: {
+        Row: {
+          purchase_order_id: string
+          tenant_id: string
+          order_number: string
+          po_status: string
+          purchase_order_line_id: string
+          part_id: string
+          quantity_ordered: number
+          quantity_received: number
+          quantity_balance: number
+          part_number: string
+          part_name: string | null
+        }
+        Relationships: []
+      }
+      v_inspection_templates: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          description: string | null
+          category: string | null
+          trigger_config: Json | null
+          is_system: boolean
+          created_at: string
+          updated_at: string
+          item_count: number
+        }
+        Relationships: []
+      }
+      v_inspection_template_items: {
+        Row: {
+          id: string
+          template_id: string
+          tenant_id: string
+          description: string
+          required: boolean
+          display_order: number
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_inspection_schedules: {
+        Row: {
+          id: string
+          tenant_id: string
+          template_id: string
+          template_name: string | null
+          asset_id: string | null
+          asset_name: string | null
+          location_id: string | null
+          location_name: string | null
+          title: string
+          trigger_config: Json | null
+          next_due_at: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_inspection_runs: {
+        Row: {
+          id: string
+          tenant_id: string
+          template_id: string | null
+          template_name: string | null
+          inspection_schedule_id: string | null
+          work_order_id: string | null
+          work_order_title: string | null
+          asset_id: string | null
+          asset_name: string | null
+          location_id: string | null
+          location_name: string | null
+          status: string
+          scheduled_at: string | null
+          started_at: string | null
+          completed_at: string | null
+          completed_by: string | null
+          completed_by_name: string | null
+          conducted_by: string | null
+          conducted_by_name: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_inspection_run_items: {
+        Row: {
+          id: string
+          tenant_id: string
+          inspection_run_id: string
+          template_item_id: string
+          template_item_description: string | null
+          template_item_required: boolean
+          result: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_incidents: {
+        Row: {
+          id: string
+          tenant_id: string
+          type: string | null
+          severity: string | null
+          title: string | null
+          description: string | null
+          occurred_at: string | null
+          reported_at: string | null
+          reported_by: string | null
+          reported_by_name: string | null
+          location_id: string | null
+          location_name: string | null
+          asset_id: string | null
+          asset_name: string | null
+          work_order_id: string | null
+          work_order_title: string | null
+          status: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_incident_actions: {
+        Row: {
+          id: string
+          tenant_id: string
+          incident_id: string
+          incident_title: string | null
+          incident_severity: string | null
+          action_type: string | null
+          description: string | null
+          due_date: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          status: string | null
+          completed_at: string | null
+          completed_by: string | null
+          completed_by_name: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       refresh_analytics_views: { Args: never; Returns: undefined }

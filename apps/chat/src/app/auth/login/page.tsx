@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { LoginForm } from '@workspace/ui/components/auth'
 import { getDbClient } from '@/lib/db-client'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? undefined
@@ -56,5 +56,25 @@ export default function LoginPage() {
         </Link>
       }
     />
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <LoginForm
+          email=""
+          password=""
+          onEmailChange={() => {}}
+          onPasswordChange={() => {}}
+          onSubmit={() => {}}
+          loading
+          signUpSlot={<Link href="/auth/signup">Sign up</Link>}
+        />
+      }
+    >
+      <LoginPageContent />
+    </React.Suspense>
   )
 }

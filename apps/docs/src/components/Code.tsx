@@ -142,13 +142,23 @@ function CodePanel({
   label?: string
   code?: string
 }) {
-  let child = Children.only(children)
+  const array = Children.toArray(children)
+  const firstChild = array[0]
 
-  if (isValidElement(child)) {
-    const props = child.props as { tag?: string; label?: string; code?: string }
+  if (isValidElement(firstChild)) {
+    const props = firstChild.props as { tag?: string; label?: string; code?: string }
     tag = props.tag ?? tag
     label = props.label ?? label
     code = props.code ?? code
+  }
+
+  // Fallback: extract text from children (e.g. raw string or nested code)
+  if (!code && typeof children === 'string') {
+    code = children
+  }
+  if (!code && array.length > 0 && isValidElement(firstChild)) {
+    const c = firstChild.props as { children?: React.ReactNode }
+    if (typeof c?.children === 'string') code = c.children
   }
 
   if (!code) {
