@@ -1,16 +1,15 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowRight,
-  AlertTriangle,
-  Building2,
-  CheckCircle2,
+  Clock3,
   ClipboardList,
-  Users,
-  Wrench,
+  TimerReset,
 } from 'lucide-react'
+import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
+import { catalogQueryOptions } from '../lib/catalog-queries'
 import { Button } from '@workspace/ui/components/button'
 import {
   Card,
@@ -19,8 +18,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@workspace/ui/components/card'
-import { Progress } from '@workspace/ui/components/progress'
 import { Skeleton } from '@workspace/ui/components/skeleton'
+import { StatCard } from '@workspace/ui/components/stat-card'
+import { WorkOrderCard } from '@workspace/ui/components/work-order-card'
+import StatusIndicator from '@workspace/ui/components/status-indicator'
 
 export const Route = createFileRoute('/_protected/dashboard/')({
   component: DashboardPage,
@@ -28,6 +29,7 @@ export const Route = createFileRoute('/_protected/dashboard/')({
 
 function DashboardPage() {
   const client = getDbClient()
+  const navigate = useNavigate()
   const { activeTenantId, activeTenant } = useTenant()
 
   const { data: workOrders = [], isLoading: isLoadingWorkOrders } = useQuery({
@@ -54,218 +56,261 @@ function DashboardPage() {
     enabled: !!activeTenantId,
   })
 
+  const { data: statusCatalog = [] } = useQuery({
+    ...catalogQueryOptions.statuses(activeTenantId ?? '', client),
+    enabled: !!activeTenantId,
+  })
+
+  const { data: priorityCatalog = [] } = useQuery({
+    ...catalogQueryOptions.priorities(activeTenantId ?? '', client),
+    enabled: !!activeTenantId,
+  })
+
   const isLoading =
     isLoadingWorkOrders || isLoadingAssets || isLoadingLocations || isLoadingUsers
-
-  const overdueWorkOrders = workOrders.filter((workOrder) => {
-    if (!workOrder.due_date) return false
-    const status = (workOrder.status ?? '').toLowerCase()
-    if (['completed', 'closed', 'done', 'cancelled'].includes(status)) return false
-    return new Date(workOrder.due_date).getTime() < Date.now()
-  }).length
-
-  const doneWorkOrders = workOrders.filter((workOrder) => {
-    const status = (workOrder.status ?? '').toLowerCase()
-    return ['completed', 'closed', 'done'].includes(status)
-  }).length
 
   const openWorkOrders = workOrders.filter((workOrder) => {
     const status = (workOrder.status ?? '').toLowerCase()
     return !['completed', 'closed', 'done', 'cancelled'].includes(status)
-  }).length
+  })
+
+  const overdueWorkOrders = openWorkOrders.filter((workOrder) => {
+    if (!workOrder.due_date) return false
+    return new Date(workOrder.due_date).getTime() < Date.now()
+  })
+
+  const dueSoonWorkOrders = openWorkOrders.filter((workOrder) => {
+    if (!workOrder.due_date) return false
+    const dueTime = new Date(workOrder.due_date).getTime()
+    const now = Date.now()
+    const sevenDays = 7 * 24 * 60 * 60 * 1000
+    return dueTime >= now && dueTime <= now + sevenDays
+  })
+
+  const unassignedWorkOrders = openWorkOrders.filter(
+    (workOrder) => !workOrder.assigned_to_name
+  )
+
+  const doneWorkOrders = workOrders.filter((workOrder) => {
+    const status = (workOrder.status ?? '').toLowerCase()
+    return ['completed', 'closed', 'done'].includes(status)
+  })
 
   const completionRate =
-    workOrders.length > 0 ? Math.round((doneWorkOrders / workOrders.length) * 100) : 0
-
-  const assetCoverage =
-    assets.length > 0
-      ? Math.round((locations.length / assets.length) * 100)
+    workOrders.length > 0
+      ? Math.round((doneWorkOrders.length / workOrders.length) * 100)
       : 0
 
-  const recentWorkOrders = [...workOrders]
-    .sort((a, b) => {
-      const left = a.created_at ? new Date(a.created_at).getTime() : 0
-      const right = b.created_at ? new Date(b.created_at).getTime() : 0
-      return right - left
-    })
-    .slice(0, 5)
+  const dailyCreatedSeries = (() => {
+    const days = 8
+    const buckets = new Array<number>(days).fill(0)
+    const now = new Date()
+    for (const workOrder of workOrders) {
+      if (!workOrder.created_at) continue
+      const created = new Date(workOrder.created_at)
+      const diff = Math.floor(
+        (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() -
+          new Date(created.getFullYear(), created.getMonth(), created.getDate()).getTime()) /
+          (24 * 60 * 60 * 1000)
+      )
+      if (diff >= 0 && diff < days) {
+        const bucketIndex = days - 1 - diff
+        buckets[bucketIndex] += 1
+      }
+    }
+    return buckets
+  })()
 
-  const metricCards = [
-    {
-      title: 'Open work orders',
-      value: openWorkOrders.toLocaleString(),
-      description: `${overdueWorkOrders} overdue`,
-      icon: ClipboardList,
-    },
-    {
-      title: 'Managed assets',
-      value: assets.length.toLocaleString(),
-      description: 'Tracked across all sites',
-      icon: Wrench,
-    },
-    {
-      title: 'Locations',
-      value: locations.length.toLocaleString(),
-      description: 'Physical coverage map',
-      icon: Building2,
-    },
-    {
-      title: 'Team members',
-      value: users.length.toLocaleString(),
-      description: 'Tenant-level access',
-      icon: Users,
-    },
-  ]
+  const workOrderStatusCatalog = statusCatalog
+    .filter((status) => status.entity_type === 'work_order')
+    .map((status) => ({
+      key: status.key ?? '',
+      name: status.name ?? status.key ?? '',
+      color: status.color ?? null,
+    }))
+    .filter((status) => status.key)
+
+  const workOrderPriorityCatalog = priorityCatalog
+    .filter((priority) => priority.entity_type === 'work_order')
+    .map((priority) => ({
+      key: priority.key ?? '',
+      name: priority.name ?? priority.key ?? '',
+      color: priority.color ?? null,
+    }))
+    .filter((priority) => priority.key)
+
+  const queueWorkOrders = [...openWorkOrders]
+    .sort((a, b) => {
+      const left = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER
+      const right = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER
+      return left - right
+    })
+    .slice(0, 6)
+
+  const handleWorkOrderClick = (workOrder: WorkOrderRow) => {
+    if (!workOrder.id) return
+    void navigate({
+      to: '/dashboard/workorders/$id',
+      params: { id: workOrder.id },
+    })
+  }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-2">
-      <section className="rounded-2xl border bg-gradient-to-br from-card to-muted/30 p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-              Dashboard overview
-            </p>
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-              {activeTenant?.name ?? 'Your workspace'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Monitor operations, unblock overdue work, and keep teams aligned.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link to="/dashboard/workorders">
-                View work orders
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/dashboard/assets">Open assets</Link>
-            </Button>
-          </div>
+    <div className="flex flex-1 flex-col gap-4 p-4 pt-2">
+      <section className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Operational snapshot for {activeTenant?.name ?? 'current tenant'}.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm">
+            <Link to="/dashboard/workorders">
+              Work orders
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/dashboard/assets">Assets</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/dashboard/users">Team</Link>
+          </Button>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metricCards.map((metric) => (
-          <Card key={metric.title}>
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-              <div>
-                <CardDescription>{metric.title}</CardDescription>
-                <CardTitle className="mt-2 text-3xl">{metric.value}</CardTitle>
-              </div>
-              <div className="rounded-md bg-primary/10 p-2 text-primary">
-                <metric.icon className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="text-xs text-muted-foreground">
-              {metric.description}
-            </CardContent>
-          </Card>
-        ))}
+        {isLoading ? (
+          <>
+            <Skeleton className="h-44 rounded-xl" />
+            <Skeleton className="h-44 rounded-xl" />
+            <Skeleton className="h-44 rounded-xl" />
+            <Skeleton className="h-44 rounded-xl" />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label="Open work orders"
+              value={openWorkOrders.length.toLocaleString()}
+              trend={{
+                value: `${overdueWorkOrders.length} overdue`,
+                direction: overdueWorkOrders.length > 0 ? 'down' : 'up',
+              }}
+              sparkline={{ data: dailyCreatedSeries, sparklineProps: { variant: 'area' } }}
+              footerSummary="Current backlog"
+              footerDescription={`${dueSoonWorkOrders.length} due in 7 days`}
+            />
+            <StatCard
+              label="Unassigned work"
+              value={unassignedWorkOrders.length.toLocaleString()}
+              trend={`${dueSoonWorkOrders.length} due soon`}
+              footerSummary="Dispatch coverage"
+              footerDescription="Work orders without an assignee"
+            />
+            <StatCard
+              label="Managed assets"
+              value={assets.length.toLocaleString()}
+              trend={`${locations.length} mapped locations`}
+              footerSummary="Asset registry"
+              footerDescription="Total tracked in this tenant"
+            />
+            <StatCard
+              label="Team members"
+              value={users.length.toLocaleString()}
+              trend={{
+                value: `${completionRate}% completion`,
+                direction: completionRate >= 70 ? 'up' : 'down',
+              }}
+              footerSummary="Execution quality"
+              footerDescription="Completed vs all work orders"
+            />
+          </>
+        )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>System health</CardTitle>
+            <CardTitle>Work queue</CardTitle>
             <CardDescription>
-              Snapshot of completion and coverage across the tenant.
+              Open work orders sorted by nearest due date.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-2">
             {isLoading ? (
               <>
-                <Skeleton className="h-16 w-full rounded-lg" />
-                <Skeleton className="h-16 w-full rounded-lg" />
+                <Skeleton className="h-20 rounded-lg" />
+                <Skeleton className="h-20 rounded-lg" />
+                <Skeleton className="h-20 rounded-lg" />
               </>
+            ) : queueWorkOrders.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                No open work orders. Your queue is clear.
+              </div>
             ) : (
-              <>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Work order completion</span>
-                    <span className="text-muted-foreground">{completionRate}%</span>
-                  </div>
-                  <Progress value={completionRate} />
-                  <p className="text-xs text-muted-foreground">
-                    {doneWorkOrders} of {workOrders.length} work orders are complete.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Location coverage</span>
-                    <span className="text-muted-foreground">{assetCoverage}%</span>
-                  </div>
-                  <Progress value={Math.min(assetCoverage, 100)} />
-                  <p className="text-xs text-muted-foreground">
-                    {locations.length} locations mapped to {assets.length} assets.
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                  <div className="flex items-center gap-2 font-medium">
-                    {overdueWorkOrders > 0 ? (
-                      <AlertTriangle className="size-4 text-amber-500" />
-                    ) : (
-                      <CheckCircle2 className="size-4 text-emerald-500" />
-                    )}
-                    {overdueWorkOrders > 0
-                      ? `${overdueWorkOrders} overdue work orders need attention`
-                      : 'No overdue work orders right now'}
-                  </div>
-                </div>
-              </>
+              queueWorkOrders.map((workOrder) => (
+                <WorkOrderCard
+                  key={workOrder.id ?? `${workOrder.title}-${workOrder.created_at}`}
+                  title={workOrder.title ?? 'Untitled work order'}
+                  statusKey={workOrder.status}
+                  statusCatalog={workOrderStatusCatalog}
+                  priorityKey={workOrder.priority}
+                  priorityCatalog={workOrderPriorityCatalog}
+                  dueDate={workOrder.due_date}
+                  assigneeDisplayName={workOrder.assigned_to_name}
+                  onClick={() => handleWorkOrderClick(workOrder)}
+                />
+              ))
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Latest work orders created in this tenant.</CardDescription>
+            <CardTitle>Operational status</CardTitle>
+            <CardDescription>Live indicators for dispatch and throughput.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-10 w-full rounded-md" />
-                <Skeleton className="h-10 w-full rounded-md" />
-                <Skeleton className="h-10 w-full rounded-md" />
-              </>
-            ) : recentWorkOrders.length === 0 ? (
-              <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                No work orders yet. Create your first one to start tracking
-                maintenance.
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border p-3">
+              <div className="mb-2 text-sm font-medium">Backlog health</div>
+              <StatusIndicator
+                state={overdueWorkOrders.length > 0 ? 'fixing' : 'active'}
+                label={
+                  overdueWorkOrders.length > 0
+                    ? `${overdueWorkOrders.length} work orders overdue`
+                    : 'No overdue work orders'
+                }
+                labelClassName="text-muted-foreground"
+              />
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                <Clock3 className="size-4" />
+                Upcoming deadlines
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {dueSoonWorkOrders.length} work orders due in the next 7 days.
               </p>
-            ) : (
-              recentWorkOrders.map((workOrder, index) =>
-                workOrder.id ? (
-                  <Link
-                    key={workOrder.id}
-                    to="/dashboard/workorders/$id"
-                    params={{ id: workOrder.id }}
-                    className="block rounded-lg border p-3 transition-colors hover:bg-muted/40"
-                  >
-                    <p className="truncate text-sm font-medium">
-                      {workOrder.title ?? 'Untitled work order'}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Status: {workOrder.status ?? 'unknown'}
-                    </p>
-                  </Link>
-                ) : (
-                  <div
-                    key={`recent-work-order-${index}`}
-                    className="rounded-lg border p-3"
-                  >
-                    <p className="truncate text-sm font-medium">
-                      {workOrder.title ?? 'Untitled work order'}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Status: {workOrder.status ?? 'unknown'}
-                    </p>
-                  </div>
-                )
-              )
-            )}
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                <TimerReset className="size-4" />
+                Team allocation
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {unassignedWorkOrders.length} work orders still need assignment.
+              </p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                <ClipboardList className="size-4" />
+                Execution rate
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {doneWorkOrders.length} completed of {workOrders.length} total work orders.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </section>
