@@ -4,24 +4,23 @@ export const metadata = {
 }
 
 export const sections = [
-  { title: 'Overview', id: 'overview' },
+  { title: 'How it works', id: 'overview' },
   { title: 'Sign in', id: 'sign-in' },
   { title: 'Using the SDK', id: 'using-the-sdk' },
 ]
 
 # Authentication
 
-The API is backed by Supabase. All requests run in the context of the authenticated user. No separate “API key” header: sign in with Supabase Auth; the SDK uses that session. {{ className: 'lead' }}
+Sign in with Supabase Auth. Every request runs as the authenticated user—no separate API key header. The SDK uses your Supabase session. {{ className: 'lead' }}
 
-## Overview
+## How it works
 
-- **Auth provider:** Supabase Auth (JWT).
-- **No API key:** Use the Supabase project URL and **anon** key to create the client. The anon key is safe to use in the browser; Row Level Security (RLS) and RPC permission checks enforce what each user can do.
-- **Session:** Sign in with `client.supabase.auth.signInWithPassword()` (or OAuth, magic link, etc.). The SDK’s `tenants`, `workOrders`, and other resources use the same Supabase client, so they automatically use the current session.
+- **Auth:** Supabase Auth (JWT). You use the project URL and **anon** key to create the client. The anon key is safe in the browser; RLS and RPC permission checks enforce what each user can do.
+- **Session:** Sign in with `client.supabase.auth.signInWithPassword()` (or OAuth, magic link, and so on). The SDK’s tenants, work orders, and other resources use the same client, so they automatically use the current session.
 
 ## Sign in
 
-Get your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Create the client and sign in:
+Get your project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Create the client and sign in:
 
 <CodeGroup title="Sign in with email and password">
 
@@ -41,17 +40,14 @@ const { data, error } = await client.supabase.auth.signInWithPassword({
 
 </CodeGroup>
 
-After sign-in, the JWT is stored in the session (or in the storage you configured). All subsequent calls to `client.tenants.list()`, `client.workOrders.list()`, etc., use this session.
+After sign-in, the JWT is stored in the session (or in whatever storage you configured). All later calls to `client.tenants.list()`, `client.workOrders.list()`, and so on use this session.
 
 ## Using the SDK
 
-You do not pass a token into each request. The SDK wraps the Supabase client; once the user is signed in via `client.supabase.auth`, all resource methods run as that user. For tenant-scoped operations you must also call `client.setTenant(tenantId)` and refresh the session so the JWT carries the tenant context — see [Tenant context](/tenant-context).
+You don't pass a token on each request. The SDK wraps the Supabase client; once the user is signed in via `client.supabase.auth`, every resource method runs as that user. For tenant-scoped data you also need to call `client.setTenant(tenantId)` and refresh the session so the JWT includes tenant context. See [Tenant context](/tenant-context).
 
-<div className="not-prose flex flex-wrap gap-3">
-  <Button href="/tenant-context" variant="text" arrow="right">
-    <>Tenant context</>
-  </Button>
-  <Button href="/quickstart" variant="text" arrow="right">
-    <>Quickstart</>
-  </Button>
-</div>
+## Next steps
+
+- [Tenant context](/tenant-context) — Set and clear tenant context
+- [Quickstart](/quickstart) — Run through setup from scratch
+

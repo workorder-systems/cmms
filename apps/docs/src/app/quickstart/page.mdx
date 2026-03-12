@@ -4,20 +4,20 @@ export const metadata = {
 }
 
 export const sections = [
-  { title: 'Choose your client', id: 'choose-your-client' },
-  { title: 'Make your first request', id: 'making-your-first-request' },
-  { title: "What's next?", id: 'whats-next' },
+  { title: 'Install the SDK', id: 'choose-your-client' },
+  { title: 'Create a client and make your first request', id: 'making-your-first-request' },
+  { title: 'Next steps', id: 'whats-next' },
 ]
 
 # Quickstart
 
-Set up the SDK, create a client, and make your first requests. {{ className: 'lead' }}
+Get the SDK running and make your first API calls in a few minutes. {{ className: 'lead' }}
 
 <Note>
-  Requires Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). For tenant-scoped operations, sign in with Supabase Auth and set tenant context.
+  You need a Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). For tenant-scoped data, sign in with Supabase Auth and set tenant context.
 </Note>
 
-## Choose your client
+## 1. Install the SDK
 
 Install the SDK and its peer dependency:
 
@@ -29,7 +29,7 @@ npm install @workorder-systems/db @supabase/supabase-js
 
 </CodeGroup>
 
-The SDK is a type-safe wrapper over the Supabase client. It exposes domain resources (tenants, work orders, assets, locations, departments, meters) and tenant context helpers.
+The SDK wraps the Supabase client and exposes domain resources: tenants, work orders, assets, locations, departments, meters, and tenant context helpers.
 
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/installation" variant="text" arrow="right">
@@ -37,9 +37,9 @@ The SDK is a type-safe wrapper over the Supabase client. It exposes domain resou
   </Button>
 </div>
 
-## Make your first request
+## 2. Create a client and make your first request
 
-Create a client with your Supabase URL and anon key, then call the API. List tenants (no tenant context needed) or, after signing in and setting tenant context, list work orders.
+Create a client with your Supabase URL and anon key. You can list tenants (no tenant context needed). For work orders and other tenant-scoped data, sign in and set tenant context first.
 
 <CodeGroup title="Create client and list tenants">
 
@@ -57,7 +57,7 @@ const tenants = await client.tenants.list()
 
 </CodeGroup>
 
-To get data from tenant-scoped resources (work orders, assets, etc.), sign in with Supabase Auth and set tenant context before calling them:
+For tenant-scoped resources (work orders, assets, and so on), sign in and set tenant context:
 
 <CodeGroup title="Sign in and list work orders">
 
@@ -86,9 +86,9 @@ const workOrders = await client.workOrders.list()
   </Button>
 </div>
 
-## What's next?
+## Next steps
 
-- [Installation](/installation) — package details and edge/browser usage
-- [Authentication](/authentication) — Supabase Auth and the SDK
-- [Tenant context](/tenant-context) — setTenant, clearTenant, and JWT refresh
-- [Errors](/errors) — SdkError and common codes
+- [Installation](/installation) — Package details, edge runtimes, and browser usage
+- [Authentication](/authentication) — Sign in with Supabase Auth
+- [Tenant context](/tenant-context) — Set and clear tenant context
+- [Errors](/errors) — Handle SdkError and common codes

@@ -1,69 +1,66 @@
 # Supabase database architecture
 
-This folder contains the Supabase configuration and SQL migrations for the
-multi-tenant CMMS backend.
+Supabase config and SQL migrations for the multi-tenant CMMS backend.
 
 ## Folder layout
-- `config.toml`: Supabase local config.
-- `migrations/`: Ordered SQL migrations applied by the Supabase CLI.
-- `.gitignore`: Local Supabase artifacts.
+
+- **config.toml** — Supabase local config
+- **migrations/** — Ordered SQL migrations (Supabase CLI)
+- **.gitignore** — Local Supabase artifacts
 
 ## Architecture at a glance
-The database is split into clear schemas to keep responsibilities isolated:
-- `app`: core CMMS domain data (tenants, assets, locations, work_orders).
-- `cfg`: tenant configuration (roles, permissions, workflow catalogs).
-- `authz`: authorization helpers (membership and permission functions).
-- `util`: shared utilities (timestamps, validations, rate limiting).
-- `audit`: audit logs for compliance and security.
-- `int`: integration scaffolding (reserved for external systems).
+
+The database is split into clear schemas:
+
+- **app** — Core CMMS data (tenants, assets, locations, work_orders)
+- **cfg** — Tenant configuration (roles, permissions, workflow catalogs)
+- **authz** — Authorization helpers (membership and permission functions)
+- **util** — Shared utilities (timestamps, validations, rate limiting)
+- **audit** — Audit logs for compliance and security
+- **int** — Integration scaffolding (reserved for external systems)
 
 ## Public API contract
-This database is designed with a strict public surface:
-- **Public interface = RPC functions + public views only.**
-- **Direct table writes are not allowed** for client applications.
-- Internal schemas (`app`, `cfg`, `audit`, `util`, `authz`) are intended for
-  service_role or internal tooling only.
+
+The public surface is for **application users** (authenticated clients) only:
+
+- **Public interface** — RPC functions and public views only. No direct table access.
+- **Writes** — All writes go through RPCs with permission checks.
+- **Internal schemas** (`app`, `cfg`, `audit`, `util`, `authz`) are not exposed; application code uses only public RPCs and views.
 
 ## Modules, plugins, integrations (ADR 0002 + 0005)
-- **Module**: core product capability that can change the data model.
-- **Plugin**: optional behavior/UI on top of existing modules (no schema changes).
-- **Integration**: plugin subtype that connects to external systems.
-- Plugins and integrations **must not** add SQL or schema changes.
-- Secrets/tokens live outside Postgres; only opaque references are stored in `int`.
+
+- **Module** — Core product capability; can change the data model.
+- **Plugin** — Optional behavior/UI on existing modules; no schema changes.
+- **Integration** — Plugin that connects to external systems.
+- Plugins and integrations must not add SQL or schema changes.
+- Secrets/tokens live outside Postgres; only opaque references go in `int`.
 
 ## Public API naming and versioning (ADR 0008 + 0010)
-- **Views:** `public.v_<resource>` with plural resource names.
-  - Summary/analytics: `public.v_<resource>_summary` or `_overview`.
-  - Breaking changes use versioned view names: `public.v_<resource>_v2`.
-- **RPCs:** `public.rpc_<verb>_<resource>` with consistent verbs.
-  - Breaking changes use versioned names: `public.rpc_<verb>_<resource>_v2`.
-- **Parameter ordering:** `p_tenant_id` first when required, then primary ids.
-- Prefer **additive changes**; document any breaking changes in migrations and ADRs.
+
+- **Views:** `public.v_<resource>` (plural). Summary/analytics: `_summary` or `_overview`. Breaking changes: `_v2`.
+- **RPCs:** `public.rpc_<verb>_<resource>`. Breaking changes: versioned names.
+- **Parameters:** `p_tenant_id` first when required, then primary ids.
+- Prefer additive changes; document breaking changes in migrations and ADRs.
 
 ## Security model (multi-tenant)
-- **RLS is enabled** on all tenant-scoped tables.
-- **Tenant isolation** is enforced via membership tables and `auth.uid()`.
-- `app.current_tenant_id` is a **convenience context** for views only.
-  It must **never** be relied on for security enforcement.
-- **Permissions are enforced in RPC**, not by RLS. RLS checks tenant membership;
-  RPC enforces fine-grained permissions.
+
+- **RLS** is enabled on all tenant-scoped tables. Tenant isolation uses membership tables and `auth.uid()`.
+- **Permissions** are enforced in RPCs, not RLS. RLS checks tenant membership; RPCs enforce fine-grained permissions.
+- `app.current_tenant_id` is convenience context for views only—never use it for security.
 - **ABAC scopes** (`app.membership_scopes`) support location/department access.
 
 ## Workflow and catalogs
-Work order workflows are tenant-configurable:
-- Status catalogs and transitions live in `cfg.status_catalogs` and
-  `cfg.status_transitions`.
-- Priorities live in `cfg.priority_catalogs`.
-- **All status transitions must go through RPC** to enforce guard conditions.
+
+Work order workflows are tenant-configurable. Status catalogs and transitions live in `cfg.status_catalogs` and `cfg.status_transitions`; priorities in `cfg.priority_catalogs`. All status transitions must go through RPC to enforce guard conditions.
 
 ## Auditing, rate limits, analytics
-- **Audit logging**: `audit.entity_changes` and `audit.permission_changes`
-  capture changes to core entities and permission assignments.
-- **Rate limiting**: `util.check_rate_limit` protects write-heavy RPCs.
-- **Analytics**: materialized views support reporting and are refreshed via
-  `public.refresh_analytics_views()`.
+
+- **Audit:** `audit.entity_changes` and `audit.permission_changes` capture entity and permission changes.
+- **Rate limiting:** `util.check_rate_limit` protects write-heavy RPCs.
+- **Analytics:** Materialized views are refreshed via `public.refresh_analytics_views()`.
 
 ## Migration rules and conventions
+
 When adding migrations:
 1. Use Supabase CLI migrations under `supabase/migrations/`.
 2. Write **lowercase SQL** and include a header comment describing the change.
@@ -74,16 +71,18 @@ When adding migrations:
 7. Add or update tests in `tests/` to cover new behavior.
 
 ## Adding a new module (pattern)
+
 1. Define tables in `app` or `cfg`.
 2. Add RLS policies and tenant-consistency triggers.
-3. Add RPC functions for create/update/delete with permission checks.
+3. Add RPCs for create/update/delete with permission checks.
 4. Add public views for reads.
 5. Add permissions to `cfg.permissions` and include defaults.
-6. Add audit triggers and analytics (if needed).
+6. Add audit triggers and analytics if needed.
 7. Add tests.
 
 ## Local dev and tests
-- Start Supabase: `npm run supabase:start`
-- Reset database: `npm run supabase:reset`
-- Run tests: `npm test`
+
+- **Start:** `npm run supabase:start`
+- **Reset:** `npm run supabase:reset`
+- **Test:** `npm test`
 

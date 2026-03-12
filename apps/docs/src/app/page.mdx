@@ -17,7 +17,7 @@ export const sections = [
 
 # API Documentation
 
-The Work Order Systems API is backed by Supabase: reads go through public views, writes through RPCs. Use the `@workorder-systems/db` TypeScript client for a type-safe, domain-focused API over tenants, work orders, assets, labor, reporting, and more. {{ className: 'lead' }}
+Build your app on the Work Order Systems API. Reads use public views; writes use RPCs. The `@workorder-systems/db` client gives you a type-safe API for tenants, work orders, assets, labor, reporting, and more. {{ className: 'lead' }}
 
 <div className="not-prose mt-6 mb-16 flex flex-wrap gap-3">
   <Button href="/quickstart" arrow="right">
@@ -30,7 +30,7 @@ The Work Order Systems API is backed by Supabase: reads go through public views,
 
 ## Getting started {{ anchor: false }}
 
-Get your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Install `@workorder-systems/db` and create a client with `createDbClient(url, anonKey)`. Sign in with Supabase Auth so list and RPC calls run as an authenticated user; set tenant context before tenant-scoped operations. {{ className: 'lead' }}
+You need your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Install the SDK, create a client, then sign in with Supabase Auth. For tenant-scoped data, set tenant context and refresh your session. {{ className: 'lead' }}
 
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/installation" variant="text" arrow="right">
