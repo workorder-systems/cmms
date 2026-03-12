@@ -1,10 +1,11 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
-  ArrowRight,
   Clock3,
   ClipboardList,
   TimerReset,
+  Users,
+  Wrench,
 } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
@@ -22,6 +23,7 @@ import { Skeleton } from '@workspace/ui/components/skeleton'
 import { StatCard } from '@workspace/ui/components/stat-card'
 import { WorkOrderCard } from '@workspace/ui/components/work-order-card'
 import StatusIndicator from '@workspace/ui/components/status-indicator'
+import { ExtensionPoint } from '@workspace/ui/components/app-shell'
 
 export const Route = createFileRoute('/_protected/dashboard/')({
   component: DashboardPage,
@@ -30,7 +32,7 @@ export const Route = createFileRoute('/_protected/dashboard/')({
 function DashboardPage() {
   const client = getDbClient()
   const navigate = useNavigate()
-  const { activeTenantId, activeTenant } = useTenant()
+  const { activeTenantId } = useTenant()
 
   const { data: workOrders = [], isLoading: isLoadingWorkOrders } = useQuery({
     queryKey: ['dashboard-work-orders', activeTenantId],
@@ -157,28 +159,28 @@ function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-2">
-      <section className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Operational snapshot for {activeTenant?.name ?? 'current tenant'}.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild size="sm">
+      <ExtensionPoint name="header.right">
+        <div className="flex items-center gap-1">
+          <Button asChild size="sm" variant="ghost">
             <Link to="/dashboard/workorders">
-              Work orders
-              <ArrowRight className="size-4" />
+              <ClipboardList className="size-4" />
+              <span className="hidden md:inline">Work orders</span>
             </Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link to="/dashboard/assets">Assets</Link>
+          <Button asChild size="sm" variant="ghost">
+            <Link to="/dashboard/assets">
+              <Wrench className="size-4" />
+              <span className="hidden md:inline">Assets</span>
+            </Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link to="/dashboard/users">Team</Link>
+          <Button asChild size="sm" variant="ghost">
+            <Link to="/dashboard/users">
+              <Users className="size-4" />
+              <span className="hidden md:inline">Team</span>
+            </Link>
           </Button>
         </div>
-      </section>
+      </ExtensionPoint>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {isLoading ? (
