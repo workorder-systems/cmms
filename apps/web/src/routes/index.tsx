@@ -1,40 +1,26 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useAuth } from '../contexts/auth'
-import { Button } from '@workspace/ui/components/button'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
-  component: Home,
+  beforeLoad: async ({ context }) => {
+    const { data } = await context.dbClient.supabase.auth.getSession()
+    if (!data.session) {
+      throw redirect({
+        to: '/auth/login',
+        search: { redirect: '/dashboard' },
+      })
+    }
+    const tenants = await context.queryClient.fetchQuery({
+      queryKey: ['tenants'],
+      queryFn: () => context.dbClient.tenants.list(),
+    })
+    if (tenants.length === 0) {
+      throw redirect({ to: '/create-tenant' })
+    }
+    throw redirect({ to: '/dashboard' })
+  },
+  component: HomeRedirect,
 })
 
-function Home() {
-  const { user, loading } = useAuth()
-
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-semibold">Welcome</h1>
-      <p className="text-muted-foreground">Vite + TanStack Router + TanStack Query</p>
-      {loading ? (
-        <p className="mt-4 text-muted-foreground">Loading…</p>
-      ) : user ? (
-        <Link
-          to="/dashboard"
-          className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
-        >
-          Go to Dashboard
-        </Link>
-      ) : (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild>
-            <Link to="/auth/login" search={{ redirect: undefined }}>Log in</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/auth/signup" search={{ redirect: undefined }}>Sign up</Link>
-          </Button>
-          <Button asChild variant="ghost">
-            <Link to="/auth/forgot-password">Forgot password?</Link>
-          </Button>
-        </div>
-      )}
-    </div>
-  )
+function HomeRedirect() {
+  return null
 }
