@@ -219,7 +219,6 @@ function WorkOrdersPage() {
           label: 'Due date',
           variant: 'date',
         },
-        enableColumnFilter: true,
       },
       {
         id: 'created_at',

@@ -61,6 +61,13 @@ export type {
   LocationsResource,
 } from './resources/locations.js';
 export type {
+  MapZoneRow,
+  MapZoneGeometry,
+  CreateMapZoneParams,
+  UpdateMapZoneParams,
+  MapZonesResource,
+} from './resources/map-zones.js';
+export type {
   SpaceRow,
   SpaceStatus,
   CreateSpaceParams,
@@ -144,6 +151,7 @@ export type {
   AssetsSummaryRow,
   LocationsSummaryRow,
   TenantsOverviewRow,
+  SiteRollupRow,
   DashboardResource,
 } from './resources/dashboard.js';
 export type {

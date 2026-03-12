@@ -202,13 +202,6 @@ function CatalogsMaintenanceTypesPage() {
           variant: 'multiSelect',
           options: [...MAINTENANCE_CATEGORY_OPTIONS],
         },
-        enableColumnFilter: true,
-        filterFn: (row: Row<MaintenanceTypeCatalogRow>, id: string, filterValue: unknown) => {
-          const value = row.getValue(id) as string | null
-          const values = Array.isArray(filterValue) ? filterValue : [filterValue]
-          if (!values.length) return true
-          return value != null && values.includes(value)
-        },
       },
       {
         id: 'description',

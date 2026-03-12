@@ -22,6 +22,7 @@ import type { ProjectsResource } from './resources/projects.js';
 import type { PartsInventoryResource } from './resources/parts-inventory.js';
 import type { SafetyComplianceResource } from './resources/safety-compliance.js';
 import type { MobileFieldResource } from './resources/mobile-field.js';
+import type { MapZonesResource } from './resources/map-zones.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -95,4 +96,6 @@ export type DbClient = {
   safetyCompliance: SafetyComplianceResource;
   /** Mobile field: offline sync payload, start/stop work order, add note, register attachment, and lightweight mobile views. */
   mobile: MobileFieldResource;
+  /** Map zones: saved drawn shapes (polygons, lines, etc.) on the locations map. */
+  mapZones: MapZonesResource;
 };

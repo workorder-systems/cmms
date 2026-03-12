@@ -17,6 +17,10 @@ export interface CreateLocationParams {
   code?: string | null;
   addressLine?: string | null;
   externalId?: string | null;
+  /** WGS84 latitude; must be set together with longitude. */
+  latitude?: number | null;
+  /** WGS84 longitude; must be set together with latitude. */
+  longitude?: number | null;
 }
 
 export interface UpdateLocationParams {
@@ -29,6 +33,10 @@ export interface UpdateLocationParams {
   code?: string | null;
   addressLine?: string | null;
   externalId?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** When true, clears latitude and longitude (removes position from map). */
+  clearPosition?: boolean;
 }
 
 /** Single row for bulk import (name required; others optional). */
@@ -79,6 +87,8 @@ export function createLocationsResource(supabase: SupabaseClient<Database>) {
         p_code: params.code ?? null,
         p_address_line: params.addressLine ?? null,
         p_external_id: params.externalId ?? null,
+        p_latitude: params.latitude ?? null,
+        p_longitude: params.longitude ?? null,
       });
     },
     async update(params: UpdateLocationParams): Promise<void> {
@@ -92,6 +102,9 @@ export function createLocationsResource(supabase: SupabaseClient<Database>) {
         p_code: params.code ?? null,
         p_address_line: params.addressLine ?? null,
         p_external_id: params.externalId ?? null,
+        p_latitude: params.latitude ?? null,
+        p_longitude: params.longitude ?? null,
+        p_clear_position: params.clearPosition ?? false,
       });
     },
     async delete(tenantId: string, locationId: string): Promise<void> {

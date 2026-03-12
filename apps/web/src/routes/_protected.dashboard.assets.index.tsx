@@ -179,10 +179,8 @@ function AssetsPage() {
         ),
         meta: {
           label: 'Asset number',
-          placeholder: 'Search...',
           variant: 'text',
         },
-        enableColumnFilter: true,
       },
       {
         id: 'status',

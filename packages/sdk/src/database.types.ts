@@ -1137,7 +1137,9 @@ export type Database = {
           description: string | null
           external_id: string | null
           id: string | null
+          latitude: number | null
           location_type: string | null
+          longitude: number | null
           name: string | null
           parent_location_id: string | null
           tenant_id: string | null
@@ -1150,7 +1152,9 @@ export type Database = {
           description?: string | null
           external_id?: string | null
           id?: string | null
+          latitude?: number | null
           location_type?: string | null
+          longitude?: number | null
           name?: string | null
           parent_location_id?: string | null
           tenant_id?: string | null
@@ -1163,7 +1167,9 @@ export type Database = {
           description?: string | null
           external_id?: string | null
           id?: string | null
+          latitude?: number | null
           location_type?: string | null
+          longitude?: number | null
           name?: string | null
           parent_location_id?: string | null
           tenant_id?: string | null
@@ -1220,6 +1226,36 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      v_map_zones: {
+        Row: {
+          id: string | null
+          tenant_id: string | null
+          name: string | null
+          geometry: Record<string, unknown> | null
+          location_id: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          tenant_id?: string | null
+          name?: string | null
+          geometry?: Record<string, unknown> | null
+          location_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          tenant_id?: string | null
+          name?: string | null
+          geometry?: Record<string, unknown> | null
+          location_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       v_locations_summary: {
         Row: {

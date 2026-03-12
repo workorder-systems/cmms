@@ -933,11 +933,27 @@ function MapLocateControl({
     )
 }
 
-function MapSearchControl({ className, ...props }: PlaceAutocompleteProps) {
+function MapSearchControl({
+    className,
+    flyToOnSelect = false,
+    onPlaceSelect,
+    ...props
+}: PlaceAutocompleteProps & { flyToOnSelect?: boolean }) {
+    const map = useMap()
+    const handlePlaceSelect = React.useCallback(
+        (feature: Parameters<NonNullable<typeof onPlaceSelect>>[0]) => {
+            if (flyToOnSelect && map && feature?.geometry?.coordinates?.length >= 2) {
+                const [lng, lat] = feature.geometry.coordinates
+                map.flyTo([lat, lng], 16)
+            }
+            onPlaceSelect?.(feature)
+        },
+        [flyToOnSelect, map, onPlaceSelect]
+    )
     return (
         <MapControlContainer
             className={cn("top-1 left-1 z-1001 w-60", className)}>
-            <PlaceAutocomplete {...props} />
+            <PlaceAutocomplete {...props} onPlaceSelect={handlePlaceSelect} />
         </MapControlContainer>
     )
 }
@@ -1528,4 +1544,6 @@ export {
     MapTooltip,
     MapZoomControl,
     useLeaflet,
+    useMap,
+    useMapEvents,
 }

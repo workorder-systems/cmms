@@ -56,6 +56,23 @@ export type TenantsOverviewRow = Database['public']['Views']['v_tenants_overview
   ? R
   : Record<string, unknown>;
 
+/** Row from v_site_rollup view (per-site aggregates for portfolio). Not in generated types. */
+export interface SiteRollupRow {
+  site_id: string | null;
+  tenant_id: string | null;
+  site_name: string | null;
+  location_type: string | null;
+  site_code: string | null;
+  building_count: number | null;
+  floor_count: number | null;
+  room_count: number | null;
+  zone_count: number | null;
+  asset_count: number | null;
+  active_asset_count: number | null;
+  work_order_count: number | null;
+  active_work_order_count: number | null;
+}
+
 /**
  * Dashboard resource: metrics and summaries (read-only views).
  */
@@ -135,6 +152,14 @@ export function createDashboardResource(supabase: SupabaseClient<Database>) {
       const { data, error } = await supabase.from('v_tenants_overview').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as TenantsOverviewRow[];
+    },
+
+    /** Site rollup for portfolio / multi-site (v_site_rollup). Per-site building/floor/room/zone and asset/WO counts. */
+    async listSiteRollup(): Promise<SiteRollupRow[]> {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- v_site_rollup not in generated Database types
+      const { data, error } = await (supabase as any).from('v_site_rollup').select('*');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as SiteRollupRow[];
     },
   };
 }

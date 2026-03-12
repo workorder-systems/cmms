@@ -195,13 +195,6 @@ function CatalogsStatusesPage() {
           variant: 'multiSelect',
           options: [...STATUS_CATEGORY_OPTIONS],
         },
-        enableColumnFilter: true,
-        filterFn: (row: Row<StatusCatalogRow>, id: string, filterValue: unknown) => {
-          const value = row.getValue(id) as string | null
-          const values = Array.isArray(filterValue) ? filterValue : [filterValue]
-          if (!values.length) return true
-          return value != null && values.includes(value)
-        },
       },
       {
         id: 'color',

@@ -79,10 +79,8 @@ function TeamDepartmentsPage() {
         ),
         meta: {
           label: 'Code',
-          placeholder: 'Search...',
           variant: 'text',
         },
-        enableColumnFilter: true,
       },
       {
         id: 'description',

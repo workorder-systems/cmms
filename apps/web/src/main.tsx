@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { ThemeProvider } from 'next-themes'
 import { routeTree } from './routeTree.gen'
 import { getDbClient } from './lib/db-client'
 import { AuthProvider } from './contexts/auth'
@@ -43,9 +44,11 @@ root.render(
         },
       }}
     >
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ThemeProvider>
     </PersistQueryClientProvider>
   </QueryClientProvider>,
 )

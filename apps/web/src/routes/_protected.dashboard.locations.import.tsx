@@ -15,15 +15,31 @@ export interface LocationImportRow {
   name: string
   description: string
   parent_location_id: string
+  location_type: string
+  code: string
+  address_line: string
+  external_id: string
 }
 
 const LOCATIONS_CSV_OPTIONS = {
-  canonicalColumns: ['name', 'description', 'parent_location_id'] as const,
+  canonicalColumns: [
+    'name',
+    'description',
+    'parent_location_id',
+    'location_type',
+    'code',
+    'address_line',
+    'external_id',
+  ] as const,
   requiredColumn: 'name',
   headerAliases: {
     name: [/^(name|title)$/],
     description: [/^(description|desc|notes)$/],
     parent_location_id: [/^(parentlocationid|parent_location_id|parent)$/i],
+    location_type: [/^(locationtype|location_type|type)$/i],
+    code: [/^(code)$/i],
+    address_line: [/^(addressline|address_line|address)$/i],
+    external_id: [/^(externalid|external_id)$/i],
   },
 }
 
@@ -33,14 +49,18 @@ function createEmptyRow(): LocationImportRow {
     name: '',
     description: '',
     parent_location_id: '',
+    location_type: '',
+    code: '',
+    address_line: '',
+    external_id: '',
   }
 }
 
 function getCsvTemplate(): string {
-  return `name,description,parent_location_id
-"Building A","Main facility",,
-"Warehouse 1","North site",,
-"Room 201","Floor 2",,
+  return `name,description,parent_location_id,location_type,code,address_line,external_id
+"Building A","Main facility",,building,BLD-A,"123 Main St",
+"Warehouse 1","North site",,site,WH-1,,
+"Room 201","Floor 2",,room,RM-201,,
 `
 }
 
@@ -75,6 +95,30 @@ function LocationsImportPage() {
         header: 'Parent location ID',
         meta: { label: 'Parent location ID', cell: { variant: 'short-text' as const } },
       },
+      {
+        id: 'location_type',
+        accessorKey: 'location_type',
+        header: 'Type',
+        meta: { label: 'Type', cell: { variant: 'short-text' as const } },
+      },
+      {
+        id: 'code',
+        accessorKey: 'code',
+        header: 'Code',
+        meta: { label: 'Code', cell: { variant: 'short-text' as const } },
+      },
+      {
+        id: 'address_line',
+        accessorKey: 'address_line',
+        header: 'Address',
+        meta: { label: 'Address', cell: { variant: 'short-text' as const } },
+      },
+      {
+        id: 'external_id',
+        accessorKey: 'external_id',
+        header: 'External ID',
+        meta: { label: 'External ID', cell: { variant: 'short-text' as const } },
+      },
     ],
     [],
   )
@@ -86,6 +130,10 @@ function LocationsImportPage() {
       name: p.name ?? '',
       description: p.description ?? '',
       parent_location_id: p.parent_location_id ?? '',
+      location_type: p.location_type ?? '',
+      code: p.code ?? '',
+      address_line: p.address_line ?? '',
+      external_id: p.external_id ?? '',
     }))
   }, [])
 
@@ -96,6 +144,10 @@ function LocationsImportPage() {
         name: (row.name ?? '').trim(),
         description: (row.description ?? '').trim() || null,
         parent_location_id: (row.parent_location_id ?? '').trim() || null,
+        location_type: (row.location_type ?? '').trim() || null,
+        code: (row.code ?? '').trim() || null,
+        address_line: (row.address_line ?? '').trim() || null,
+        external_id: (row.external_id ?? '').trim() || null,
       }))
       const result = await client.locations.bulkImport({
         tenantId: activeTenantId,
@@ -117,7 +169,7 @@ function LocationsImportPage() {
         toast.success(`Imported ${ok} location${ok !== 1 ? 's' : ''}`)
       }
       await queryClient.invalidateQueries({ queryKey: ['locations', activeTenantId] })
-      if (ok > 0) navigate({ to: '/dashboard/locations' })
+      if (ok > 0) navigate({ to: '/dashboard/locations/hierarchy' })
     },
     [activeTenantId, client.locations, queryClient, navigate],
   )
@@ -128,7 +180,7 @@ function LocationsImportPage() {
       description={
         <>
           Upload a CSV or add rows below. Columns: <strong>name</strong> (required), description,
-          parent_location_id (UUID). Rows with an empty name are skipped.
+          parent_location_id (UUID), location_type (region|site|building|floor|room|zone), code, address_line, external_id. Rows with an empty name are skipped.
         </>
       }
       entityLabelSingular="location"
