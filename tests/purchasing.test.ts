@@ -4,8 +4,8 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase } from './helpers/supabase';
-import { createTestUser } from './helpers/auth';
-import { createTestTenant, setTenantContext } from './helpers/tenant';
+import { getOrCreateSharedUser } from './helpers/auth';
+import { getOrCreateSharedTenant } from './helpers/tenant';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('Purchasing', () => {
@@ -18,9 +18,8 @@ describe('Purchasing', () => {
 
   describe('Purchase orders', () => {
     it('should create purchase order via rpc_create_purchase_order', async () => {
-      await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const { data: supplierId } = await client.rpc('rpc_create_supplier', {
         p_tenant_id: tenantId,
@@ -72,9 +71,8 @@ describe('Purchasing', () => {
     });
 
     it('should query v_open_purchase_orders and v_purchase_order_receipt_status without error', async () => {
-      await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const { error: openError } = await client.from('v_open_purchase_orders').select('id').limit(1);
       expect(openError).toBeNull();
@@ -87,9 +85,11 @@ describe('Purchasing', () => {
   describe('Tenant isolation', () => {
     it('should not see other tenant purchase orders in v_open_purchase_orders', async () => {
       const client1 = createTestClient();
-      await createTestUser(client1);
-      const tenantId1 = await createTestTenant(client1);
-      await setTenantContext(client1, tenantId1);
+      await getOrCreateSharedUser(client1, { scopeKey: __filename, roleKey: 'tenant1' });
+      const tenantId1 = await getOrCreateSharedTenant(client1, {
+        scopeKey: __filename,
+        tenantKey: 'tenant1',
+      });
 
       const { data: supplierId } = await client1.rpc('rpc_create_supplier', {
         p_tenant_id: tenantId1,
@@ -113,9 +113,11 @@ describe('Purchasing', () => {
       });
 
       const client2 = createTestClient();
-      await createTestUser(client2);
-      const tenantId2 = await createTestTenant(client2);
-      await setTenantContext(client2, tenantId2);
+      await getOrCreateSharedUser(client2, { scopeKey: __filename, roleKey: 'tenant2' });
+      const tenantId2 = await getOrCreateSharedTenant(client2, {
+        scopeKey: __filename,
+        tenantKey: 'tenant2',
+      });
 
       const { data: row, error } = await client2
         .from('v_open_purchase_orders')

@@ -1,8 +1,14 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase } from './helpers/supabase';
-import { createTestUser, getUserEmail, TEST_PASSWORD } from './helpers/auth';
+import {
+  createTestUser,
+  getOrCreateSharedUser,
+  getUserEmail,
+  TEST_PASSWORD,
+} from './helpers/auth';
 import {
   createTestTenant,
+  getOrCreateSharedTenant,
   addUserToTenant,
   setTenantContext,
 } from './helpers/tenant';
@@ -23,11 +29,8 @@ describe('JWT & Tenant Context Security', () => {
   describe('JWT Tenant Context', () => {
     it('should update user metadata when setting tenant context', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId = await createTestTenant(userClient);
-
-      // Set tenant context
-      await setTenantContext(userClient, tenantId);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(userClient, { scopeKey: __filename });
 
       // Verify user metadata was updated
       const { data: userData } = await userClient.auth.getUser();
@@ -36,10 +39,8 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should validate tenant context persists across requests', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId = await createTestTenant(userClient);
-
-      await setTenantContext(userClient, tenantId);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(userClient, { scopeKey: __filename });
 
       // Create work order (uses tenant context)
       const woId = await createTestWorkOrder(userClient, tenantId, 'Test WO');
@@ -55,10 +56,8 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should validate tenant context in JWT is checked', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId = await createTestTenant(userClient);
-
-      await setTenantContext(userClient, tenantId);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(userClient, { scopeKey: __filename });
 
       // After setting context and refreshing token, tenant_id should be in JWT
       // This is verified by the fact that views work correctly
@@ -72,9 +71,15 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should allow switching tenant context', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId1 = await createTestTenant(userClient);
-      const tenantId2 = await createTestTenant(userClient);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId1 = await getOrCreateSharedTenant(userClient, {
+        scopeKey: __filename,
+        tenantKey: 'switch1',
+      });
+      const tenantId2 = await getOrCreateSharedTenant(userClient, {
+        scopeKey: __filename,
+        tenantKey: 'switch2',
+      });
 
       // Set context to tenant1
       await setTenantContext(userClient, tenantId1);
@@ -104,11 +109,8 @@ describe('JWT & Tenant Context Security', () => {
   describe('Session Variable Fallback', () => {
     it('should set app.current_tenant_id session variable', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId = await createTestTenant(userClient);
-
-      // Set tenant context (sets session variable)
-      await setTenantContext(userClient, tenantId);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(userClient, { scopeKey: __filename });
 
       // Session variable is used by get_current_tenant_id() function
       // Verify it works by querying tenant-scoped view
@@ -123,14 +125,24 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should ensure session variable is tenant-scoped', async () => {
       const user1Client = createTestClient();
-      const { user: user1 } = await createTestUser(user1Client);
-      const tenantId1 = await createTestTenant(user1Client);
-      await setTenantContext(user1Client, tenantId1);
+      const { user: user1 } = await getOrCreateSharedUser(user1Client, {
+        scopeKey: __filename,
+        roleKey: 'session1',
+      });
+      const tenantId1 = await getOrCreateSharedTenant(user1Client, {
+        scopeKey: __filename,
+        tenantKey: 'session1',
+      });
 
       const user2Client = createTestClient();
-      const { user: user2 } = await createTestUser(user2Client);
-      const tenantId2 = await createTestTenant(user2Client);
-      await setTenantContext(user2Client, tenantId2);
+      const { user: user2 } = await getOrCreateSharedUser(user2Client, {
+        scopeKey: __filename,
+        roleKey: 'session2',
+      });
+      const tenantId2 = await getOrCreateSharedTenant(user2Client, {
+        scopeKey: __filename,
+        tenantKey: 'session2',
+      });
 
       // Each user's session variable should be independent
       const location1Id = await createTestLocation(user1Client, tenantId1, 'Location1');
@@ -149,12 +161,17 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should not allow session variable to bypass RLS', async () => {
       const adminClient = createTestClient();
-      const { user: admin } = await createTestUser(adminClient);
-      const tenantId = await createTestTenant(adminClient);
-      await setTenantContext(adminClient, tenantId);
+      const { user: admin } = await getOrCreateSharedUser(adminClient, {
+        scopeKey: __filename,
+        roleKey: 'admin',
+      });
+      const tenantId = await getOrCreateSharedTenant(adminClient, { scopeKey: __filename });
 
       const outsiderClient = createTestClient();
-      const { user: outsider } = await createTestUser(outsiderClient);
+      const { user: outsider } = await getOrCreateSharedUser(outsiderClient, {
+        scopeKey: __filename,
+        roleKey: 'outsider',
+      });
 
       // Outsider tries to set context for tenant they're not a member of
       const { error } = await outsiderClient.rpc('rpc_set_tenant_context', {
@@ -169,11 +186,17 @@ describe('JWT & Tenant Context Security', () => {
   describe('Context Validation', () => {
     it('should prevent setting context for non-member', async () => {
       const adminClient = createTestClient();
-      const { user: admin } = await createTestUser(adminClient);
-      const tenantId = await createTestTenant(adminClient);
+      const { user: admin } = await getOrCreateSharedUser(adminClient, {
+        scopeKey: __filename,
+        roleKey: 'admin',
+      });
+      const tenantId = await getOrCreateSharedTenant(adminClient, { scopeKey: __filename });
 
       const outsiderClient = createTestClient();
-      const { user: outsider } = await createTestUser(outsiderClient);
+      const { user: outsider } = await getOrCreateSharedUser(outsiderClient, {
+        scopeKey: __filename,
+        roleKey: 'outsider',
+      });
 
       // Outsider should not be able to set context
       const { error } = await outsiderClient.rpc('rpc_set_tenant_context', {
@@ -187,11 +210,17 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should allow setting context for valid members', async () => {
       const adminClient = createTestClient();
-      const { user: admin } = await createTestUser(adminClient);
-      const tenantId = await createTestTenant(adminClient);
+      const { user: admin } = await getOrCreateSharedUser(adminClient, {
+        scopeKey: __filename,
+        roleKey: 'admin',
+      });
+      const tenantId = await getOrCreateSharedTenant(adminClient, { scopeKey: __filename });
 
       const memberClient = createTestClient();
-      const { user: member } = await createTestUser(memberClient);
+      const { user: member } = await getOrCreateSharedUser(memberClient, {
+        scopeKey: __filename,
+        roleKey: 'member',
+      });
       await addUserToTenant(adminClient, member.id, tenantId);
 
       // Member should be able to set context
@@ -218,9 +247,15 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should handle multiple tenants in same session', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId1 = await createTestTenant(userClient);
-      const tenantId2 = await createTestTenant(userClient);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId1 = await getOrCreateSharedTenant(userClient, {
+        scopeKey: __filename,
+        tenantKey: 'multi1',
+      });
+      const tenantId2 = await getOrCreateSharedTenant(userClient, {
+        scopeKey: __filename,
+        tenantKey: 'multi2',
+      });
 
       // Set context to tenant1
       await setTenantContext(userClient, tenantId1);
@@ -244,8 +279,8 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should persist context after token refresh', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId = await createTestTenant(userClient);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(userClient, { scopeKey: __filename });
 
       await setTenantContext(userClient, tenantId);
 
@@ -276,19 +311,27 @@ describe('JWT & Tenant Context Security', () => {
   describe('Context Security', () => {
     it('should prevent context manipulation attacks', async () => {
       const adminClient = createTestClient();
-      const { user: admin } = await createTestUser(adminClient);
-      const tenantId = await createTestTenant(adminClient);
-      await setTenantContext(adminClient, tenantId);
+      const { user: admin } = await getOrCreateSharedUser(adminClient, {
+        scopeKey: __filename,
+        roleKey: 'admin',
+      });
+      const tenantId = await getOrCreateSharedTenant(adminClient, { scopeKey: __filename });
 
       const attackerClient = createTestClient();
-      const { user: attacker } = await createTestUser(attackerClient);
+      const { user: attacker } = await getOrCreateSharedUser(attackerClient, {
+        scopeKey: __filename,
+        roleKey: 'attacker',
+      });
       await addUserToTenant(adminClient, attacker.id, tenantId);
 
       // Attacker sets their own context
       await setTenantContext(attackerClient, tenantId);
 
       // Attacker should only see their tenant's data, not other tenants
-      const otherTenantId = await createTestTenant(adminClient);
+      const otherTenantId = await getOrCreateSharedTenant(adminClient, {
+        scopeKey: __filename,
+        tenantKey: 'other',
+      });
 
       // Attacker should not be able to set context for other tenant
       const { error } = await attackerClient.rpc('rpc_set_tenant_context', {
@@ -301,8 +344,8 @@ describe('JWT & Tenant Context Security', () => {
 
     it('should validate context before allowing operations', async () => {
       const userClient = createTestClient();
-      const { user } = await createTestUser(userClient);
-      const tenantId = await createTestTenant(userClient);
+      const { user } = await getOrCreateSharedUser(userClient, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(userClient, { scopeKey: __filename });
 
       // Try to create work order without setting context
       // Should fail or require context

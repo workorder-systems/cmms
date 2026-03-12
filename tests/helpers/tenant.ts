@@ -110,6 +110,78 @@ export async function getTenantBySlug(
   return data;
 }
 
+/** Cache for shared tenants: (scopeKey, tenantKey, userId) -> tenantId so each user only reuses their own tenant. */
+const sharedTenantCache = new Map<string, string>();
+
+function sharedTenantCacheKey(scopeKey: string, tenantKey: string, userId: string): string {
+  return `${scopeKey}\n${tenantKey}\n${userId}`;
+}
+
+/** Produce a short slug-safe hash (0-9a-z) for deterministic tenant slugs that satisfy tenants_slug_format_check (^[a-z0-9_-]+$). */
+function slugSafeHash(str: string): string {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
+/**
+ * Options for getOrCreateSharedTenant.
+ * Use same scopeKey (e.g. __filename) and tenantKey within a file to reuse one tenant.
+ */
+export interface GetOrCreateSharedTenantOptions {
+  /** Scope for sharing (e.g. __filename for per-file). Defaults to VITEST_WORKER_ID or 'default'. */
+  scopeKey?: string;
+  /** Tenant key when you need multiple tenants in the same scope. Defaults to 'default'. */
+  tenantKey?: string;
+}
+
+/**
+ * Get or create a shared test tenant for the given scope/key.
+ * Cache is keyed by (scopeKey, tenantKey, userId) so each user only reuses tenants they created.
+ * First call creates the tenant and caches it; subsequent calls set tenant context and return the cached tenant id.
+ */
+export async function getOrCreateSharedTenant(
+  client: SupabaseClient,
+  options?: GetOrCreateSharedTenantOptions
+): Promise<string> {
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError || !userData?.user?.id) {
+    throw new Error(
+      userError ? formatPostgrestError('Failed to get current user', userError) : 'No authenticated user'
+    );
+  }
+  const userId = userData.user.id;
+
+  const scopeKey = options?.scopeKey ?? process.env.VITEST_WORKER_ID ?? 'default';
+  const tenantKey = options?.tenantKey ?? 'default';
+  const key = sharedTenantCacheKey(scopeKey, tenantKey, userId);
+  // tenants_slug_format_check: ^[a-z0-9_-]+$ (2-63 chars). Include userId in hash so each user gets a distinct slug.
+  const safeTenant = tenantKey.replace(/[^a-z0-9_-]/g, '_').toLowerCase().slice(0, 32);
+  const hash = slugSafeHash(`${scopeKey}\n${tenantKey}\n${userId}`);
+  const slug = `shared-${hash}-${safeTenant}`.slice(0, 63);
+  const name = `Shared ${safeTenant || 'default'}`;
+
+  const cached = sharedTenantCache.get(key);
+  if (cached) {
+    await setTenantContext(client, cached);
+    return cached;
+  }
+
+  const tenantId = await createTestTenant(client, name, slug);
+  sharedTenantCache.set(key, tenantId);
+  return tenantId;
+}
+
+/**
+ * Clear the shared tenant cache (e.g. in afterAll for isolation between suites).
+ */
+export function clearSharedTenantCache(): void {
+  sharedTenantCache.clear();
+}
+
 /**
  * Set tenant context for a client
  * Updates user metadata and forces a new token by signing out/in to trigger JWT hook

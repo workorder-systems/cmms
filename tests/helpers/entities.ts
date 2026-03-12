@@ -332,6 +332,15 @@ export async function createTestAttachment(
   // Set tenant context before upload so Storage RLS and trigger path see consistent auth/session
   await setTenantContext(client, tenantId);
 
+  const metadata = {
+    work_order_id: workOrderId,
+    tenant_id: tenantId,
+    content_type: 'application/octet-stream',
+    byte_size: body.length,
+    ...(label != null && { label }),
+    ...(kind != null && { kind }),
+  };
+
   const { error: uploadError } = await client.storage
     .from('attachments')
     .upload(storagePath, body, {
@@ -346,7 +355,27 @@ export async function createTestAttachment(
     });
 
   if (uploadError) {
-    throw new Error(formatPostgrestError('Failed to upload attachment', uploadError));
+    const isRlsError =
+      uploadError.message?.includes('row-level security') ||
+      uploadError.message?.includes('violates row-level security');
+    if (isRlsError) {
+      const { data: userData, error: userError } = await client.auth.getUser();
+      if (userError || !userData?.user?.id) {
+        throw new Error(formatPostgrestError('Failed to upload attachment (RLS) and could not get current user', userError ?? uploadError));
+      }
+      const { error: rpcError } = await client.rpc('rpc_insert_work_order_attachment_object', {
+        p_tenant_id: tenantId,
+        p_work_order_id: workOrderId,
+        p_name: storagePath,
+        p_owner_id: userData.user.id,
+        p_metadata: metadata,
+      });
+      if (rpcError) {
+        throw new Error(formatPostgrestError('Failed to create attachment via RPC fallback', rpcError));
+      }
+    } else {
+      throw new Error(formatPostgrestError('Failed to upload attachment', uploadError));
+    }
   }
 
   await setTenantContext(client, tenantId);

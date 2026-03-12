@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase } from './helpers/supabase';
-import { createTestUser } from './helpers/auth';
+import { createTestUser, getOrCreateSharedUser } from './helpers/auth';
 import {
   createTestTenant,
+  getOrCreateSharedTenant,
   setTenantContext,
 } from './helpers/tenant';
 import {
@@ -22,9 +23,8 @@ describe('Input Validation & Security', () => {
 
   describe('SQL Injection Prevention', () => {
     it('should prevent SQL injection in text fields', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       // Attempt SQL injection in title
       const maliciousTitle = "'; DROP TABLE work_orders; --";
@@ -58,9 +58,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should prevent SQL injection in description fields', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const maliciousDesc = "'; SELECT * FROM auth.users; --";
       const { error, data: woId } = await client.rpc('rpc_create_work_order', {
@@ -89,9 +88,8 @@ describe('Input Validation & Security', () => {
     it('should use parameterized queries in RPC functions', async () => {
       // This test verifies that RPCs use parameterized queries
       // by attempting injection and verifying no SQL execution
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       // Try injection in various fields
       const injections = [
@@ -126,9 +124,8 @@ describe('Input Validation & Security', () => {
 
   describe('Boundary Conditions', () => {
     it('should enforce max length constraint on work order title (500 chars)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const longTitle = 'a'.repeat(501); // 501 characters
 
@@ -143,9 +140,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should allow work order title at max length (500 chars)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const maxTitle = 'a'.repeat(500); // Exactly 500 characters
 
@@ -159,9 +155,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should enforce min length constraint on work order title (1 char)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const { error } = await client.rpc('rpc_create_work_order', {
         p_tenant_id: tenantId,
@@ -174,9 +169,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should handle null vs empty string correctly', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       // Null description should be allowed
       const woId1 = await createTestWorkOrder(
@@ -198,9 +192,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should validate UUID format', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       // Invalid UUID format
       const { error } = await client.rpc('rpc_create_work_order', {
@@ -214,9 +207,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should validate date range for entry_date (365 days ago to 7 days future)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const woId = await createTestWorkOrder(client, tenantId, 'Test WO');
 
@@ -252,9 +244,8 @@ describe('Input Validation & Security', () => {
 
   describe('Format Validation', () => {
     it('should validate status key format (^[a-z0-9_]+$)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const invalidStatuses = [
         'Invalid-Status', // Contains hyphen
@@ -279,9 +270,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should allow valid status key format', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const validStatuses = [
         'valid_status',
@@ -309,9 +299,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should validate priority key format', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const invalidPriorities = [
         'Invalid-Priority',
@@ -335,8 +324,11 @@ describe('Input Validation & Security', () => {
 
     it('should validate email format in rpc_invite_user_to_tenant', async () => {
       const adminClient = createTestClient();
-      const { user: admin } = await createTestUser(adminClient);
-      const tenantId = await createTestTenant(adminClient);
+      const { user: admin } = await getOrCreateSharedUser(adminClient, {
+        scopeKey: __filename,
+        roleKey: 'admin',
+      });
+      const tenantId = await getOrCreateSharedTenant(adminClient, { scopeKey: __filename });
 
       const invalidEmails = [
         'not-an-email',
@@ -383,9 +375,8 @@ describe('Input Validation & Security', () => {
 
   describe('Type Coercion Attacks', () => {
     it('should reject wrong types (string where UUID expected)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       // Try passing string instead of UUID
       const { error } = await client.rpc('rpc_create_work_order', {
@@ -400,9 +391,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should reject array where single value expected', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       // Try passing array instead of single value
       const { error } = await client.rpc('rpc_create_work_order', {
@@ -416,9 +406,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should reject object where primitive expected', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       // Try passing object instead of string
       const { error } = await client.rpc('rpc_create_work_order', {
@@ -434,9 +423,8 @@ describe('Input Validation & Security', () => {
 
   describe('XSS Prevention', () => {
     it('should store HTML/script tags as literal text', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const xssPayload = '<script>alert("XSS")</script>';
       const woId = await createTestWorkOrder(
@@ -460,9 +448,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should handle special characters in text fields', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const specialChars = [
         '<>&"\'',
@@ -497,9 +484,8 @@ describe('Input Validation & Security', () => {
 
   describe('Constraint Validation', () => {
     it('should validate minutes constraint (0 < minutes <= 1440)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const woId = await createTestWorkOrder(client, tenantId, 'Test WO');
 
@@ -535,9 +521,8 @@ describe('Input Validation & Security', () => {
     });
 
     it('should validate department code format (uppercase alphanumeric with underscores)', async () => {
-      const { user } = await createTestUser(client);
-      const tenantId = await createTestTenant(client);
-      await setTenantContext(client, tenantId);
+      const { user } = await getOrCreateSharedUser(client, { scopeKey: __filename });
+      const tenantId = await getOrCreateSharedTenant(client, { scopeKey: __filename });
 
       const invalidCodes = [
         'lowercase',
