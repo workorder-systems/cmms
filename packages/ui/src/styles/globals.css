@@ -77,6 +77,8 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 260);
   --sidebar-border: oklch(0.865 0.018 255);
   --sidebar-ring: oklch(0.5 0.22 262);
+  /* Auth pages: light-ray effect color (hex for WebGL); tuned to blend with --background and primary blue */
+  --auth-rays-color: #93c5fd;
 }
 
 .dark {
@@ -119,6 +121,7 @@
   --sidebar-accent-foreground: oklch(0.96 0.008 260);
   --sidebar-border: oklch(0.34 0.03 258);
   --sidebar-ring: oklch(0.62 0.2 262);
+  --auth-rays-color: #60a5fa;
 }
 
 @theme inline {

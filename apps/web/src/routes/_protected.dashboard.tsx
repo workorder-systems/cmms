@@ -45,7 +45,6 @@ import {
   LogOut,
   MapPin,
   Settings2,
-  Shield,
   Sparkles,
   Tags,
   Users,
@@ -71,49 +70,27 @@ type NavItem = {
   items: { title: string; to: string }[] | null
 }
 
-/** CMMS sidebar nav: operations, then configuration (catalogs, team, settings). */
-const CMMS_NAV: {
-  operations: NavItem[]
-  configuration: NavItem[]
-} = {
-  operations: [
-    {
-      title: 'Dashboard',
-      to: '/dashboard',
-      icon: LayoutDashboard,
-      items: null as null,
-    },
-    {
-      title: 'Work orders',
-      to: '/dashboard/workorders',
-      icon: ClipboardList,
-      items: null as null,
-    },
-    {
-      title: 'Assets',
-      to: '/dashboard/assets',
-      icon: Wrench,
-      items: null as null,
-    },
-    {
-      title: 'Locations',
-      to: '/dashboard/locations',
-      icon: MapPin,
-      items: null as null,
-    },
-    {
-      title: 'Preventive maintenance',
-      to: '/dashboard/pm',
-      icon: CalendarCheck,
-      items: null,
-    },
-  ],
-  configuration: [
-    { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags, items: null },
-    { title: 'Team', to: '/dashboard/team', icon: Users, items: null },
-    { title: 'Settings', to: '/dashboard/settings', icon: Settings2, items: null },
-  ],
-}
+/** CMMS sidebar: two groups, flat list, no sub-menus. */
+const CMMS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Operations',
+    items: [
+      { title: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, items: null },
+      { title: 'Work orders', to: '/dashboard/workorders', icon: ClipboardList, items: null },
+      { title: 'Assets', to: '/dashboard/assets', icon: Wrench, items: null },
+      { title: 'Locations', to: '/dashboard/locations', icon: MapPin, items: null },
+      { title: 'Preventive maintenance', to: '/dashboard/pm', icon: CalendarCheck, items: null },
+    ],
+  },
+  {
+    label: 'Configuration',
+    items: [
+      { title: 'Catalogs', to: '/dashboard/catalogs', icon: Tags, items: null },
+      { title: 'Team', to: '/dashboard/team', icon: Users, items: null },
+      { title: 'Settings', to: '/dashboard/settings', icon: Settings2, items: null },
+    ],
+  },
+]
 
 export const Route = createFileRoute('/_protected/dashboard')({
   component: DashboardLayout,
@@ -236,100 +213,55 @@ function DashboardLayoutInner() {
 
   const leftSidebarContent = (
     <>
-      <SidebarGroup>
-        <SidebarGroupLabel>Operations</SidebarGroupLabel>
-        <SidebarMenu>
-          {CMMS_NAV.operations.map((item) =>
-            item.items ? (
-              <Collapsible
-                key={item.title}
-                asChild
-                defaultOpen={item.title === 'Work orders'}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={item.title}>
+      {CMMS_NAV_GROUPS.map((group) => (
+        <SidebarGroup key={group.label} className="group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarMenu>
+            {group.items.map((item) =>
+              item.items ? (
+                <Collapsible
+                  key={item.title}
+                  asChild
+                  defaultOpen={false}
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton tooltip={item.title}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {item.items.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubButton asChild>
+                              <Link to={subItem.to}>
+                                <span>{subItem.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              ) : (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild tooltip={item.title}>
+                    <Link to={item.to}>
                       <item.icon />
                       <span>{item.title}</span>
-                      <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {item.items.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            <Link to={subItem.to}>
-                              <span>{subItem.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
+                    </Link>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
-              </Collapsible>
-            ) : (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link to={item.to}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )
-          )}
-        </SidebarMenu>
-      </SidebarGroup>
-      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-        <SidebarGroupLabel>Configuration</SidebarGroupLabel>
-        <SidebarMenu>
-          {CMMS_NAV.configuration.map((item) =>
-            item.items ? (
-              <Collapsible
-                key={item.title}
-                asChild
-                defaultOpen={false}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={item.title}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                      <ChevronRight className="ml-auto transition-transform duration-300 group-data-[state=open]/collapsible:rotate-90" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {item.items.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            <Link to={subItem.to}>
-                              <span>{subItem.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            ) : (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link to={item.to}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ),
-          )}
-        </SidebarMenu>
-      </SidebarGroup>
+              ),
+            )}
+          </SidebarMenu>
+        </SidebarGroup>
+      ))}
     </>
   )
 
