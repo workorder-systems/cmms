@@ -1,17 +1,14 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
   Clock3,
   ClipboardList,
   TimerReset,
-  Users,
-  Wrench,
 } from 'lucide-react'
 import type { WorkOrderRow } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { catalogQueryOptions } from '../lib/catalog-queries'
-import { Button } from '@workspace/ui/components/button'
 import {
   Card,
   CardContent,
@@ -23,7 +20,6 @@ import { Skeleton } from '@workspace/ui/components/skeleton'
 import { StatCard } from '@workspace/ui/components/stat-card'
 import { WorkOrderCard } from '@workspace/ui/components/work-order-card'
 import StatusIndicator from '@workspace/ui/components/status-indicator'
-import { ExtensionPoint } from '@workspace/ui/components/app-shell'
 
 export const Route = createFileRoute('/_protected/dashboard/')({
   component: DashboardPage,
@@ -159,29 +155,6 @@ function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-2">
-      <ExtensionPoint name="header.right">
-        <div className="flex items-center gap-1">
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/dashboard/workorders">
-              <ClipboardList className="size-4" />
-              <span className="hidden md:inline">Work orders</span>
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/dashboard/assets">
-              <Wrench className="size-4" />
-              <span className="hidden md:inline">Assets</span>
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/dashboard/users">
-              <Users className="size-4" />
-              <span className="hidden md:inline">Team</span>
-            </Link>
-          </Button>
-        </div>
-      </ExtensionPoint>
-
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {isLoading ? (
           <>
