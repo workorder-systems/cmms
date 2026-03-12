@@ -3949,6 +3949,25 @@ export type Database = {
           work_order_id: string
         }[]
       }
+      rpc_similar_past_work_orders_by_work_order_id: {
+        Args: {
+          p_limit?: number
+          p_min_similarity?: number
+          p_work_order_id: string
+        }
+        Returns: {
+          asset_id: string
+          cause: string
+          completed_at: string
+          description: string
+          location_id: string
+          resolution: string
+          similarity_score: number
+          status: string
+          title: string
+          work_order_id: string
+        }[]
+      }
       rpc_transition_work_order_status: {
         Args: {
           p_tenant_id: string

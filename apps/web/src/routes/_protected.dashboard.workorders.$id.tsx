@@ -57,6 +57,7 @@ function WorkOrderDetailPage() {
     enabled: !!activeTenantId,
   })
 
+  // Similar past fixes: RPC only (rpc_similar_past_work_orders_by_work_order_id), no Edge Function
   const { data: similarPastFixes = [], isLoading: similarLoading, isError: similarError } = useQuery({
     queryKey: ['similar-past-fixes', id],
     queryFn: () => client.similarPastFixes.search({ workOrderId: id, limit: 5 }),

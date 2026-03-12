@@ -33,9 +33,39 @@ interface SearchErrorResponse {
   code?: string;
 }
 
+/** Raw row returned by rpc_similar_past_work_orders / rpc_similar_past_work_orders_by_work_order_id. */
+interface SimilarPastWorkOrderRow {
+  work_order_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  completed_at: string | null;
+  similarity_score: number;
+  asset_id: string | null;
+  location_id: string | null;
+  cause: string | null;
+  resolution: string | null;
+}
+
+function mapRowToResult(row: SimilarPastWorkOrderRow): SimilarPastFixResult {
+  return {
+    workOrderId: String(row.work_order_id),
+    title: row.title ?? '',
+    description: row.description ?? null,
+    status: row.status ?? '',
+    completedAt: row.completed_at ?? null,
+    similarityScore: Number(row.similarity_score ?? 0),
+    assetId: row.asset_id ?? null,
+    locationId: row.location_id ?? null,
+    cause: row.cause ?? null,
+    resolution: row.resolution ?? null,
+  };
+}
+
 /**
  * Similar Past Fixes resource: search for semantically similar completed work orders.
- * Uses the similar-past-fixes Edge Function (embeds query, calls RPC, enriches results).
+ * When searching by workOrderId, uses RPC only (stored embedding). When searching by
+ * queryText, uses the similar-past-fixes Edge Function to embed the query then RPC.
  * Requires tenant context before calling.
  */
 export function createSimilarPastFixesResource(
@@ -45,6 +75,7 @@ export function createSimilarPastFixesResource(
     /**
      * Search for similar past work orders by query text or work order ID.
      * Pass exactly one of queryText or workOrderId.
+     * workOrderId path uses RPC only (no Edge Function); queryText path uses the Edge Function to embed.
      */
     async search(params: SearchSimilarParams): Promise<SimilarPastFixResult[]> {
       const hasQuery = Boolean(params.queryText?.trim());
@@ -55,9 +86,26 @@ export function createSimilarPastFixesResource(
         );
       }
 
+      // By work order ID: use stored embedding via RPC only (no Edge Function, no OpenAI).
+      if (params.workOrderId) {
+        const limit = Math.min(Math.max(params.limit ?? 5, 1), 50);
+        const { data, error } = await supabase.rpc(
+          'rpc_similar_past_work_orders_by_work_order_id',
+          {
+            p_work_order_id: params.workOrderId,
+            p_limit: limit,
+            p_min_similarity:
+              typeof params.minSimilarity === 'number' ? params.minSimilarity : undefined,
+          }
+        );
+        if (error) throw normalizeError(error);
+        const rows = (data ?? []) as SimilarPastWorkOrderRow[];
+        return rows.map(mapRowToResult);
+      }
+
+      // By query text: Edge Function embeds the query then calls RPC.
       const body: Record<string, unknown> = {};
       if (params.queryText != null) body.queryText = params.queryText;
-      if (params.workOrderId != null) body.workOrderId = params.workOrderId;
       if (params.limit != null) body.limit = params.limit;
       if (params.minSimilarity != null) body.minSimilarity = params.minSimilarity;
 
@@ -80,7 +128,6 @@ export function createSimilarPastFixesResource(
 
       const resolved = data as { results?: SimilarPastFixResult[] } | SearchErrorResponse;
       if ('error' in resolved && resolved.error) {
-        // Surface well-known error codes so callers can distinguish rate limits, etc.
         const message = `Similar Past Fixes search failed: ${resolved.error}`;
         const err = new (require('../errors.js').SdkError)(message, {
           code: resolved.code,

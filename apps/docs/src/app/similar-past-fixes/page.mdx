@@ -13,14 +13,15 @@ export const sections = [
 
 # Similar Past Fixes
 
-Search for semantically similar completed work orders. Uses an Edge Function that embeds your query or an existing work order, then runs a vector similarity search over completed work orders.
+Search for semantically similar completed work orders. Search by **work order ID** uses RPC only (stored embeddings; no Edge Function). Search by **query text** uses the Edge Function to embed the query, then RPC for similarity search.
 
 ## Overview
 
 Similar Past Fixes helps you find past work orders that are semantically similar to a new issue or an existing work order. Use it when creating or editing work orders to suggest relevant past fixes.
 
 - **Indexing** is done server-side by a cron backfill (not by users). Only completed work orders are indexed.
-- **Search** is via the SDK and uses the `similar-past-fixes` Edge Function. Requires tenant context and an authenticated user.
+- **Search by work order ID** is via the SDK and uses RPC only (`rpc_similar_past_work_orders_by_work_order_id`). No Edge Function or OpenAI; uses the stored embedding for that work order. If the work order has no embedding, you get no results.
+- **Search by query text** is via the SDK and uses the `similar-past-fixes` Edge Function to embed the query, then RPC. Requires tenant context and an authenticated user.
 
 <CodeGroup title="client.similarPastFixes.search(params)">
 
@@ -57,7 +58,7 @@ const results = await client.similarPastFixes.search({
 
 ## Search by work order ID
 
-Pass an existing work order ID to find similar completed work orders. The Edge Function fetches the work order’s title and description, embeds it, and returns similar results. Useful when editing an existing work order (e.g. exclude the current work order from results).
+Pass an existing work order ID to find similar completed work orders. The SDK calls an RPC that uses the **stored embedding** for that work order (no Edge Function, no OpenAI). Useful when editing an existing work order; the current work order is excluded from results. If the work order has not been embedded yet (e.g. not yet backfilled), the call returns no rows.
 
 <CodeGroup title="Search by work order ID">
 
