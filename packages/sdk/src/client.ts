@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types.js';
 import type { DbClient, DbClientOptions } from './types.js';
@@ -6,6 +7,7 @@ import { createTenantsResource } from './resources/tenants.js';
 import { createWorkOrdersResource } from './resources/work-orders.js';
 import { createAssetsResource } from './resources/assets.js';
 import { createLocationsResource } from './resources/locations.js';
+import { createSpacesResource } from './resources/spaces.js';
 import { createDepartmentsResource } from './resources/departments.js';
 import { createMetersResource } from './resources/meters.js';
 import { createPluginsResource } from './resources/plugins.js';
@@ -15,6 +17,14 @@ import { createPmResource } from './resources/pm.js';
 import { createDashboardResource } from './resources/dashboard.js';
 import { createAuditResource } from './resources/audit.js';
 import { createSimilarPastFixesResource } from './resources/similar-past-fixes.js';
+import { createTenantApiKeysResource } from './resources/tenant-api-keys.js';
+import { createLaborResource } from './resources/labor.js';
+import { createSchedulingResource } from './resources/scheduling.js';
+import { createCostsResource } from './resources/costs.js';
+import { createProjectsResource } from './resources/projects.js';
+import { createPartsInventoryResource } from './resources/parts-inventory.js';
+import { createSafetyComplianceResource } from './resources/safety-compliance.js';
+import { createMobileFieldResource } from './resources/mobile-field.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -44,13 +54,27 @@ export function createDbClient(
     ...options,
     db: { schema: 'public', ...options?.db },
   });
+  return buildDbClientFromSupabase(supabase);
+}
 
+/**
+ * Create a DbClient from an existing Supabase client (e.g. one already authenticated
+ * with a user session). Use this in server routes when you have set the session
+ * via auth.setSession({ access_token, refresh_token }).
+ */
+export function createDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient {
+  return buildDbClientFromSupabase(supabase);
+}
+
+// Internal: build DbClient from an existing supabase instance (used by createDbClient and createDbClientFromSupabase).
+function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient {
   const client: DbClient = {
     supabase: supabase as DbClient['supabase'],
     tenants: createTenantsResource(supabase),
     workOrders: createWorkOrdersResource(supabase),
     assets: createAssetsResource(supabase),
     locations: createLocationsResource(supabase),
+    spaces: createSpacesResource(supabase),
     departments: createDepartmentsResource(supabase),
     meters: createMetersResource(supabase),
     plugins: createPluginsResource(supabase),
@@ -60,6 +84,14 @@ export function createDbClient(
     dashboard: createDashboardResource(supabase),
     audit: createAuditResource(supabase),
     similarPastFixes: createSimilarPastFixesResource(supabase),
+    tenantApiKeys: createTenantApiKeysResource(supabase),
+    labor: createLaborResource(supabase),
+    scheduling: createSchedulingResource(supabase),
+    costs: createCostsResource(supabase),
+    projects: createProjectsResource(supabase),
+    partsInventory: createPartsInventoryResource(supabase),
+    safetyCompliance: createSafetyComplianceResource(supabase),
+    mobile: createMobileFieldResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',
@@ -75,7 +107,5 @@ export function createDbClient(
       unwrapResult(null, error as import('@supabase/supabase-js').PostgrestError | null);
     },
   };
-
-  // Attach domain resources (tenants, workOrders) in resource modules
   return client;
 }

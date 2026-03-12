@@ -1,23 +1,7 @@
 import * as React from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { getDbClient } from '../../lib/db-client'
-import { Button } from '@workspace/ui/components/button'
-import { Input } from '@workspace/ui/components/input'
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@workspace/ui/components/field'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@workspace/ui/components/card'
-import { Alert, AlertDescription } from '@workspace/ui/components/alert'
+import { LoginForm } from '@workspace/ui/components/auth'
 
 export const Route = createFileRoute('/auth/login')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -55,68 +39,22 @@ function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Log in</CardTitle>
-        <CardDescription>Sign in with your email and password.</CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="login-email">Email</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="m@example.com"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </FieldContent>
-            </Field>
-            <Field>
-              <div className="flex items-center">
-                <FieldLabel htmlFor="login-password">Password</FieldLabel>
-                <Link
-                  to="/auth/forgot-password"
-                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
-              <FieldContent>
-                <Input
-                  id="login-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </FieldContent>
-            </Field>
-            <Field>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in…' : 'Sign in'}
-              </Button>
-              <FieldDescription className="text-center">
-                Don&apos;t have an account?{' '}
-                <Link to="/auth/signup" search={{ redirect }} className="underline underline-offset-4 hover:text-foreground">
-                  Sign up
-                </Link>
-              </FieldDescription>
-            </Field>
-          </FieldGroup>
-        </CardContent>
-      </form>
-    </Card>
+    <LoginForm
+      email={email}
+      password={password}
+      onEmailChange={setEmail}
+      onPasswordChange={setPassword}
+      onSubmit={handleSubmit}
+      error={error}
+      loading={loading}
+      forgotPasswordSlot={
+        <Link to="/auth/forgot-password">Forgot your password?</Link>
+      }
+      signUpSlot={
+        <Link to="/auth/signup" search={{ redirect }} className="underline underline-offset-4 hover:text-foreground">
+          Sign up
+        </Link>
+      }
+    />
   )
 }

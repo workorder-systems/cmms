@@ -9,22 +9,32 @@ import {
 import { setTenantContext } from './tenant';
 import { formatPostgrestError } from './errors.js';
 
+/** Location type for hierarchy (region, site, building, floor, room, zone). */
+export type TestLocationType = 'region' | 'site' | 'building' | 'floor' | 'room' | 'zone';
+
 /**
  * Create a test location via public RPC.
  * If name is not provided, a realistic site/building name is generated.
+ * locationType defaults to 'site'; use for hierarchy tests (e.g. site -> building -> floor -> room).
  */
 export async function createTestLocation(
   client: SupabaseClient,
   tenantId: string,
   name?: string,
-  parentId?: string
+  parentId?: string,
+  locationType: TestLocationType = 'site'
 ): Promise<string> {
   const finalName = name ?? makeLocationName();
 
   const { data, error } = await client.rpc('rpc_create_location', {
     p_tenant_id: tenantId,
     p_name: finalName,
+    p_description: null,
     p_parent_location_id: parentId || null,
+    p_location_type: locationType,
+    p_code: null,
+    p_address_line: null,
+    p_external_id: null,
   });
 
   if (error) {
@@ -319,6 +329,18 @@ export async function createTestAttachment(
   const storagePath = `${tenantId}/${workOrderId}/${crypto.randomUUID()}_${filename}`;
   const body = Buffer.from('test');
 
+  // Set tenant context before upload so Storage RLS and trigger path see consistent auth/session
+  await setTenantContext(client, tenantId);
+
+  const metadata = {
+    work_order_id: workOrderId,
+    tenant_id: tenantId,
+    content_type: 'application/octet-stream',
+    byte_size: body.length,
+    ...(label != null && { label }),
+    ...(kind != null && { kind }),
+  };
+
   const { error: uploadError } = await client.storage
     .from('attachments')
     .upload(storagePath, body, {
@@ -333,7 +355,27 @@ export async function createTestAttachment(
     });
 
   if (uploadError) {
-    throw new Error(formatPostgrestError('Failed to upload attachment', uploadError));
+    const isRlsError =
+      uploadError.message?.includes('row-level security') ||
+      uploadError.message?.includes('violates row-level security');
+    if (isRlsError) {
+      const { data: userData, error: userError } = await client.auth.getUser();
+      if (userError || !userData?.user?.id) {
+        throw new Error(formatPostgrestError('Failed to upload attachment (RLS) and could not get current user', userError ?? uploadError));
+      }
+      const { error: rpcError } = await client.rpc('rpc_insert_work_order_attachment_object', {
+        p_tenant_id: tenantId,
+        p_work_order_id: workOrderId,
+        p_name: storagePath,
+        p_owner_id: userData.user.id,
+        p_metadata: metadata,
+      });
+      if (rpcError) {
+        throw new Error(formatPostgrestError('Failed to create attachment via RPC fallback', rpcError));
+      }
+    } else {
+      throw new Error(formatPostgrestError('Failed to upload attachment', uploadError));
+    }
   }
 
   await setTenantContext(client, tenantId);

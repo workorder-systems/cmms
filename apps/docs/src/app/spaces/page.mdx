@@ -1,0 +1,138 @@
+export const metadata = {
+  title: 'Spaces',
+  description: 'List, create, update, and delete spaces (room/zone attributes).',
+}
+
+export const sections = [
+  { title: 'List spaces', id: 'list-spaces' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Get by location', id: 'get-by-location' },
+  { title: 'Create space', id: 'create-space' },
+  { title: 'Update space', id: 'update-space' },
+  { title: 'Delete space', id: 'delete-space' },
+]
+
+# Spaces
+
+Spaces attach room/zone-level attributes to a location: **usage type**, **capacity**, **status**, **area_sqft**, and optional **attributes** (e.g. amenities, BMS zone id). One space per location (typically a location with `location_type` room or zone). Work orders continue to reference `location_id`; join to spaces when you need usage or status. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## List spaces
+
+List all spaces for the current tenant (from `v_spaces`). Rows include `location_name`, `location_type`.
+
+<CodeGroup title="client.spaces.list()">
+
+```ts
+const spaces = await client.spaces.list()
+// Returns SpaceRow[]
+```
+
+</CodeGroup>
+
+## Get by ID
+
+Fetch a single space by ID.
+
+<CodeGroup title="client.spaces.getById(id)">
+
+```ts
+const space = await client.spaces.getById('uuid-of-space')
+// Returns SpaceRow | null
+```
+
+</CodeGroup>
+
+## Get by location
+
+Fetch the space for a given location (at most one space per location).
+
+<CodeGroup title="client.spaces.getByLocationId(locationId)">
+
+```ts
+const space = await client.spaces.getByLocationId('uuid-of-location')
+// Returns SpaceRow | null
+```
+
+</CodeGroup>
+
+## Create space
+
+Create a space for a location. Returns the new space UUID.
+
+<CodeGroup title="client.spaces.create(params)">
+
+```ts
+const spaceId = await client.spaces.create({
+  tenantId: 'uuid-of-tenant',
+  locationId: 'uuid-of-location',
+  usageType: 'office',
+  capacity: 4,
+  status: 'available',
+  areaSqft: 120.5,
+  attributes: null,
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="locationId">
+    Required. Location UUID (typically a room or zone). Must belong to the tenant.
+  </Property>
+  <Property name="usageType">
+    Optional. E.g. office, conference, patient_room, lab, storage, lobby.
+  </Property>
+  <Property name="capacity">
+    Optional. Occupancy/person capacity.
+  </Property>
+  <Property name="status">
+    Optional. available, occupied, maintenance, reserved, offline. Default <code>available</code>.
+  </Property>
+  <Property name="areaSqft">
+    Optional. Area in square feet.
+  </Property>
+  <Property name="attributes">
+    Optional. JSON object for extensible data.
+  </Property>
+</Properties>
+
+## Update space
+
+Update an existing space. All fields except `tenantId` and `spaceId` are optional.
+
+<CodeGroup title="client.spaces.update(params)">
+
+```ts
+await client.spaces.update({
+  tenantId: 'uuid-of-tenant',
+  spaceId: 'uuid-of-space',
+  status: 'occupied',
+})
+```
+
+</CodeGroup>
+
+## Delete space
+
+Delete a space by tenant and space ID.
+
+<CodeGroup title="client.spaces.delete(tenantId, spaceId)">
+
+```ts
+await client.spaces.delete('uuid-of-tenant', 'uuid-of-space')
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/locations" variant="text" arrow="left">
+    <>Locations</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+</div>

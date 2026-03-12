@@ -9,9 +9,14 @@ dotenv.config({ path: '.env' });
 /**
  * Setup and teardown for Supabase local instance
  * This ensures Supabase is running before tests and can optionally reset the DB
- * 
+ *
  * Note: If SUPABASE_URL is set in environment, assumes you're using a remote instance
  * and skips local Supabase startup.
+ *
+ * If you see "Database error finding user" or "Database error querying schema" from
+ * many tests, the local DB may be out of sync with migrations. Run
+ * `pnpm run supabase:reset` then `pnpm test`, or `pnpm run test:reset`. See
+ * CONTRIBUTING.md (Tests) for the runbook.
  */
 beforeAll(() => {
   // Debug: Log key lengths (not the actual keys for security)

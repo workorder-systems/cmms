@@ -1,0 +1,220 @@
+export const metadata = {
+  title: 'Mobile field',
+  description:
+    'Offline sync payload, start/stop work order, add note, register attachment; lightweight mobile views and GPS hooks.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Offline sync', id: 'offline-sync' },
+  { title: 'Start work order', id: 'start-work-order' },
+  { title: 'Stop work order', id: 'stop-work-order' },
+  { title: 'Add note', id: 'add-note' },
+  { title: 'Register attachment', id: 'register-attachment' },
+  { title: 'Mobile views', id: 'mobile-views' },
+  { title: 'Attachments for assets and locations', id: 'attachments-assets-locations' },
+  { title: 'GPS and check-ins', id: 'gps-check-ins' },
+]
+
+# Mobile field
+
+Offline sync, start/stop job, add note, register attachment, and lightweight mobile views with optional GPS. Set tenant context before use. {{ className: 'lead' }}
+
+## Overview
+
+The database and SDK support mobile-first field workflows for technicians:
+
+| Capability | SDK / API |
+|------------|-----------|
+| **Offline sync** | `client.mobile.sync(params)` — single JSON payload of work orders, assets, locations, time entries, attachments, check-ins, notes. Use `updatedAfter` for incremental sync; optional `technicianId` to filter work orders. |
+| **Start job** | `client.mobile.startWorkOrder(params)` — transition to `in_progress` and create a check-in; optional GPS. Returns check-in id. |
+| **Stop job** | `client.mobile.stopWorkOrder(params)` — optionally log time, add note, complete work order with cause/resolution, and set completed-at GPS. |
+| **Add note** | `client.mobile.addNote(params)` — add a note to a work order; optional GPS. Returns note id. |
+| **Register attachment** | `client.mobile.registerWorkOrderAttachment(params)` — register an existing file (e.g. after resumable upload) as a work order attachment. Returns attachment id. |
+| **Mobile views** | `client.mobile.listMobileWorkOrders()`, `listMobileAssets()`, `listMobileLocations()`, etc. — minimal columns for offline use. |
+
+Attachments (photos, documents, signatures, scans) are supported for **work orders**, **assets**, and **locations**. Work order attachments can be created by uploading to Storage (trigger creates the link) or by registering an existing file with `registerWorkOrderAttachment`. Asset and location attachments use Storage paths `tenant_id/asset/asset_id/filename` and `tenant_id/location/location_id/filename`.
+
+## Offline sync
+
+Fetch a single JSON payload for mobile offline sync. Returns `work_orders`, `assets`, `locations`, `time_entries`, `attachments`, `check_ins`, and `notes`. Use `updatedAfter` (ISO timestamp) for incremental sync; pass `technicianId` to restrict work orders to those assigned to that technician.
+
+<CodeGroup title="client.mobile.sync(params)">
+
+```ts
+await client.setTenant(tenantId)
+
+const payload = await client.mobile.sync({
+  tenantId,
+  updatedAfter: lastSyncAt ?? null,  // e.g. '2025-03-17T12:00:00Z'
+  limit: 500,
+  technicianId: currentTechnicianId ?? null,  // optional: only "my" work orders
+})
+// payload.work_orders, payload.assets, payload.locations, payload.time_entries,
+// payload.attachments, payload.check_ins, payload.notes
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">Required. Tenant UUID.</Property>
+  <Property name="updatedAfter">Optional. ISO timestamp; only rows updated/created after this are returned. Omit for full sync.</Property>
+  <Property name="limit">Optional. Max rows per entity type (default 500, max 2000).</Property>
+  <Property name="technicianId">Optional. When set, work_orders are filtered to those assigned to this technician (assigned_to or work_order_assignments).</Property>
+</Properties>
+
+## Start work order
+
+Transition the work order to `in_progress` and create a check-in record. Optional GPS (latitude, longitude, accuracy_metres). Returns the check-in id. Requires the current user to be assigned to the work order or have `workorder.edit`.
+
+<CodeGroup title="client.mobile.startWorkOrder(params)">
+
+```ts
+const checkInId = await client.mobile.startWorkOrder({
+  tenantId,
+  workOrderId,
+  latitude: 52.52,
+  longitude: 13.405,
+  accuracyMetres: 10,
+})
+// Returns string (check-in UUID)
+```
+
+</CodeGroup>
+
+## Stop work order
+
+Optionally log time (with optional GPS), add a note, and/or complete the work order with cause and resolution. When completing, optional `completed_at_latitude` and `completed_at_longitude` are set on the work order. Requires assigned or `workorder.edit`.
+
+<CodeGroup title="client.mobile.stopWorkOrder(params)">
+
+```ts
+await client.mobile.stopWorkOrder({
+  tenantId,
+  workOrderId,
+  complete: true,
+  minutes: 45,
+  note: 'Replaced filter and verified airflow.',
+  latitude: 52.52,
+  longitude: 13.405,
+  cause: 'Clogged filter',
+  resolution: 'Replaced filter; cleaned duct.',
+})
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="complete">Optional. Default true. If true, transitions work order to completed.</Property>
+  <Property name="minutes">Optional. If set, logs a time entry with optional GPS.</Property>
+  <Property name="note">Optional. Adds a work order note (with optional GPS).</Property>
+  <Property name="latitude, longitude, accuracyMetres">Optional. GPS for time entry and/or note and completed-at.</Property>
+  <Property name="cause, resolution">Optional. Set when completing the work order.</Property>
+</Properties>
+
+## Add note
+
+Add a note to a work order. Optional GPS when the note was taken. Returns note id. Permission: assigned or `workorder.edit`.
+
+<CodeGroup title="client.mobile.addNote(params)">
+
+```ts
+const noteId = await client.mobile.addNote({
+  tenantId,
+  workOrderId,
+  body: 'Customer reported noise from unit; will inspect.',
+  latitude: 52.52,
+  longitude: 13.405,
+})
+// Returns string (note UUID)
+```
+
+</CodeGroup>
+
+## Register attachment
+
+When the client uploads a file to Storage first (e.g. resumable upload) and then needs to link it to a work order, use `registerWorkOrderAttachment`. The file must already exist in `app.files` (e.g. created by a custom flow or by uploading to a path that does not use the work-order trigger). Validates that the file and work order belong to the tenant. Returns attachment id.
+
+<CodeGroup title="client.mobile.registerWorkOrderAttachment(params)">
+
+```ts
+const attachmentId = await client.mobile.registerWorkOrderAttachment({
+  tenantId,
+  workOrderId,
+  fileId: 'uuid-from-app-files',
+  label: 'Before photo',
+  kind: 'photo',
+})
+// Returns string (attachment UUID)
+```
+
+</CodeGroup>
+
+For the standard flow (upload to Storage path `tenant_id/work_order_id/filename`), the trigger creates the file and attachment automatically; use `client.workOrders.listAttachments(workOrderId)` to get the new row. Use `registerWorkOrderAttachment` only when you have an existing file id (e.g. after a resumable upload that wrote to Storage and created `app.files` separately).
+
+## Mobile views
+
+Lightweight views with minimal columns for mobile clients. Set tenant context, then query via the SDK list methods or directly from Supabase.
+
+<CodeGroup title="List mobile work orders">
+
+```ts
+await client.setTenant(tenantId)
+
+const workOrders = await client.mobile.listMobileWorkOrders()
+// MobileWorkOrderRow[]: id, tenant_id, title, status, priority, assigned_to, location_id, asset_id, due_date, completed_at, updated_at
+```
+
+</CodeGroup>
+
+Other list methods: `listMobileAssets()`, `listMobileLocations()`, `listMobileTimeEntries()`, `listMobileAttachments()`, `listMobileCheckIns()`, `listMobileNotes()`. Use `updated_at` (or `created_at` for check_ins and notes) for incremental sync when not using `client.mobile.sync()`.
+
+## Attachments for assets and locations
+
+Attachments (photos, documents, signatures, scans) are supported for **assets** and **locations** as well as work orders.
+
+| Entity | Storage path convention | View |
+|--------|-------------------------|------|
+| Work order | `tenant_id/work_order_id/filename` | `v_work_order_attachments` |
+| Asset | `tenant_id/asset/asset_id/filename` | `v_asset_attachments` |
+| Location | `tenant_id/location/location_id/filename` | `v_location_attachments` |
+
+Upload to the `attachments` bucket with the appropriate path; a trigger creates `app.files` and the corresponding link row (`app.work_order_attachments`, `app.asset_attachments`, or `app.location_attachments`). Use `client.supabase.storage.from('attachments').createSignedUrl(...)` with `bucket_id` and `storage_path` from the view rows. Kind values (e.g. `photo`, `document`, `signature`, `scan`) are free-form; document in your UI for consistency.
+
+Raw queries:
+
+```ts
+// Asset attachments (after setTenant)
+const { data: assetAttachments } = await client.supabase
+  .from('v_asset_attachments')
+  .select('*')
+  .eq('asset_id', assetId)
+
+// Location attachments
+const { data: locationAttachments } = await client.supabase
+  .from('v_location_attachments')
+  .select('*')
+  .eq('location_id', locationId)
+```
+
+## GPS and check-ins
+
+Optional GPS is stored on:
+
+- **Check-ins** (`app.work_order_check_ins`): `latitude`, `longitude`, `accuracy_metres` when the technician checked in.
+- **Time entries** (`app.work_order_time_entries`): `latitude`, `longitude`, `accuracy_metres` when the entry was logged. Use `client.workOrders.logTime({ ...params, latitude, longitude, accuracyMetres })`.
+- **Work orders**: `completed_at_latitude`, `completed_at_longitude` when the work order was completed (set by `client.mobile.stopWorkOrder` when completing with GPS).
+
+All GPS columns are nullable. Use `numeric` for lat/long in the database; the SDK accepts `number` for params.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+  <Button href="/tenant-context" variant="text" arrow="right">
+    <>Tenant context</>
+  </Button>
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+</div>

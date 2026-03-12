@@ -30,6 +30,8 @@ npm run supabase:start
 npm test
 ```
 
+If tests fail with auth/schema errors, ensure the DB is in sync: run `pnpm run supabase:reset` then `pnpm test` (or `pnpm run test:reset`). See [CONTRIBUTING.md](CONTRIBUTING.md#tests) for details.
+
 ## Repo layout
 - `supabase/` - schema, migrations, and config
 - `packages/sdk/` - TypeScript SDK for the public API

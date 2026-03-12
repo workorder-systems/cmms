@@ -251,7 +251,7 @@ function AssetsPage() {
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <DataTableSkeleton columnCount={6} rowCount={10} />
+        <DataTableSkeleton columnCount={7} rowCount={10} />
       </div>
     )
   }

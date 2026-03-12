@@ -64,9 +64,10 @@ describe('Locations', () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
 
-      const buildingId = await createTestLocation(client, tenantId, 'Building A');
-      const floorId = await createTestLocation(client, tenantId, 'Floor 1', buildingId);
-      const roomId = await createTestLocation(client, tenantId, 'Room 101', floorId);
+      const siteId = await createTestLocation(client, tenantId, 'Site', undefined, 'site');
+      const buildingId = await createTestLocation(client, tenantId, 'Building A', siteId, 'building');
+      const floorId = await createTestLocation(client, tenantId, 'Floor 1', buildingId, 'floor');
+      const roomId = await createTestLocation(client, tenantId, 'Room 101', floorId, 'room');
 
       // Verify hierarchy
       await setTenantContext(client, tenantId);
@@ -111,8 +112,8 @@ describe('Locations', () => {
 
       expect(error).toBeNull();
       expect(locations).toBeDefined();
-      expect(locations.length).toBe(1);
-      expect(locations[0].id).toBe(location1);
+      expect(locations!.length).toBe(1);
+      expect(locations![0].id).toBe(location1);
     });
   });
 
@@ -132,7 +133,12 @@ describe('Locations', () => {
       const { data, error } = await ownerClient2.rpc('rpc_create_location', {
         p_tenant_id: tenantId2,
         p_name: 'Child Location',
+        p_description: null,
         p_parent_location_id: parentLocation,
+        p_location_type: 'site',
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -151,7 +157,13 @@ describe('Locations', () => {
       const { data, error } = await ownerClient.rpc('rpc_update_location', {
         p_tenant_id: tenantId,
         p_location_id: location1,
+        p_name: null,
+        p_description: null,
         p_parent_location_id: location2,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -173,6 +185,12 @@ describe('Locations', () => {
         p_tenant_id: tenantId,
         p_location_id: locationId,
         p_name: 'New Name',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeNull();
@@ -186,6 +204,53 @@ describe('Locations', () => {
 
       expect(location.name).toBe('New Name');
       expect(location.updated_at).toBeDefined();
+    });
+  });
+
+  describe('Spaces', () => {
+    it('should create space via rpc_create_space and read from v_spaces', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const locationId = await createTestLocation(client, tenantId, 'Room 101', undefined, 'room');
+      await setTenantContext(client, tenantId);
+
+      const { data: spaceId, error: createError } = await client.rpc('rpc_create_space', {
+        p_tenant_id: tenantId,
+        p_location_id: locationId,
+        p_usage_type: 'office',
+        p_capacity: 4,
+        p_status: 'available',
+        p_area_sqft: 120,
+        p_attributes: null,
+      });
+
+      expect(createError).toBeNull();
+      expect(spaceId).toBeDefined();
+      expect(typeof spaceId).toBe('string');
+
+      const { data: row, error: viewError } = await client
+        .from('v_spaces')
+        .select('id, usage_type, capacity, status')
+        .eq('id', spaceId)
+        .single();
+
+      expect(viewError).toBeNull();
+      expect(row?.usage_type).toBe('office');
+      expect(row?.capacity).toBe(4);
+      expect(row?.status).toBe('available');
+    });
+
+    it('should query v_spaces scoped to current tenant', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data: list, error } = await client.from('v_spaces').select('id, tenant_id');
+      expect(error).toBeNull();
+      expect(Array.isArray(list)).toBe(true);
+      for (const r of list ?? []) {
+        expect(r.tenant_id).toBe(tenantId);
+      }
     });
   });
 
@@ -234,7 +299,8 @@ describe('Locations', () => {
         .eq('id', childId)
         .single();
 
-      expect(child.parent_location_id).toBeNull();
+      expect(child).toBeDefined();
+      expect(child!.parent_location_id).toBeNull();
     });
   });
 });

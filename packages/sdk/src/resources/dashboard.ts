@@ -75,16 +75,22 @@ export function createDashboardResource(supabase: SupabaseClient<Database>) {
       return (data ?? []) as DashboardMttrMetricsRow[];
     },
 
-    /** List open work orders for dashboard views (v_dashboard_open_work_orders). */
+    /** List open work orders for dashboard views (v_dashboard_open_work_orders). Excludes draft at the query. */
     async listOpenWorkOrders(): Promise<DashboardOpenWorkOrdersRow[]> {
-      const { data, error } = await supabase.from('v_dashboard_open_work_orders').select('*');
+      const { data, error } = await supabase
+        .from('v_dashboard_open_work_orders')
+        .select('*')
+        .neq('status', 'draft');
       if (error) throw normalizeError(error);
       return (data ?? []) as DashboardOpenWorkOrdersRow[];
     },
 
-    /** List overdue work orders for dashboard views (v_dashboard_overdue_work_orders). */
+    /** List overdue work orders for dashboard views (v_dashboard_overdue_work_orders). Excludes draft at the query. */
     async listOverdueWorkOrders(): Promise<DashboardOverdueWorkOrdersRow[]> {
-      const { data, error } = await supabase.from('v_dashboard_overdue_work_orders').select('*');
+      const { data, error } = await supabase
+        .from('v_dashboard_overdue_work_orders')
+        .select('*')
+        .neq('status', 'draft');
       if (error) throw normalizeError(error);
       return (data ?? []) as DashboardOverdueWorkOrdersRow[];
     },

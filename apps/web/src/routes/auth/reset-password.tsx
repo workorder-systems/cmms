@@ -1,24 +1,7 @@
 import * as React from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { getDbClient } from '../../lib/db-client'
-import { Button } from '@workspace/ui/components/button'
-import { Input } from '@workspace/ui/components/input'
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@workspace/ui/components/field'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@workspace/ui/components/card'
-import { Alert, AlertDescription } from '@workspace/ui/components/alert'
+import { ResetPasswordForm } from '@workspace/ui/components/auth'
 
 export const Route = createFileRoute('/auth/reset-password')({
   component: ResetPasswordPage,
@@ -59,67 +42,20 @@ function ResetPasswordPage() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Set new password</CardTitle>
-        <CardDescription>
-          Enter your new password below. You arrived here from the reset link in your email.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="reset-password">New password</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="reset-password"
-                  type="password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-                <FieldDescription>At least 6 characters.</FieldDescription>
-              </FieldContent>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="reset-confirm">Confirm password</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="reset-confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </FieldContent>
-            </Field>
-            <Field>
-              <Button type="submit" className="w-full" disabled={loading || success}>
-                {loading ? 'Updating…' : success ? 'Redirecting…' : 'Update password'}
-              </Button>
-              <FieldDescription className="text-center">
-                <Link
-                  to="/auth/login"
-                  search={{ redirect: undefined }}
-                  className="underline underline-offset-4 hover:text-foreground"
-                >
-                  Back to log in
-                </Link>
-              </FieldDescription>
-            </Field>
-          </FieldGroup>
-        </CardContent>
-      </form>
-    </Card>
+    <ResetPasswordForm
+      password={password}
+      confirmPassword={confirm}
+      onPasswordChange={setPassword}
+      onConfirmPasswordChange={setConfirm}
+      onSubmit={handleSubmit}
+      error={error}
+      loading={loading}
+      success={success}
+      backToLoginSlot={
+        <Link to="/auth/login" search={{ redirect: undefined }} className="underline underline-offset-4 hover:text-foreground">
+          Back to log in
+        </Link>
+      }
+    />
   )
 }

@@ -12,6 +12,7 @@ coverage/
 
 # Generated
 **/routeTree.gen.ts
+**/storybook-static/
 
 # Environment variables
 .env

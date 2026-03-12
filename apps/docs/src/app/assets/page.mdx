@@ -6,6 +6,7 @@ export const metadata = {
 export const sections = [
   { title: 'List assets', id: 'list-assets' },
   { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Lifecycle fields', id: 'lifecycle-fields' },
   { title: 'Create asset', id: 'create-asset' },
   { title: 'Update asset', id: 'update-asset' },
   { title: 'Delete asset', id: 'delete-asset' },
@@ -40,6 +41,21 @@ const asset = await client.assets.getById('uuid-of-asset')
 ```
 
 </CodeGroup>
+
+## Lifecycle fields
+
+`AssetRow` includes lifecycle and planning fields (from `v_assets`). Use them for reporting and replacement planning; create/update asset RPCs may not yet accept all of these (set via database or future API):
+
+- **commissioned_at** – when the asset was placed into service
+- **end_of_life_estimate** – estimated EOL date for replacement planning
+- **decommissioned_at** – when the asset was decommissioned
+- **replaced_by_asset_id** – asset that replaced this one (this asset retired)
+- **replacement_of_asset_id** – asset that this one replaced
+- **warranty_expires_at** – warranty expiration date
+- **service_contract_expires_at** – service/maintenance contract expiration
+- **planned_replacement_date** – planned replacement date for capital planning
+
+For alerts (e.g. warranty or EOL approaching), use `client.costs.listLifecycleAlerts()` or `client.costs.assetLifecycleAlerts()`. See [Costs & lifecycle](/costs).
 
 ## Create asset
 
@@ -122,6 +138,9 @@ await client.assets.delete('uuid-of-tenant', 'uuid-of-asset')
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/work-orders" variant="text" arrow="right">
     <>Work orders</>
+  </Button>
+  <Button href="/costs" variant="text" arrow="right">
+    <>Costs & lifecycle</>
   </Button>
   <Button href="/locations" variant="text" arrow="right">
     <>Locations</>

@@ -9,8 +9,8 @@ enabled = true
 # Port to use for the API URL.
 port = 54321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
-# endpoints. `public` and `graphql_public` schemas are included by default.
-schemas = ["public", "graphql_public"]
+# endpoints. public: app and dashboard; reporting: analytics layer (dim/fact/KPI views, tenant-scoped).
+schemas = ["public", "reporting"]
 # Extra schemas to add to the search_path of every request.
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
@@ -25,8 +25,8 @@ enabled = false
 # key_path = "../certs/my-key.pem"
 
 [db]
-# Port to use for the local database URL.
-port = 54322
+# Port to use for the local database URL. (Changed from 54322 to avoid conflict with another Supabase/project.)
+port = 54332
 # Port used by db diff command to initialize the shadow database.
 shadow_port = 54320
 # The database major version to use. This has to be the same as your remote database's. Run `SHOW
@@ -343,7 +343,8 @@ deno_version = 2
 
 [analytics]
 enabled = true
-port = 54327
+# Port (changed from 54327 to avoid conflict with another project).
+port = 54337
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
 

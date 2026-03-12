@@ -607,6 +607,25 @@ describe('Dashboard Views', () => {
     });
   });
 
+  describe('Reporting schema (analytics)', () => {
+    it('should query reporting.dim_tenant for current tenant', async () => {
+      await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const { data: list, error } = await client
+        .schema('reporting')
+        .from('dim_tenant')
+        .select('tenant_id, tenant_name, slug')
+        .limit(1);
+
+      expect(error).toBeNull();
+      expect(list).not.toBeNull();
+      expect(list?.length).toBe(1);
+      expect(list?.[0].tenant_id).toBe(tenantId);
+    });
+  });
+
   describe('Tenant isolation', () => {
     it('should filter all dashboard views by current tenant', async () => {
       const client1 = createTestClient();

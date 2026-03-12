@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-export { createDbClient } from './client.js';
+export { createDbClient, createDbClientFromSupabase } from './client.js';
 export { SdkError, normalizeError } from './errors.js';
 export type { Database } from './database.types.js';
 export type { DbClient, DbClientOptions } from './types.js';
@@ -30,6 +30,21 @@ export type {
   WorkOrdersResource,
 } from './resources/work-orders.js';
 export type {
+  WorkOrderCostRow,
+  AssetCostRow,
+  LocationCostRow,
+  DepartmentCostRow,
+  ProjectCostRow,
+  AssetLifecycleAlertRow,
+  CostRollupRow,
+  CostRollupParams,
+  AssetTcoRow,
+  AssetTcoParams,
+  AssetLifecycleAlertsParams,
+  CostsResource,
+} from './resources/costs.js';
+export type { ProjectRow, ProjectsResource } from './resources/projects.js';
+export type {
   AssetRow,
   CreateAssetParams,
   UpdateAssetParams,
@@ -37,10 +52,21 @@ export type {
 } from './resources/assets.js';
 export type {
   LocationRow,
+  LocationType,
   CreateLocationParams,
   UpdateLocationParams,
+  BulkImportLocationRow,
+  BulkImportLocationResult,
+  BulkImportLocationsParams,
   LocationsResource,
 } from './resources/locations.js';
+export type {
+  SpaceRow,
+  SpaceStatus,
+  CreateSpaceParams,
+  UpdateSpaceParams,
+  SpacesResource,
+} from './resources/spaces.js';
 export type {
   DepartmentRow,
   CreateDepartmentParams,
@@ -130,3 +156,106 @@ export type {
   SimilarPastFixResult,
   SearchSimilarParams,
 } from './resources/similar-past-fixes.js';
+export type {
+  TenantApiKeyRow,
+  CreateTenantApiKeyResult,
+  TenantApiKeysResource,
+} from './resources/tenant-api-keys.js';
+export type {
+  TechnicianRow,
+  CrewRow,
+  CrewMemberRow,
+  SkillCatalogRow,
+  CertificationCatalogRow,
+  TechnicianSkillRow,
+  TechnicianCertificationRow,
+  AvailabilityPatternRow,
+  AvailabilityOverrideRow,
+  ShiftRow,
+  ShiftTemplateRow,
+  WorkOrderAssignmentRow,
+  WorkOrderLaborActualsRow,
+  TechnicianCapacityRow,
+  ShiftConflictRow,
+  CheckShiftConflictsParams,
+  GenerateShiftsFromTemplatesParams,
+  GeneratedShiftRow,
+  LaborResource,
+} from './resources/labor.js';
+export type {
+  ScheduleBlockRow,
+  ScheduleWorkOrderParams,
+  UpdateScheduleBlockParams,
+  ValidateScheduleParams,
+  ValidateScheduleIssueRow,
+  SchedulingResource,
+} from './resources/scheduling.js';
+export type {
+  PartWithStockRow,
+  StockByLocationRow,
+  PartRow,
+  SupplierRow,
+  InventoryLocationRow,
+  StockLevelRow,
+  PartReservationRow,
+  PartUsageRow,
+  OpenRequisitionRow,
+  OpenPurchaseOrderRow,
+  PurchaseOrderReceiptStatusRow,
+  ReservePartsParams,
+  IssuePartsToWorkOrderParams,
+  ReceivePurchaseOrderLine,
+  ReceivePurchaseOrderParams,
+  CreatePurchaseOrderLine,
+  CreatePurchaseOrderParams,
+  CreatePartParams,
+  UpdatePartParams,
+  CreateSupplierParams,
+  UpdateSupplierParams,
+  PartsInventoryResource,
+} from './resources/parts-inventory.js';
+export type {
+  InspectionTemplateRow,
+  InspectionTemplateItemRow,
+  InspectionScheduleRow,
+  InspectionRunRow,
+  InspectionRunItemRow,
+  IncidentRow,
+  IncidentActionRow,
+  ComplianceInspectionHistoryRow,
+  ComplianceIncidentReportRow,
+  InspectionChecklistItemInput,
+  CreateInspectionTemplateParams,
+  UpdateInspectionTemplateParams,
+  CreateInspectionScheduleParams,
+  UpdateInspectionScheduleParams,
+  CreateInspectionRunParams,
+  UpdateInspectionRunParams,
+  InspectionRunItemResultInput,
+  CompleteInspectionRunParams,
+  CreateIncidentParams,
+  UpdateIncidentParams,
+  CloseIncidentParams,
+  CreateIncidentActionParams,
+  UpdateIncidentActionParams,
+  CompleteIncidentActionParams,
+  ComplianceInspectionHistoryParams,
+  ComplianceIncidentReportParams,
+  SafetyComplianceResource,
+} from './resources/safety-compliance.js';
+export type {
+  MobileWorkOrderRow,
+  MobileAssetRow,
+  MobileLocationRow,
+  MobileTimeEntryRow,
+  MobileAttachmentRow,
+  MobileCheckInRow,
+  MobileNoteRow,
+  MobileSyncPayload,
+  MobileSyncParams,
+  StartWorkOrderParams,
+  StopWorkOrderParams,
+  AddWorkOrderNoteParams,
+  RegisterWorkOrderAttachmentParams,
+  MobileFieldResource,
+} from './resources/mobile-field.js';

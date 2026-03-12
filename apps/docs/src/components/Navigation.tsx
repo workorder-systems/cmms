@@ -246,20 +246,52 @@ export const navigation: Array<NavGroup> = [
     ],
   },
   {
-    title: 'Resources',
+    title: 'Tenants & organization',
     links: [
       { title: 'Tenants', href: '/tenants' },
-      { title: 'Work orders', href: '/work-orders' },
-      { title: 'Similar Past Fixes', href: '/similar-past-fixes' },
-      { title: 'Assets', href: '/assets' },
-      { title: 'Locations', href: '/locations' },
       { title: 'Departments', href: '/departments' },
-      { title: 'Meters', href: '/meters' },
-      { title: 'Plugins', href: '/plugins' },
+      { title: 'Labor (technicians & crews)', href: '/labor' },
       { title: 'Catalogs', href: '/catalogs' },
+    ],
+  },
+  {
+    title: 'Work orders & dispatch',
+    links: [
+      { title: 'Work orders', href: '/work-orders' },
+      { title: 'Similar past fixes', href: '/similar-past-fixes' },
+      { title: 'Scheduling & dispatch', href: '/scheduling' },
+    ],
+  },
+  {
+    title: 'Places & assets',
+    links: [
+      { title: 'Locations', href: '/locations' },
+      { title: 'Spaces', href: '/spaces' },
+      { title: 'Assets', href: '/assets' },
+    ],
+  },
+  {
+    title: 'Maintenance & meters',
+    links: [
+      { title: 'Meters', href: '/meters' },
       { title: 'PM (preventive maintenance)', href: '/pm' },
+    ],
+  },
+  {
+    title: 'Reporting & compliance',
+    links: [
       { title: 'Dashboard', href: '/dashboard' },
+      { title: 'Analytics reporting', href: '/analytics' },
+      { title: 'Costs & lifecycle', href: '/costs' },
       { title: 'Audit', href: '/audit' },
+      { title: 'Safety & compliance', href: '/safety-compliance' },
+    ],
+  },
+  {
+    title: 'Inventory & plugins',
+    links: [
+      { title: 'Parts & inventory', href: '/parts-inventory' },
+      { title: 'Plugins', href: '/plugins' },
     ],
   },
 ]

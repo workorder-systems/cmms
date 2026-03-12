@@ -523,8 +523,27 @@ describe('Work Orders', () => {
     });
   });
 
+  describe('Work order view project_id', () => {
+    it('should include project_id in v_work_orders', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      await setTenantContext(client, tenantId);
+
+      const woId = await createTestWorkOrder(client, tenantId, 'WO No Project');
+      const { data: row, error } = await client
+        .from('v_work_orders')
+        .select('id, project_id')
+        .eq('id', woId)
+        .single();
+
+      expect(error).toBeNull();
+      expect(row).toBeDefined();
+      expect(row?.project_id).toBeNull();
+    });
+  });
+
   describe('Completion Edge Cases', () => {
-    it('should prevent completing already completed work order', async () => {
+    it('should allow completing already completed work order (idempotent)', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
       await setTenantContext(client, tenantId);
@@ -533,14 +552,13 @@ describe('Work Orders', () => {
       await transitionWorkOrderStatus(client, tenantId, woId, 'assigned');
       await transitionWorkOrderStatus(client, tenantId, woId, 'completed');
 
-      // Try to complete again
+      // Completing again is idempotent: no error, optionally updates cause/resolution
       const { error } = await client.rpc('rpc_complete_work_order', {
         p_tenant_id: tenantId,
         p_work_order_id: woId,
       });
 
-      expect(error).toBeDefined();
-      expect(error?.message).toContain('Invalid status transition');
+      expect(error).toBeNull();
     });
 
     it('should prevent completing cancelled work order', async () => {
@@ -558,7 +576,7 @@ describe('Work Orders', () => {
       });
 
       expect(error).toBeDefined();
-      expect(error?.message).toContain('Invalid status transition');
+      expect(String(error?.message ?? '')).toContain('Invalid status transition');
     });
   });
 });

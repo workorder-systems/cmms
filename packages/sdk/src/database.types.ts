@@ -266,39 +266,63 @@ export type Database = {
       v_assets: {
         Row: {
           asset_number: string | null
+          commissioned_at: string | null
           created_at: string | null
+          decommissioned_at: string | null
           department_id: string | null
           description: string | null
+          end_of_life_estimate: string | null
           id: string | null
           location_id: string | null
           name: string | null
+          planned_replacement_date: string | null
+          replacement_of_asset_id: string | null
+          replaced_by_asset_id: string | null
+          service_contract_expires_at: string | null
           status: string | null
           tenant_id: string | null
           updated_at: string | null
+          warranty_expires_at: string | null
         }
         Insert: {
           asset_number?: string | null
+          commissioned_at?: string | null
           created_at?: string | null
+          decommissioned_at?: string | null
           department_id?: string | null
           description?: string | null
+          end_of_life_estimate?: string | null
           id?: string | null
           location_id?: string | null
           name?: string | null
+          planned_replacement_date?: string | null
+          replacement_of_asset_id?: string | null
+          replaced_by_asset_id?: string | null
+          service_contract_expires_at?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          warranty_expires_at?: string | null
         }
         Update: {
           asset_number?: string | null
+          commissioned_at?: string | null
           created_at?: string | null
+          decommissioned_at?: string | null
           department_id?: string | null
           description?: string | null
+          end_of_life_estimate?: string | null
           id?: string | null
           location_id?: string | null
           name?: string | null
+          planned_replacement_date?: string | null
+          replacement_of_asset_id?: string | null
+          replaced_by_asset_id?: string | null
+          service_contract_expires_at?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          warranty_expires_at?: string | null
         }
         Relationships: [
           {
@@ -423,6 +447,87 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      v_asset_costs: {
+        Row: {
+          asset_id: string | null
+          labor_cents: number | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_asset_lifecycle_alerts: {
+        Row: {
+          alert_type: string | null
+          asset_id: string | null
+          days_until: number | null
+          reference_date: string | null
+          tenant_id: string | null
+        }
+        Relationships: []
+      }
+      v_department_costs: {
+        Row: {
+          department_id: string | null
+          labor_cents: number | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_location_costs: {
+        Row: {
+          labor_cents: number | null
+          location_id: string | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_project_costs: {
+        Row: {
+          labor_cents: number | null
+          parts_cents: number | null
+          project_id: string | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_count: number | null
+        }
+        Relationships: []
+      }
+      v_projects: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          name: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      v_work_order_costs: {
+        Row: {
+          labor_cents: number | null
+          parts_cents: number | null
+          tenant_id: string | null
+          total_cents: number | null
+          vendor_cents: number | null
+          work_order_id: string | null
+        }
+        Relationships: []
       }
       v_audit_entity_changes: {
         Row: {
@@ -1026,27 +1131,39 @@ export type Database = {
       }
       v_locations: {
         Row: {
+          address_line: string | null
+          code: string | null
           created_at: string | null
           description: string | null
+          external_id: string | null
           id: string | null
+          location_type: string | null
           name: string | null
           parent_location_id: string | null
           tenant_id: string | null
           updated_at: string | null
         }
         Insert: {
+          address_line?: string | null
+          code?: string | null
           created_at?: string | null
           description?: string | null
+          external_id?: string | null
           id?: string | null
+          location_type?: string | null
           name?: string | null
           parent_location_id?: string | null
           tenant_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          address_line?: string | null
+          code?: string | null
           created_at?: string | null
           description?: string | null
+          external_id?: string | null
           id?: string | null
+          location_type?: string | null
           name?: string | null
           parent_location_id?: string | null
           tenant_id?: string | null
@@ -1114,7 +1231,9 @@ export type Database = {
           last_work_order_activity_at: string | null
           location_id: string | null
           location_name: string | null
+          location_type: string | null
           parent_location_id: string | null
+          site_id: string | null
           tenant_id: string | null
           work_order_count: number | null
         }
@@ -1169,6 +1288,51 @@ export type Database = {
             referencedColumns: ["tenant_id"]
           },
         ]
+      }
+      v_spaces: {
+        Row: {
+          id: string | null
+          tenant_id: string | null
+          location_id: string | null
+          location_name: string | null
+          location_type: string | null
+          usage_type: string | null
+          capacity: number | null
+          status: string | null
+          area_sqft: number | null
+          attributes: Record<string, unknown> | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          tenant_id?: string | null
+          location_id?: string | null
+          location_name?: string | null
+          location_type?: string | null
+          usage_type?: string | null
+          capacity?: number | null
+          status?: string | null
+          area_sqft?: number | null
+          attributes?: Record<string, unknown> | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          tenant_id?: string | null
+          location_id?: string | null
+          location_name?: string | null
+          location_type?: string | null
+          usage_type?: string | null
+          capacity?: number | null
+          status?: string | null
+          area_sqft?: number | null
+          attributes?: Record<string, unknown> | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       v_maintenance_type_catalogs: {
         Row: {
@@ -2541,6 +2705,7 @@ export type Database = {
           maintenance_type: string | null
           pm_schedule_id: string | null
           priority: string | null
+          project_id: string | null
           resolution: string | null
           status: string | null
           tenant_id: string | null
@@ -2681,6 +2846,303 @@ export type Database = {
           },
         ]
       }
+      v_technicians: {
+        Row: {
+          id: string
+          tenant_id: string
+          user_id: string
+          employee_number: string | null
+          default_crew_id: string | null
+          department_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_crews: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          description: string | null
+          lead_technician_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_crew_members: {
+        Row: {
+          id: number
+          tenant_id: string
+          crew_id: string
+          technician_id: string
+          role: string | null
+          joined_at: string
+          left_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_skill_catalogs: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          code: string | null
+          category: string | null
+          display_order: number
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_certification_catalogs: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          code: string | null
+          expiry_required: boolean
+          validity_days: number | null
+          display_order: number
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_technician_skills: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          skill_id: string
+          proficiency: string | null
+          created_at: string
+        }
+        Relationships: []
+      }
+      v_technician_certifications: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          certification_id: string
+          issued_at: string
+          expires_at: string | null
+          issued_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_availability_patterns: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          day_of_week: number
+          start_time: string
+          end_time: string
+          timezone: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_availability_overrides: {
+        Row: {
+          id: number
+          tenant_id: string
+          technician_id: string
+          override_date: string
+          is_available: boolean
+          start_time: string | null
+          end_time: string | null
+          reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_shifts: {
+        Row: {
+          id: string
+          tenant_id: string
+          technician_id: string | null
+          crew_id: string | null
+          start_at: string
+          end_at: string
+          shift_type: string
+          label: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_shift_templates: {
+        Row: {
+          id: string
+          tenant_id: string
+          crew_id: string | null
+          technician_id: string | null
+          day_of_week: number
+          start_time: string
+          end_time: string
+          shift_type: string
+          label: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_work_order_assignments: {
+        Row: {
+          id: number
+          tenant_id: string
+          work_order_id: string
+          technician_id: string
+          assigned_at: string
+          created_at: string
+        }
+        Relationships: []
+      }
+      v_work_order_labor_actuals: {
+        Row: {
+          tenant_id: string
+          work_order_id: string
+          technician_id: string | null
+          user_id: string | null
+          entry_count: number
+          total_minutes: number | null
+          total_labor_cost_cents: number | null
+          first_entry_date: string | null
+          last_entry_date: string | null
+        }
+        Relationships: []
+      }
+      v_technician_capacity: {
+        Row: {
+          tenant_id: string
+          technician_id: string
+          shift_date: string
+          shift_count: number
+          scheduled_minutes: number | null
+        }
+        Relationships: []
+      }
+      v_schedule_blocks: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_technician: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_crew: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_asset: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
+      v_schedule_by_location: {
+        Row: {
+          id: string
+          tenant_id: string
+          work_order_id: string
+          start_at: string
+          end_at: string
+          technician_id: string | null
+          crew_id: string | null
+          location_id: string | null
+          asset_id: string | null
+          work_order_title: string
+          work_order_status: string
+          work_order_priority: string
+          work_order_due_date: string | null
+          effective_location_id: string | null
+          effective_asset_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       refresh_analytics_views: { Args: never; Returns: undefined }
@@ -2712,6 +3174,21 @@ export type Database = {
         Returns: undefined
       }
       rpc_clear_tenant_context: { Args: never; Returns: undefined }
+      rpc_check_shift_conflicts: {
+        Args: {
+          p_technician_id: string
+          p_start_at: string
+          p_end_at: string
+          p_exclude_shift_id?: string | null
+        }
+        Returns: {
+          id: string
+          start_at: string
+          end_at: string
+          shift_type: string
+          label: string | null
+        }[]
+      }
       rpc_complete_work_order: {
         Args: {
           p_cause?: string
@@ -2720,6 +3197,50 @@ export type Database = {
           p_work_order_id: string
         }
         Returns: undefined
+      }
+      rpc_asset_lifecycle_alerts: {
+        Args: {
+          p_days_ahead?: number
+          p_tenant_id: string
+        }
+        Returns: {
+          asset_id: string
+          alert_type: string
+          reference_date: string
+          days_until: number
+        }[]
+      }
+      rpc_asset_total_cost_of_ownership: {
+        Args: {
+          p_asset_id: string
+          p_from_date?: string
+          p_tenant_id: string
+          p_to_date?: string
+        }
+        Returns: {
+          labor_cents: number
+          parts_cents: number
+          vendor_cents: number
+          total_cents: number
+          work_order_count: number
+        }[]
+      }
+      rpc_cost_rollup: {
+        Args: {
+          p_from_date?: string
+          p_group_by: string
+          p_tenant_id: string
+          p_to_date?: string
+        }
+        Returns: {
+          group_key: string | null
+          group_name: string | null
+          labor_cents: number
+          parts_cents: number
+          vendor_cents: number
+          total_cents: number
+          work_order_count: number
+        }[]
       }
       rpc_create_asset: {
         Args: {
@@ -2744,10 +3265,14 @@ export type Database = {
       }
       rpc_create_location: {
         Args: {
-          p_description?: string
-          p_name: string
-          p_parent_location_id?: string
           p_tenant_id: string
+          p_name: string
+          p_description?: string | null
+          p_parent_location_id?: string | null
+          p_location_type?: string | null
+          p_code?: string | null
+          p_address_line?: string | null
+          p_external_id?: string | null
         }
         Returns: string
       }
@@ -2871,10 +3396,31 @@ export type Database = {
           p_maintenance_type?: string
           p_pm_schedule_id?: string
           p_priority?: string
+          p_project_id?: string
           p_tenant_id: string
           p_title: string
         }
         Returns: string
+      }
+      rpc_create_tenant_api_key: {
+        Args: { p_tenant_id: string; p_name: string }
+        Returns: Record<string, unknown>
+      }
+      rpc_generate_shifts_from_templates: {
+        Args: {
+          p_tenant_id: string
+          p_start_date: string
+          p_end_date: string
+        }
+        Returns: {
+          id: string
+          technician_id: string | null
+          crew_id: string | null
+          start_at: string
+          end_at: string
+          shift_type: string
+          label: string | null
+        }[]
       }
       rpc_delete_asset: {
         Args: { p_asset_id: string; p_tenant_id: string }
@@ -2938,6 +3484,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_list_tenant_api_keys: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          id: string
+          name: string
+          keyPrefix: string
+          createdAt: string
+          lastUsedAt: string | null
+          expiresAt: string | null
+        }[]
+      }
       rpc_log_work_order_time: {
         Args: {
           p_description?: string
@@ -2992,6 +3549,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_revoke_tenant_api_key: {
+        Args: { p_tenant_id: string; p_key_id: string }
+        Returns: undefined
+      }
       rpc_set_audit_retention_config: {
         Args: {
           p_is_active?: boolean
@@ -3003,6 +3564,52 @@ export type Database = {
       rpc_set_tenant_context: {
         Args: { p_tenant_id: string }
         Returns: undefined
+      }
+      rpc_schedule_work_order: {
+        Args: {
+          p_work_order_id: string
+          p_technician_id?: string | null
+          p_crew_id?: string | null
+          p_start_at: string
+          p_end_at: string
+          p_location_id?: string | null
+          p_asset_id?: string | null
+        }
+        Returns: string
+      }
+      rpc_unschedule_work_order: {
+        Args: {
+          p_schedule_block_id?: string | null
+          p_work_order_id?: string | null
+        }
+        Returns: undefined
+      }
+      rpc_update_schedule_block: {
+        Args: {
+          p_schedule_block_id: string
+          p_technician_id?: string | null
+          p_crew_id?: string | null
+          p_start_at?: string | null
+          p_end_at?: string | null
+          p_location_id?: string | null
+          p_asset_id?: string | null
+        }
+        Returns: string
+      }
+      rpc_validate_schedule: {
+        Args: {
+          p_technician_id?: string | null
+          p_crew_id?: string | null
+          p_start_at?: string | null
+          p_end_at?: string | null
+          p_work_order_id?: string | null
+          p_exclude_block_id?: string | null
+        }
+        Returns: {
+          check_type: string
+          severity: string
+          message: string
+        }[]
       }
       rpc_similar_past_work_orders: {
         Args: {
@@ -3065,11 +3672,46 @@ export type Database = {
       }
       rpc_update_location: {
         Args: {
-          p_description?: string
-          p_location_id: string
-          p_name?: string
-          p_parent_location_id?: string
           p_tenant_id: string
+          p_location_id: string
+          p_name?: string | null
+          p_description?: string | null
+          p_parent_location_id?: string | null
+          p_location_type?: string | null
+          p_code?: string | null
+          p_address_line?: string | null
+          p_external_id?: string | null
+        }
+        Returns: undefined
+      }
+      rpc_create_space: {
+        Args: {
+          p_tenant_id: string
+          p_location_id: string
+          p_usage_type?: string | null
+          p_capacity?: number | null
+          p_status?: string | null
+          p_area_sqft?: number | null
+          p_attributes?: Record<string, unknown> | null
+        }
+        Returns: string
+      }
+      rpc_update_space: {
+        Args: {
+          p_tenant_id: string
+          p_space_id: string
+          p_usage_type?: string | null
+          p_capacity?: number | null
+          p_status?: string | null
+          p_area_sqft?: number | null
+          p_attributes?: Record<string, unknown> | null
+        }
+        Returns: undefined
+      }
+      rpc_delete_space: {
+        Args: {
+          p_tenant_id: string
+          p_space_id: string
         }
         Returns: undefined
       }

@@ -21,6 +21,7 @@ export interface CreateWorkOrderParams {
   assetId?: string | null;
   dueDate?: string | null;
   pmScheduleId?: string | null;
+  projectId?: string | null;
 }
 
 /** Single row for bulk import (title required; others optional, use catalog keys). */
@@ -61,7 +62,7 @@ export interface CompleteWorkOrderParams {
   resolution?: string | null;
 }
 
-/** Params for logging time on a work order. */
+/** Params for logging time on a work order. Optional GPS for mobile field workflows. */
 export interface LogTimeParams {
   tenantId: string;
   workOrderId: string;
@@ -69,6 +70,10 @@ export interface LogTimeParams {
   entryDate?: string | null;
   userId?: string | null;
   description?: string | null;
+  /** Optional GPS when entry was logged (e.g. from device). */
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMetres?: number | null;
 }
 
 /** Params for updating work order attachment metadata (label/kind). Create attachments via Storage upload to bucket "attachments"; see docs/attachments-client-flow.md. */
@@ -87,8 +92,15 @@ const rpc = (supabase: SupabaseClient<Database>) =>
  */
 export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
   return {
-    /** List work orders for the current tenant (v_work_orders). */
+    /** List work orders for the current tenant (v_work_orders). Excludes draft by default to reduce noise; use listIncludingDraft() if needed. */
     async list(): Promise<WorkOrderRow[]> {
+      const { data, error } = await supabase.from('v_work_orders').select('*').neq('status', 'draft');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderRow[];
+    },
+
+    /** List work orders including draft (v_work_orders). Use when the caller needs draft work orders. */
+    async listIncludingDraft(): Promise<WorkOrderRow[]> {
       const { data, error } = await supabase.from('v_work_orders').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as WorkOrderRow[];
@@ -114,6 +126,7 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
         p_asset_id: params.assetId ?? null,
         p_due_date: params.dueDate ?? null,
         p_pm_schedule_id: params.pmScheduleId ?? null,
+        p_project_id: params.projectId ?? null,
       });
     },
 
@@ -149,7 +162,7 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
       });
     },
 
-    /** Log time on a work order. Returns the time entry UUID. */
+    /** Log time on a work order. Optional GPS (latitude, longitude, accuracyMetres) for mobile. Returns the time entry UUID. */
     async logTime(params: LogTimeParams): Promise<string> {
       return callRpc(rpc(supabase), 'rpc_log_work_order_time', {
         p_tenant_id: params.tenantId,
@@ -158,6 +171,9 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
         p_entry_date: params.entryDate ?? null,
         p_user_id: params.userId ?? null,
         p_description: params.description ?? null,
+        p_latitude: params.latitude ?? null,
+        p_longitude: params.longitude ?? null,
+        p_accuracy_metres: params.accuracyMetres ?? null,
       });
     },
 

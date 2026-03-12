@@ -1,0 +1,99 @@
+export const metadata = {
+  title: 'Analytics reporting layer',
+  description: 'BI and warehouse contract: reporting schema, dimension/fact views, KPI views, tenant context, slicing, and export.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Set tenant context before querying', id: 'authentication' },
+  { title: 'Reporting objects', id: 'reporting-objects' },
+  { title: 'Slicing (site, department, time)', id: 'slicing' },
+  { title: 'Export patterns', id: 'export' },
+  { title: 'Discovery', id: 'discovery' },
+]
+
+# Analytics reporting layer
+
+Use the read-only `reporting` schema for BI tools and data warehouse export. Dimension and fact views, plus KPI views (MTTR, MTBF, PM compliance, utilization, backlog). All views are tenant-scoped—set tenant context before you query. {{ className: 'lead' }}
+
+## Overview
+
+The reporting layer gives you:
+
+- **Dimension views** — tenant, location (with site), department, asset (with site), and a date dimension table for time slicing
+- **Fact views** — work orders, labor (time entries), parts, downtime/incidents (reactive completed WOs), PM compliance
+- **KPI views** — MTTR, MTBF, PM compliance %, technician utilization %, backlog (open/overdue counts)
+
+Every view filters by the current tenant via `authz.get_current_tenant_id()`. No cross-tenant data is exposed. You can slice by `site_id`, `department_id`, and date columns in your BI tool by filtering or grouping on the fact/dimension columns.
+
+This doc covers data structures and access only; building dashboards or UI is out of scope.
+
+## Set tenant context before querying
+
+BI and warehouse clients must run with the current tenant set so `get_current_tenant_id()` returns the right tenant.
+
+1. Authenticate as a user who is a member of the tenant.
+2. Call `rpc_set_tenant_context(tenant_id)` (or the SDK: `client.setTenant(tenantId)`).
+3. Optionally refresh the JWT so the token carries the tenant; then all later requests use that tenant.
+4. Query the reporting views—they return only that tenant's data.
+
+Always set tenant context first so BI and exports only see the intended tenant.
+
+## Reporting objects
+
+All objects live in the **`reporting`** schema. Views are real-time; the only table with persisted data is `dim_time` (pre-populated date dimension).
+
+| Object | Kind | Grain / purpose |
+|--------|------|------------------|
+| `reporting.dim_tenant` | view | One row per tenant (current context only). |
+| `reporting.dim_location` | view | One row per location; includes `site_id`, `site_name`. |
+| `reporting.dim_department` | view | One row per department. |
+| `reporting.dim_asset` | view | One row per asset; includes `site_id` via location. |
+| `reporting.dim_time` | table | One row per date (bounded range); year, quarter, month, week, day_of_week, is_weekend, year_month, year_week. |
+| `reporting.fact_work_orders` | view | One row per work order; measures: duration_hours, total_labor_minutes, total_*_cost_cents; dims: location_id, asset_id, department_id, site_id, created_date, completed_date, status, priority, maintenance_type. |
+| `reporting.fact_labor` | view | One row per time entry; measures: minutes, labor_cost_cents; dims: work_order_id, technician_id, entry_date, site_id, etc. |
+| `reporting.fact_parts` | view | One row per work order part line; measures: quantity, unit_cost_cents, total_cost_cents; dims: work_order_id, entry_date, site_id. |
+| `reporting.fact_downtime_incidents` | view | One row per incident (reactive, completed WO); measures: duration_hours, total_labor_minutes; for MTBF. |
+| `reporting.fact_pm_compliance` | view | One row per PM execution; on_time (within 7 days of scheduled_date), actual_hours, cost; dims: asset_id, site_id. |
+| `reporting.kpi_mttr` | view | MTTR by tenant, site, asset, department, month (last 365 days). |
+| `reporting.kpi_mtbf` | view | MTBF per asset/site from fact_downtime_incidents. |
+| `reporting.kpi_pm_compliance` | view | PM on-time % by tenant, site, asset, month. |
+| `reporting.kpi_utilization` | view | Technician utilization % (actual / scheduled minutes) by technician and day. |
+| `reporting.kpi_backlog` | view | Open and overdue counts by tenant, site, department, priority. |
+
+Views reflect live data. The only materialized data is `reporting.dim_time` (static). Other analytics materialized views (e.g. `public.mv_work_order_summary`) are refreshed via `public.refresh_analytics_views()` and live outside the `reporting` schema.
+
+## Slicing (site, department, time)
+
+- **Tenant:** One tenant per session; set via `rpc_set_tenant_context(tenant_id)` (or SDK). All reporting views already filter to that tenant.
+- **Site:** Use `site_id` (and optionally `site_name` from dimensions). Facts expose `site_id`; filter or group by it in BI (e.g. `WHERE site_id = $id` or “Group by site_id”).
+- **Department:** Use `department_id` on facts or `reporting.dim_department`. Filter or group by `department_id` in BI.
+- **Time:** Use `created_date`, `completed_date`, or `entry_date` on facts, or join to `reporting.dim_time` on date for year/quarter/month/week. KPI views expose `period_month` or `period_date` where applicable.
+
+All slicing stays within the current tenant.
+
+## Export patterns
+
+- **Full export (current tenant):** Set tenant context, then run e.g. `SELECT * FROM reporting.fact_work_orders` (and similarly for other facts/dimensions). Export to your warehouse or file.
+- **Incremental export:** Use `updated_at` or `completed_date` / `created_date` if you mirror the data; reporting views don't add an export watermark. For date-bounded exports, filter on the fact’s date columns (e.g. `completed_date >= $last_run`).
+- **BI tools:** Point your tool at the Postgres (or Supabase) connection, set tenant (e.g. via a parameter that drives `rpc_set_tenant_context`), then query `reporting.*` views. Use `reporting.get_analytics_metadata()` for discovery (see below).
+
+## Discovery
+
+Call this RPC to list reporting objects and their descriptions for BI discovery:
+
+<CodeGroup title="reporting.get_analytics_metadata()">
+
+```sql
+select * from reporting.get_analytics_metadata();
+-- Returns: object_schema, object_name, object_kind ('view'|'table'), description
+```
+
+</CodeGroup>
+
+Call it after setting tenant context if your client uses the same session for metadata and data.
+
+## Next steps
+
+- [Tenant context](/tenant-context) — Set and clear tenant context
+- [Work orders](/work-orders) — Work order API reference

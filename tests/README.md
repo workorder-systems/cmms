@@ -2,7 +2,7 @@
 
 ## What we test
 
-- **DB contract (Supabase direct):** All `*.test.ts` files **except** `sdk.test.ts`. They use the Supabase client directly (`createTestClient`, `createServiceRoleClient`) and hit public views (`v_*`) and RPCs (`rpc_*`). These tests validate RLS, permissions, RPC behavior, and view content.
+- **DB contract (Supabase direct):** All `*.test.ts` files **except** `sdk.test.ts`. They use the Supabase client directly (`createTestClient`, and a privileged client for tests that need to bypass RLS) and hit public views (`v_*`) and RPCs (`rpc_*`). These tests validate RLS, permissions, RPC behavior, and view content.
 - **SDK:** Only `sdk.test.ts`. It uses `createDbClient()` from `@workorder-systems/sdk` to validate that the SDK wraps the public API correctly.
 - **Similar Past Fixes:** `similar_past_fixes_experiment.test.ts` covers tenant isolation, RPC contract, backfill helper, index→search round-trip (synthetic embeddings, no OpenAI). `similar_past_fixes_e2e.test.ts` runs backfill + search (indexing is server-only; requires `OPENAI_API_KEY` and `supabase functions serve`); excluded from CI. Run with `pnpm run test:e2e`.
 
@@ -18,7 +18,7 @@
 | `npm test -- tests/work_orders.test.ts` | Single file |
 | `npm test -- -t "should create a work order"` | Single test by name |
 
-Ensure Supabase is running locally (`npm run supabase:start`) or set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (and optionally `SUPABASE_SERVICE_ROLE_KEY`) for a remote instance.
+Ensure Supabase is running locally (`npm run supabase:start`) or set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (and optionally a privileged key for tests that bypass RLS) for a remote instance.
 
 ## Helpers
 
@@ -26,7 +26,7 @@ Use these so setup and errors stay consistent and easy to debug:
 
 | Helper | Purpose |
 |--------|--------|
-| `tests/helpers/supabase.ts` | `createTestClient()`, `createServiceRoleClient()`, `getSupabaseConfig()`, `waitForSupabase()` |
+| `tests/helpers/supabase.ts` | `createTestClient()`, `createServiceRoleClient()` (for tests that bypass RLS), `getSupabaseConfig()`, `waitForSupabase()` |
 | `tests/helpers/sdk.ts` | `createTestSdkClient()` — SDK client with test auth options |
 | `tests/helpers/faker.ts` | `makeTenant()`, `shortSlug()`, `makeUser()`, and other test data generators |
 | `tests/helpers/tenant.ts` | `createTestTenant()`, `setTenantContext()`, `clearTenantContext()`, `getTenantBySlug()`, `assignRoleToUser()` |

@@ -1,0 +1,237 @@
+export const metadata = {
+  title: 'Labor (technicians & crews)',
+  description: 'Technicians, crews, skills, certifications, availability, shifts, assignments, labor actuals, and capacity.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Technicians and crews', id: 'technicians-crews' },
+  { title: 'Skills and certifications', id: 'skills-certifications' },
+  { title: 'Availability and shifts', id: 'availability-shifts' },
+  { title: 'Assignments and labor actuals', id: 'assignments-labor-actuals' },
+  { title: 'Shift conflict detection', id: 'shift-conflicts' },
+  { title: 'Generate shifts from templates', id: 'generate-shifts' },
+]
+
+# Labor (technicians & crews)
+
+Technicians, crews, skills, certifications, availability, shifts, work order assignments, labor actuals, and capacity views. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## Overview
+
+The `client.labor` resource exposes read-only views and two RPCs for scheduling:
+
+- **Technicians** and **crews** – workforce and team structure
+- **Skills** and **certifications** – tenant catalogs and technician linkage
+- **Availability** – recurring patterns and date overrides
+- **Shifts** and **shift templates** – scheduled and on-call slots
+- **Work order assignments** – which technicians are assigned to which work orders
+- **Labor actuals** – aggregated time and cost per work order
+- **Technician capacity** – scheduled minutes per technician per day
+- **RPCs** – check shift conflicts, generate shifts from templates
+
+Create/update/delete for technicians, crews, and related tables is done via the `app` schema (PostgREST or direct SQL) with RLS; the SDK focuses on reads and the two scheduling RPCs.
+
+## Technicians and crews
+
+List technicians and crews for the current tenant.
+
+<CodeGroup title="client.labor.listTechnicians()">
+
+```ts
+await client.setTenant(tenantId)
+const technicians = await client.labor.listTechnicians()
+// Returns TechnicianRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.getTechnicianById(id)">
+
+```ts
+const technician = await client.labor.getTechnicianById('uuid-of-technician')
+// Returns TechnicianRow | null
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listCrews()">
+
+```ts
+const crews = await client.labor.listCrews()
+// Returns CrewRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.getCrewById(id)">
+
+```ts
+const crew = await client.labor.getCrewById('uuid-of-crew')
+// Returns CrewRow | null
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listCrewMembers()">
+
+```ts
+const members = await client.labor.listCrewMembers()
+// Returns CrewMemberRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listCrewMembersByCrewId(crewId)">
+
+```ts
+const members = await client.labor.listCrewMembersByCrewId('uuid-of-crew')
+// Returns CrewMemberRow[]
+```
+
+</CodeGroup>
+
+## Skills and certifications
+
+List skill and certification catalogs and technician linkage.
+
+<CodeGroup title="client.labor.listSkillCatalogs()">
+
+```ts
+const skills = await client.labor.listSkillCatalogs()
+// Returns SkillCatalogRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listCertificationCatalogs()">
+
+```ts
+const certs = await client.labor.listCertificationCatalogs()
+// Returns CertificationCatalogRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listTechnicianSkills() / listTechnicianCertifications()">
+
+```ts
+const technicianSkills = await client.labor.listTechnicianSkills()
+const technicianCerts = await client.labor.listTechnicianCertifications()
+// Returns TechnicianSkillRow[] and TechnicianCertificationRow[]
+```
+
+</CodeGroup>
+
+## Availability and shifts
+
+List availability patterns, overrides, shifts, and shift templates.
+
+<CodeGroup title="client.labor.listAvailabilityPatterns() / listAvailabilityOverrides()">
+
+```ts
+const patterns = await client.labor.listAvailabilityPatterns()
+const overrides = await client.labor.listAvailabilityOverrides()
+// Returns AvailabilityPatternRow[] and AvailabilityOverrideRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listShifts() / listShiftsByTechnicianId(technicianId)">
+
+```ts
+const shifts = await client.labor.listShifts()
+const techShifts = await client.labor.listShiftsByTechnicianId('uuid-of-technician')
+// Returns ShiftRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listShiftTemplates()">
+
+```ts
+const templates = await client.labor.listShiftTemplates()
+// Returns ShiftTemplateRow[]
+```
+
+</CodeGroup>
+
+## Assignments and labor actuals
+
+List work order assignments and aggregated labor actuals (time and cost per work order).
+
+<CodeGroup title="client.labor.listWorkOrderAssignments()">
+
+```ts
+const assignments = await client.labor.listWorkOrderAssignments()
+const forWorkOrder = await client.labor.listWorkOrderAssignmentsByWorkOrderId('uuid-of-work-order')
+// Returns WorkOrderAssignmentRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listWorkOrderLaborActuals()">
+
+```ts
+const actuals = await client.labor.listWorkOrderLaborActuals()
+const forWorkOrder = await client.labor.listWorkOrderLaborActualsByWorkOrderId('uuid-of-work-order')
+// Returns WorkOrderLaborActualsRow[] (entry_count, total_minutes, total_labor_cost_cents, etc.)
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.labor.listTechnicianCapacity()">
+
+```ts
+const capacity = await client.labor.listTechnicianCapacity()
+// Returns TechnicianCapacityRow[] (shift_date, shift_count, scheduled_minutes per technician)
+```
+
+</CodeGroup>
+
+## Shift conflict detection
+
+Check for overlapping shifts for a technician before creating or updating a shift. Pass `excludeShiftId` when updating so the current shift is not counted as a conflict.
+
+<CodeGroup title="client.labor.checkShiftConflicts(params)">
+
+```ts
+const conflicts = await client.labor.checkShiftConflicts({
+  technicianId: 'uuid-of-technician',
+  startAt: '2026-03-15T08:00:00Z',
+  endAt: '2026-03-15T17:00:00Z',
+  excludeShiftId: null, // or shift id when updating
+})
+// Returns ShiftConflictRow[] (id, start_at, end_at, shift_type, label)
+```
+
+</CodeGroup>
+
+## Generate shifts from templates
+
+Generate shift rows from shift templates for a date range. Requires tenant membership. Returns the created shifts.
+
+<CodeGroup title="client.labor.generateShiftsFromTemplates(params)">
+
+```ts
+const created = await client.labor.generateShiftsFromTemplates({
+  tenantId: 'uuid-of-tenant',
+  startDate: '2026-03-01',
+  endDate: '2026-03-31',
+})
+// Returns GeneratedShiftRow[]
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="startDate">
+    Required. Start date (YYYY-MM-DD).
+  </Property>
+  <Property name="endDate">
+    Required. End date (YYYY-MM-DD). Must be ≥ startDate.
+  </Property>
+</Properties>

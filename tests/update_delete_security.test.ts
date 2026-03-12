@@ -88,6 +88,12 @@ describe('Update/Delete Security', () => {
         p_tenant_id: tenantId,
         p_location_id: locationId,
         p_name: 'Updated Location',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -107,6 +113,12 @@ describe('Update/Delete Security', () => {
         p_tenant_id: tenantId,
         p_location_id: locationId,
         p_name: 'Updated Location',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeNull();
@@ -210,6 +222,12 @@ describe('Update/Delete Security', () => {
         p_tenant_id: tenantId2, // Wrong tenant ID
         p_location_id: locationId1,
         p_name: 'Hacked Location',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -309,7 +327,13 @@ describe('Update/Delete Security', () => {
       const { error } = await admin1Client.rpc('rpc_update_location', {
         p_tenant_id: tenantId1,
         p_location_id: locationId1,
+        p_name: null,
+        p_description: null,
         p_parent_location_id: parentLocationId2,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       expect(error).toBeDefined();
@@ -377,6 +401,12 @@ describe('Update/Delete Security', () => {
         p_tenant_id: tenantId,
         p_location_id: locationId,
         p_name: 'Updated Location',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       // Get updated updated_at
@@ -470,6 +500,12 @@ describe('Update/Delete Security', () => {
         p_tenant_id: tenantId,
         p_location_id: locationId,
         p_name: 'Updated Location',
+        p_description: null,
+        p_parent_location_id: null,
+        p_location_type: null,
+        p_code: null,
+        p_address_line: null,
+        p_external_id: null,
       });
 
       // Check audit log

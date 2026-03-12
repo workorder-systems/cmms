@@ -45,17 +45,26 @@ const id = await client.workOrders.create({
 | Resource      | Reads              | Writes                                                                 |
 |---------------|--------------------|------------------------------------------------------------------------|
 | `tenants`     | `list()`, `getById()` | `create()`, `inviteUser()`, `assignRole()`                            |
-| `workOrders`  | `list()`, `getById()`, `listAttachments(workOrderId)` | `create()`, `transitionStatus()`, `complete()`, `logTime()`, `updateAttachmentMetadata()` |
-| `assets`      | `list()`, `getById()` | `create()`, `update()`, `delete()`                                   |
+| `workOrders`  | `list()`, `getById()`, `listAttachments(workOrderId)` | `create()` (incl. `projectId`), `transitionStatus()`, `complete()`, `logTime()`, `updateAttachmentMetadata()` |
+| `assets`      | `list()`, `getById()` | `create()`, `update()`, `delete()`. Assets include lifecycle fields (commissioned_at, end_of_life_estimate, warranty_expires_at, etc.). |
 | `locations`   | `list()`, `getById()` | `create()`, `update()`, `delete()`                                    |
 | `departments` | `list()`, `getById()` | `create()`, `update()`, `delete()`                                   |
 | `meters`      | `list()`, `getReadings()` | `create()`, `update()`, `recordReading()`, `delete()`              |
 | `plugins`     | `list()`, `getById()`, `listInstallations()` | `install()`, `updateInstallation()`, `uninstall()` (tenant.admin) |
+| `costs`       | `listWorkOrderCosts()`, `listAssetCosts()`, `listLocationCosts()`, `listDepartmentCosts()`, `listProjectCosts()`, `listLifecycleAlerts()` | Use `costRollup()`, `assetLifecycleAlerts()`, `assetTotalCostOfOwnership()` for RPC-based reporting. |
+| `projects`    | `list()`, `getById()` | — (read-only from v_projects) |
 | `similarPastFixes` | `search()` | — (read-only, via Edge Function) |
 
 For **PM** (templates, schedules, due/overdue pms), **permissions** (grant, revoke, hasPermission), **workflow** (status/priority/maintenance type catalogs), **audit**, and **dashboard** views, use `client.supabase.from('v_*')` and `client.supabase.rpc('rpc_*', params)` until dedicated resource methods are added. All public views and RPCs are typed via the SDK’s `Database` type.
 
 All resource methods throw `SdkError` (with `code`, `message`, `details`, `hint`) on failure. Success returns typed data.
+
+### Asset lifecycle and cost of ownership
+
+- **Assets** (`client.assets.list()` / `getById()`): Rows include lifecycle fields — `commissioned_at`, `end_of_life_estimate`, `decommissioned_at`, `replaced_by_asset_id`, `replacement_of_asset_id`, `warranty_expires_at`, `service_contract_expires_at`, `planned_replacement_date`.
+- **Costs** (`client.costs`): Work order costs (labor, parts, vendor), roll-ups by asset/location/department/project, lifecycle alerts (warranty, EOL, contract, replacement), and `costRollup()`, `assetLifecycleAlerts()`, `assetTotalCostOfOwnership()` RPCs for reporting.
+- **Projects** (`client.projects.list()` / `getById()`): Read-only list of projects for the tenant; use `projectId` in `workOrders.create()` to link work orders to projects for cost roll-up.
+- **Work orders**: `CreateWorkOrderParams.projectId` optional when creating a work order.
 
 ## Options (runtime-specific)
 

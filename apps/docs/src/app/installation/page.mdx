@@ -4,17 +4,17 @@ export const metadata = {
 }
 
 export const sections = [
-  { title: 'Package', id: 'package' },
+  { title: 'Install the package', id: 'package' },
   { title: 'Peer dependency', id: 'peer-dependency' },
-  { title: 'Usage', id: 'usage' },
+  { title: 'Create a client', id: 'usage' },
   { title: 'Edge runtimes', id: 'edge-runtimes' },
 ]
 
 # Installation
 
-Single TypeScript SDK: `@workorder-systems/db`. Type-safe client over Supabase views and RPCs. {{ className: 'lead' }}
+Install the `@workorder-systems/db` SDK to get a type-safe client for Supabase views and RPCs. {{ className: 'lead' }}
 
-## Package
+## Install the package
 
 <CodeGroup title="Install">
 
@@ -24,20 +24,19 @@ npm install @workorder-systems/db @supabase/supabase-js
 
 </CodeGroup>
 
-- **Package name:** `@workorder-systems/db`
-- **Build:** The package ships a built `dist/` (TypeScript declarations included). No build step required in your app for consumption; the SDK itself is built with tsup.
+Package name: `@workorder-systems/db`. It ships a pre-built `dist/` with TypeScript declarations—no build step needed in your app.
 
 <Note>
-  In the monorepo, the package may be referenced as `@workorder-systems/sdk` via workspace; use `@workorder-systems/db` when installing from npm.
+  In the monorepo you may see `@workorder-systems/sdk` as the workspace name; use `@workorder-systems/db` when installing from npm.
 </Note>
 
 ## Peer dependency
 
-`@supabase/supabase-js` is a **peer dependency**. You must install it yourself (same version range as the SDK’s peer: `^2.39.0`). The SDK uses the Supabase client under the hood and re-exports types from your generated `Database` type when used from the same repo.
+`@supabase/supabase-js` is a **peer dependency**. You need to install it yourself (same version range as the SDK’s peer: `^2.39.0`). The SDK uses it under the hood and re-exports types from your `Database` type when used in the same repo.
 
-## Usage
+## Create a client
 
-Import `createDbClient` and create a client with your Supabase project URL and anon key:
+Import `createDbClient` and pass your Supabase project URL and anon key:
 
 ```ts
 import { createDbClient } from '@workorder-systems/db'
@@ -54,7 +53,7 @@ const client = createDbClient(
 //   client.plugins, client.authorization, client.catalogs, client.pm, client.dashboard, client.audit
 ```
 
-Works in **browser** and **Node.js** without extra config. For **edge runtimes** (e.g. Cloudflare Workers, Vercel Edge), pass a custom `fetch` and optionally disable or customize session persistence:
+Works in the browser and in Node.js with no extra config. For edge runtimes (Cloudflare Workers, Vercel Edge), pass a custom `fetch` and optionally turn off session persistence:
 
 ```ts
 const client = createDbClient(url, anonKey, {
@@ -71,4 +70,4 @@ const client = createDbClient(url, anonKey, {
 
 ## Edge runtimes
 
-In edge environments, pass `global: { fetch }` so the client uses the runtime’s fetch. If you don’t need session persistence, set `auth: { persistSession: false }`. For custom storage, use the `auth.storage` option compatible with Supabase’s `SessionStorage` type.
+In edge environments, pass `global: { fetch }` so the client uses the runtime’s `fetch`. Set `auth: { persistSession: false }` if you don’t need session persistence. For custom storage, use the `auth.storage` option (Supabase `SessionStorage`-compatible).

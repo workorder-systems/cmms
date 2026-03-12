@@ -1,0 +1,315 @@
+export const metadata = {
+  title: 'Parts & inventory',
+  description: 'Parts catalog, suppliers, stock locations, on-hand quantities, reservations, usage on work orders, and purchasing (requisitions, POs, receipts).',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Parts and stock', id: 'parts-stock' },
+  { title: 'Suppliers and inventory locations', id: 'suppliers-locations' },
+  { title: 'Reservations and usage', id: 'reservations-usage' },
+  { title: 'Purchasing', id: 'purchasing' },
+  { title: 'RPCs (create/update)', id: 'rpcs' },
+]
+
+# Parts & inventory
+
+Parts catalog, suppliers, stock locations and bins, on-hand quantities, re-order rules, part reservations and usage linked to work orders, and basic purchasing (requisitions, purchase orders, receipts). Set tenant context before calling these methods. {{ className: 'lead' }}
+
+## Overview
+
+The `client.partsInventory` resource provides:
+
+- **Parts catalog** – list parts with or without aggregated stock (on-hand, reserved, available)
+- **Suppliers** – list and get by id; create/update via RPCs
+- **Inventory locations** – hierarchy (warehouse, aisle, shelf, bin); stock levels per part per bin
+- **Reservations** – parts reserved for work orders; list by work order
+- **Part usage** – parts issued/consumed on work orders; list by work order
+- **Purchasing** – open requisitions, open POs, PO receipt status; receive PO and create PO via RPCs
+- **RPCs** – reserve parts, issue parts to work order, receive PO, create PO, create/update part, create/update supplier
+
+All data is tenant-scoped. Permissions (e.g. `part.create`, `inventory.usage.record`, `purchase_order.receive`) are enforced by the RPCs.
+
+## Parts and stock
+
+Parts with aggregated stock (total on-hand, total reserved, available = on-hand − reserved). Use for dashboards and re-order logic.
+
+<CodeGroup title="client.partsInventory.listPartsWithStock()">
+
+```ts
+await client.setTenant(tenantId)
+const parts = await client.partsInventory.listPartsWithStock()
+// Returns PartWithStockRow[]: id, part_number, name, unit, total_on_hand, total_reserved, available, reorder_point, ...
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.partsInventory.getPartWithStockById(id)">
+
+```ts
+const part = await client.partsInventory.getPartWithStockById('uuid-of-part')
+// Returns PartWithStockRow | null
+```
+
+</CodeGroup>
+
+Stock by part and inventory location (bin). Use for put-away and pick lists.
+
+<CodeGroup title="client.partsInventory.listStockByLocation()">
+
+```ts
+const stock = await client.partsInventory.listStockByLocation()
+// Returns StockByLocationRow[]: part_id, inventory_location_id, quantity, part_number, location_name, location_type, ...
+```
+
+</CodeGroup>
+
+Catalog-only list (no aggregates).
+
+<CodeGroup title="client.partsInventory.listParts() / getPartById(id)">
+
+```ts
+const parts = await client.partsInventory.listParts()
+const part = await client.partsInventory.getPartById('uuid-of-part')
+// Returns PartRow[] or PartRow | null
+```
+
+</CodeGroup>
+
+## Suppliers and inventory locations
+
+<CodeGroup title="client.partsInventory.listSuppliers() / getSupplierById(id)">
+
+```ts
+const suppliers = await client.partsInventory.listSuppliers()
+const supplier = await client.partsInventory.getSupplierById('uuid-of-supplier')
+// Returns SupplierRow[] or SupplierRow | null
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.partsInventory.listInventoryLocations()">
+
+```ts
+const locations = await client.partsInventory.listInventoryLocations()
+// Returns InventoryLocationRow[]: id, parent_id, name, code, type ('warehouse' | 'aisle' | 'shelf' | 'bin'), ...
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.partsInventory.listStockLevels()">
+
+```ts
+const levels = await client.partsInventory.listStockLevels()
+// Returns StockLevelRow[]: part_id, inventory_location_id, quantity, updated_at
+```
+
+</CodeGroup>
+
+## Reservations and usage
+
+Parts reserved for work orders (status: reserved, issued, released, cancelled). Parts consumed on work orders.
+
+<CodeGroup title="client.partsInventory.listPartReservations()">
+
+```ts
+const all = await client.partsInventory.listPartReservations()
+const forWo = await client.partsInventory.listPartReservationsByWorkOrderId('uuid-of-work-order')
+// Returns PartReservationRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.partsInventory.listPartUsage()">
+
+```ts
+const all = await client.partsInventory.listPartUsage()
+const forWo = await client.partsInventory.listPartUsageByWorkOrderId('uuid-of-work-order')
+// Returns PartUsageRow[]
+```
+
+</CodeGroup>
+
+## Purchasing
+
+Open requisitions (draft, submitted, approved). Open POs (draft, sent, partially_received). PO receipt status (quantity ordered, received, balance per line).
+
+<CodeGroup title="client.partsInventory.listOpenRequisitions()">
+
+```ts
+const reqs = await client.partsInventory.listOpenRequisitions()
+// Returns OpenRequisitionRow[]
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.partsInventory.listOpenPurchaseOrders()">
+
+```ts
+const pos = await client.partsInventory.listOpenPurchaseOrders()
+// Returns OpenPurchaseOrderRow[]: id, order_number, supplier_name, status, ...
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.partsInventory.listPurchaseOrderReceiptStatus()">
+
+```ts
+const all = await client.partsInventory.listPurchaseOrderReceiptStatus()
+const forPo = await client.partsInventory.listPurchaseOrderReceiptStatusByPoId('uuid-of-po')
+// Returns PurchaseOrderReceiptStatusRow[]: purchase_order_line_id, quantity_ordered, quantity_received, quantity_balance, part_number
+```
+
+</CodeGroup>
+
+## RPCs (create/update)
+
+All RPCs require tenant context and the appropriate permission. Pass `tenantId` in params for consistency.
+
+**Reserve parts** – creates a reservation for a work order. Requires `inventory.reservation.create`.
+
+<CodeGroup title="client.partsInventory.reserveParts(params)">
+
+```ts
+const reservationId = await client.partsInventory.reserveParts({
+  tenantId: 'uuid-of-tenant',
+  workOrderId: 'uuid-of-work-order',
+  partId: 'uuid-of-part',
+  quantity: 10,
+  inventoryLocationId: 'uuid-of-bin', // optional
+})
+// Returns reservation id (string)
+```
+
+</CodeGroup>
+
+**Issue parts to work order** – decrements stock, creates inventory transaction and part_usage record; optionally marks a matching reservation as issued. Requires `inventory.usage.record`.
+
+<CodeGroup title="client.partsInventory.issuePartsToWorkOrder(params)">
+
+```ts
+const usageId = await client.partsInventory.issuePartsToWorkOrder({
+  tenantId: 'uuid-of-tenant',
+  workOrderId: 'uuid-of-work-order',
+  partId: 'uuid-of-part',
+  quantity: 5,
+  inventoryLocationId: null, // optional; if null, deducts from one bin with sufficient quantity
+})
+// Returns part_usage id (string)
+```
+
+</CodeGroup>
+
+**Receive purchase order** – creates a receipt and receipt lines, updates PO line `quantity_received`, and updates stock_levels when `to_inventory_location_id` is set. Requires `purchase_order.receive`.
+
+<CodeGroup title="client.partsInventory.receivePurchaseOrder(params)">
+
+```ts
+const receiptId = await client.partsInventory.receivePurchaseOrder({
+  tenantId: 'uuid-of-tenant',
+  poId: 'uuid-of-po',
+  lines: [
+    { purchase_order_line_id: 'uuid-of-po-line', quantity_received: 20, to_inventory_location_id: 'uuid-of-bin' },
+  ],
+})
+// Returns receipt id (string)
+```
+
+</CodeGroup>
+
+**Create purchase order** – creates a PO and optional lines. Requires `purchase_order.create`. Use `externalId` for ERP sync.
+
+<CodeGroup title="client.partsInventory.createPurchaseOrder(params)">
+
+```ts
+const poId = await client.partsInventory.createPurchaseOrder({
+  tenantId: 'uuid-of-tenant',
+  supplierId: 'uuid-of-supplier',
+  orderNumber: 'PO-2025-001',
+  orderDate: '2025-03-15',
+  expectedDeliveryDate: '2025-03-25',
+  externalId: 'erp-po-123',
+  notes: null,
+  lines: [
+    { part_id: 'uuid-of-part', quantity_ordered: 100, unit_price: 12.5 },
+  ],
+})
+// Returns PO id (string)
+```
+
+</CodeGroup>
+
+**Create part** – requires `part.create`. Use `externalId` for ERP sync.
+
+<CodeGroup title="client.partsInventory.createPart(params)">
+
+```ts
+const partId = await client.partsInventory.createPart({
+  tenantId: 'uuid-of-tenant',
+  partNumber: 'SKU-001',
+  name: 'Filter cartridge',
+  unit: 'each',
+  preferredSupplierId: 'uuid-of-supplier',
+  reorderPoint: 10,
+  leadTimeDays: 7,
+})
+// Returns part id (string)
+```
+
+</CodeGroup>
+
+**Update part** – requires `part.edit`. Only provided fields are updated.
+
+<CodeGroup title="client.partsInventory.updatePart(params)">
+
+```ts
+await client.partsInventory.updatePart({
+  tenantId: 'uuid-of-tenant',
+  partId: 'uuid-of-part',
+  reorderPoint: 15,
+  isActive: true,
+})
+```
+
+</CodeGroup>
+
+**Create supplier** – requires `supplier.create`. Use `externalId` for ERP sync.
+
+<CodeGroup title="client.partsInventory.createSupplier(params)">
+
+```ts
+const supplierId = await client.partsInventory.createSupplier({
+  tenantId: 'uuid-of-tenant',
+  name: 'Acme Supplies',
+  code: 'ACME',
+  externalId: 'erp-vendor-456',
+  contactName: 'Jane Doe',
+  email: 'jane@acme.com',
+})
+// Returns supplier id (string)
+```
+
+</CodeGroup>
+
+**Update supplier** – requires `supplier.edit`.
+
+<CodeGroup title="client.partsInventory.updateSupplier(params)">
+
+```ts
+await client.partsInventory.updateSupplier({
+  tenantId: 'uuid-of-tenant',
+  supplierId: 'uuid-of-supplier',
+  phone: '+1-555-0100',
+})
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+  <Button href="/costs" variant="text" arrow="right">
+    <>Costs & lifecycle</>
+  </Button>
+</div>

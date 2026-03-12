@@ -16,6 +16,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "vitest run",
+    "test:fast": "vitest run -c vitest.config.fast.ts",
     "test:ci": "vitest run --exclude tests/similar_past_fixes_e2e.test.ts",
     "test:all": "turbo run test",
     "test:db": "vitest run --exclude tests/sdk.test.ts",
@@ -30,6 +31,7 @@
     "supabase:functions": "supabase functions serve --env-file .env.local --no-verify-jwt",
     "test:setup": "supabase start && npm run test",
     "test:teardown": "supabase stop",
+    "test:reset": "supabase db reset && pnpm test",
     "gen-types": "bash packages/sdk/scripts/gen-types.sh"
   },
   "keywords": [

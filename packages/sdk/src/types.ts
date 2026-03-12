@@ -4,6 +4,7 @@ import type { TenantsResource } from './resources/tenants.js';
 import type { WorkOrdersResource } from './resources/work-orders.js';
 import type { AssetsResource } from './resources/assets.js';
 import type { LocationsResource } from './resources/locations.js';
+import type { SpacesResource } from './resources/spaces.js';
 import type { DepartmentsResource } from './resources/departments.js';
 import type { MetersResource } from './resources/meters.js';
 import type { PluginsResource } from './resources/plugins.js';
@@ -13,6 +14,14 @@ import type { PmResource } from './resources/pm.js';
 import type { DashboardResource } from './resources/dashboard.js';
 import type { AuditResource } from './resources/audit.js';
 import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
+import type { TenantApiKeysResource } from './resources/tenant-api-keys.js';
+import type { LaborResource } from './resources/labor.js';
+import type { SchedulingResource } from './resources/scheduling.js';
+import type { CostsResource } from './resources/costs.js';
+import type { ProjectsResource } from './resources/projects.js';
+import type { PartsInventoryResource } from './resources/parts-inventory.js';
+import type { SafetyComplianceResource } from './resources/safety-compliance.js';
+import type { MobileFieldResource } from './resources/mobile-field.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -50,6 +59,8 @@ export type DbClient = {
   assets: AssetsResource;
   /** Locations: list, get, create, update, delete. */
   locations: LocationsResource;
+  /** Spaces: room/space attributes (usage, capacity, status). List, get, create, update, delete. */
+  spaces: SpacesResource;
   /** Departments: list, get, create, update, delete. */
   departments: DepartmentsResource;
   /** Meters: list, get readings, create, update, record reading, delete. */
@@ -68,4 +79,20 @@ export type DbClient = {
   audit: AuditResource;
   /** Similar Past Fixes: search for semantically similar completed work orders. */
   similarPastFixes: SimilarPastFixesResource;
+  /** Tenant API keys: create, list, revoke. For IoT / machine access (e.g. ingest-meter-reading Edge Function). */
+  tenantApiKeys: TenantApiKeysResource;
+  /** Labor: technicians, crews, skills, certifications, availability, shifts, assignments, labor actuals, capacity, and scheduling RPCs. */
+  labor: LaborResource;
+  /** Scheduling: schedule blocks, views by technician/crew/asset/location, schedule/update/validate/unschedule RPCs. */
+  scheduling: SchedulingResource;
+  /** Costs and lifecycle: work order costs, roll-ups by asset/location/department/project, lifecycle alerts, TCO. */
+  costs: CostsResource;
+  /** Projects: list and get by id (read-only from v_projects). For cost roll-up by project. */
+  projects: ProjectsResource;
+  /** Parts and inventory: catalog, suppliers, stock, reservations, usage, and purchasing (POs, receipts). */
+  partsInventory: PartsInventoryResource;
+  /** Safety and compliance: inspection templates, schedules, runs, incidents, and corrective actions. Audit-ready for regulated industries. */
+  safetyCompliance: SafetyComplianceResource;
+  /** Mobile field: offline sync payload, start/stop work order, add note, register attachment, and lightweight mobile views. */
+  mobile: MobileFieldResource;
 };

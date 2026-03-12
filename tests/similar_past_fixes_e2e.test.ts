@@ -9,6 +9,10 @@
  * and similar-past-fixes-backfill). If CRON_SECRET is set, pass it via
  * x-cron-secret header. Excluded from CI. Run via: pnpm run test:e2e
  *
+ * This describe is skipped when OPENAI_API_KEY is unset so CI and local runs
+ * without edge functions stay green. To run the full E2E: set OPENAI_API_KEY,
+ * run `pnpm run supabase:functions`, then `pnpm run test:e2e`.
+ *
  * If you get "Invalid JWT" on search, try: supabase functions serve --no-verify-jwt
  */
 
@@ -24,7 +28,9 @@ import {
   transitionWorkOrderStatus,
 } from './helpers/entities';
 
-describe('Similar Past Fixes E2E (backfill + search)', () => {
+const hasE2EPrereqs = !!process.env.OPENAI_API_KEY;
+
+describe.skipIf(!hasE2EPrereqs)('Similar Past Fixes E2E (backfill + search)', () => {
   beforeAll(async () => {
     await waitForSupabase();
   });
