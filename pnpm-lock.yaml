@@ -45,6 +45,9 @@ importers:
       '@ai-sdk/react':
         specifier: ^1.0.0
         version: 1.2.12(react@19.2.4)(zod@3.25.76)
+      '@supabase/supabase-js':
+        specifier: ^2.39.3
+        version: 2.95.3
       '@workorder-systems/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
@@ -63,6 +66,9 @@ importers:
       react-dom:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.15
