@@ -185,6 +185,10 @@
   .leaflet-container {
     @apply !bg-card !font-[inherit];
   }
+  /* Dark mode: lighten map tiles so the map is dark but not fully black (matches slate/gray theme) */
+  .dark .leaflet-tile-pane {
+    filter: brightness(1.22);
+  }
   .leaflet-container a {
     @apply !text-inherit;
   }

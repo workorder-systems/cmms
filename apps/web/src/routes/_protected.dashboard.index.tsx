@@ -2,6 +2,7 @@ import * as React from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ClipboardList, Package, ChevronRight } from 'lucide-react'
+import { ExtensionPoint, HeaderRightSidebarTrigger } from '@workspace/ui/components/app-shell'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
 import { ensureTenantContextWithCatalogs } from '../lib/route-loaders'
@@ -20,6 +21,11 @@ import { BentoGrid, BentoGridItem } from '@workspace/ui/components/BentoGrid'
 import { DataChart } from '@workspace/ui/components/data-chart'
 import { PriorityBadge } from '../components/priority-badge'
 import { StatusBadge } from '../components/status-badge'
+import {
+  DashboardChatFooter,
+  DashboardChatHeader,
+  DashboardChatMessages,
+} from '../components/dashboard-chat-sidebar'
 import { catalogQueryOptions } from '../lib/catalog-queries'
 
 export const Route = createFileRoute('/_protected/dashboard/')({
@@ -111,7 +117,20 @@ function DashboardPage() {
   const overduePreview = overdueWorkOrders.slice(0, 6)
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+    <>
+      <ExtensionPoint name="header.right">
+        <HeaderRightSidebarTrigger />
+      </ExtensionPoint>
+      <ExtensionPoint name="sidebar.right.header">
+        <DashboardChatHeader />
+      </ExtensionPoint>
+      <ExtensionPoint name="sidebar.right.content">
+        <DashboardChatMessages />
+      </ExtensionPoint>
+      <ExtensionPoint name="sidebar.right.footer">
+        <DashboardChatFooter />
+      </ExtensionPoint>
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <BentoGrid
         cols={{ base: 2, md: 3, lg: 4 }}
         rowHeight={{ base: '80px', md: '100px', lg: '120px' }}
@@ -307,5 +326,6 @@ function DashboardPage() {
         </BentoGridItem>
       </BentoGrid>
     </div>
+    </>
   )
 }

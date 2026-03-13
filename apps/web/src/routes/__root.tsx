@@ -22,10 +22,10 @@ function RootComponent() {
       <Outlet />
       <Toaster />
       {import.meta.env.DEV && (
-        <>
+        <div className="fixed inset-0 pointer-events-none z-[9999] [&>*]:pointer-events-auto">
           <TanStackRouterDevtools position="bottom-right" />
           <ReactQueryDevtools buttonPosition="bottom-left" />
-        </>
+        </div>
       )}
     </NuqsAdapter>
   )

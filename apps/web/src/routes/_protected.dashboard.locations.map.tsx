@@ -7,6 +7,8 @@ import { useTenant } from '../contexts/tenant'
 import {
   Map as MapComponent,
   MapTileLayer,
+  MapLayers,
+  MapLayersControl,
   MapZoomControl,
   MapFullscreenControl,
   MapLocateControl,
@@ -299,10 +301,30 @@ function LocationsMapPage() {
           </div>
         ) : (
           <MapComponent center={DEFAULT_CENTER} zoom={10}>
-            <MapTileLayer />
-            <MapZoomControl />
-            <MapFullscreenControl />
-            <MapLocateControl />
+            <MapLayers defaultTileLayer="Streets">
+              {/* Light: Voyager. Dark: CARTO dark (softened via CSS so not fully black) */}
+              <MapTileLayer
+                name="Streets"
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+                darkUrl="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              />
+              <MapTileLayer
+                name="OpenStreetMap"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                darkUrl="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              <MapTileLayer
+                name="Satellite"
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community'
+              />
+              <MapZoomControl />
+              <MapFullscreenControl />
+              <MapLocateControl />
+              <MapLayersControl tileLayersLabel="Map type" />
+            </MapLayers>
             <MapSearchPanel locations={locations} />
             <FitBoundsToLocations locations={locationsWithCoords} />
             {locationsWithCoords.map((loc) => (
