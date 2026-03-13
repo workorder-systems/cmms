@@ -8,11 +8,22 @@ import { ThemeProvider } from 'next-themes'
 import { routeTree } from './routeTree.gen'
 import { getDbClient } from './lib/db-client'
 import { AuthProvider } from './contexts/auth'
+import { clearInvalidTenantAndResync, isNotMemberOfTenantError } from './contexts/tenant'
 import { queryClientDefaultOptions } from './lib/query-config'
 import { catalogPersister, shouldDehydrateCatalogQuery } from './lib/query-persist'
 
 const queryClient = new QueryClient({
   defaultOptions: queryClientDefaultOptions,
+})
+
+// When any query fails with "not a member of this tenant", clear invalid tenant so UI resyncs
+queryClient.getQueryCache().subscribe((event) => {
+  if (event?.type === 'updated' && event.query.state.status === 'error') {
+    const error = event.query.state.error
+    if (isNotMemberOfTenantError(error)) {
+      clearInvalidTenantAndResync(queryClient)
+    }
+  }
 })
 const dbClient = getDbClient()
 

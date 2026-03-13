@@ -23,6 +23,22 @@ function clearStoredTenantId(): void {
   }
 }
 
+/** True if the error is the DB telling us the user is not a member of the selected tenant. */
+export function isNotMemberOfTenantError(error: unknown): boolean {
+  const msg =
+    error != null && typeof error === 'object' && 'message' in error
+      ? String((error as { message: unknown }).message)
+      : ''
+  return /not a member of this tenant|Unauthorized.*tenant/i.test(msg)
+}
+
+/** Clear stored tenant and store state so UI resyncs to a valid tenant. Call when a query fails with "not a member". */
+export function clearInvalidTenantAndResync(queryClient: { invalidateQueries: (opts: { queryKey: string[] }) => void }): void {
+  clearStoredTenantId()
+  useTenantStore.getState().setActiveTenantIdSync(null)
+  queryClient.invalidateQueries({ queryKey: ['tenants'] })
+}
+
 interface TenantState {
   activeTenantId: string | null
   isSetting: boolean
@@ -52,8 +68,13 @@ export const useTenantStore = create<TenantState>()((set, get) => ({
       await client.supabase.auth.refreshSession()
       setStoredTenantId(id)
       set({ activeTenantId: id, isSetting: false })
-    } catch {
-      set({ isSetting: false })
+    } catch (err) {
+      if (isNotMemberOfTenantError(err)) {
+        clearStoredTenantId()
+        set({ activeTenantId: null, isSetting: false })
+      } else {
+        set({ isSetting: false })
+      }
     }
   },
 }))
@@ -95,10 +116,10 @@ export function useTenant() {
     const validStored = stored && tenants.some((t) => t.id === stored)
     const targetId = validStored ? stored : tenants[0]?.id ?? null
     if (!targetId) return
-    initialSyncDone.current = true
     setActiveTenantIdSync(targetId)
     client.supabase.auth.getSession().then(({ data: { session } }) => {
       if (getTenantIdFromSession(session) === targetId) {
+        initialSyncDone.current = true
         queryClient.invalidateQueries({ queryKey: ['catalogs'] })
         return
       }
@@ -106,10 +127,24 @@ export function useTenant() {
         .setTenant(targetId)
         .then(() => client.supabase.auth.refreshSession())
         .then(() => {
+          initialSyncDone.current = true
           queryClient.invalidateQueries({ queryKey: ['catalogs'] })
         })
-        .catch(() => {
+        .catch((err) => {
           initialSyncDone.current = false
+          if (isNotMemberOfTenantError(err)) {
+            clearStoredTenantId()
+            setActiveTenantIdSync(tenants[0]?.id ?? null)
+            if (tenants[0]?.id) {
+              client
+                .setTenant(tenants[0].id)
+                .then(() => client.supabase.auth.refreshSession())
+                .then(() => queryClient.invalidateQueries({ queryKey: ['catalogs'] }))
+                .finally(() => {
+                  initialSyncDone.current = true
+                })
+            }
+          }
         })
     })
   }, [isLoadingTenants, tenants, client, setActiveTenantIdSync, queryClient])
