@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   Activity,
   ArchiveX,
-  Command,
   FileText,
   Wrench,
   Building2,
@@ -13,6 +12,7 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react"
+import { WorkorderLogo } from "@workspace/ui/components/logo/workorder"
 import {
   Avatar,
   AvatarFallback,
@@ -231,7 +231,7 @@ function ChatShellLayout({
                   <SidebarMenuButton size="lg" asChild className={cn(isMobile ? "" : "md:h-8 md:p-0")}>
                     <a href="#">
                       <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                        <Command className="size-4" />
+                        <WorkorderLogo className="size-6" />
                       </div>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-medium">CMMS</span>
