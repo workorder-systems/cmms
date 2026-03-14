@@ -600,7 +600,7 @@ export function CMMSChat({
               return (
                 <Message className={`${MESSAGE_CLASS} items-end`} key={idx}>
                   <div className="group flex w-full flex-col items-end gap-1">
-                    <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
+                    <MessageContent className="bg-muted text-foreground max-w-[85%] rounded-3xl px-5 py-2.5 whitespace-pre-wrap sm:max-w-[75%]">
                       {toMarkdownString(msg.content)}
                     </MessageContent>
                     <MessageActions className={ACTIONS_CLASS}>

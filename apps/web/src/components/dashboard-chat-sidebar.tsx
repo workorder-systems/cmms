@@ -138,7 +138,7 @@ function DashboardChatMessages() {
             msg.role === 'user' ? (
               <Message key={i} className={cn(MESSAGE_CLASS, 'items-end')}>
                 <div className="group flex w-full flex-col items-end gap-1">
-                  <MessageContent className="bg-muted text-primary max-w-[85%] whitespace-pre-wrap rounded-3xl px-5 py-2.5">
+                  <MessageContent className="bg-muted text-foreground max-w-[85%] whitespace-pre-wrap rounded-3xl px-5 py-2.5">
                     {msg.content}
                   </MessageContent>
                   <MessageActions className={ACTIONS_CLASS}>
