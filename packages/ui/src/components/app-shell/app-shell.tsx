@@ -54,6 +54,9 @@ export function AppShell({
     [extensionsMap]
   );
 
+  const hasSectionNavExtensions =
+    extensionsMap.has('section.nav.left') || extensionsMap.has('section.nav.right');
+
   const leftSidebarOpen = useAppShellStore((state: AppShellStore) => state.leftSidebarOpen);
   const setLeftSidebarOpen = useAppShellStore((state: AppShellStore) => state.setLeftSidebarOpen);
   const rightSidebarOpen = useAppShellStore((state: AppShellStore) => state.rightSidebarOpen);
@@ -104,6 +107,21 @@ export function AppShell({
             <PortalTarget name="header.right" />
           </div>
         </header>
+        {hasSectionNavExtensions && (
+          <div
+            className="flex shrink-0 items-center overflow-x-auto border-b px-4 py-2"
+            data-section-nav
+          >
+            <div className="flex min-w-min items-center gap-2 flex-nowrap">
+              <div className="flex items-center gap-1 flex-nowrap">
+                <PortalTarget name="section.nav.left" />
+              </div>
+              <div className="flex items-center gap-1 flex-nowrap ml-auto">
+                <PortalTarget name="section.nav.right" />
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex min-h-0 flex-1 flex-col gap-0 @container/main overflow-hidden">
           <PortalTarget name="page.header" />
           <div className="min-h-0 w-full min-w-0 flex-1 overflow-auto overflow-x-hidden pt-4">

@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { MapPin, Pencil, Plus, Upload } from 'lucide-react'
+import { MapPin, Pencil, Plus } from 'lucide-react'
 import type { LocationRow, LocationType } from '@workorder-systems/sdk'
 import { getDbClient } from '../lib/db-client'
 import { useTenant } from '../contexts/tenant'
@@ -462,17 +462,10 @@ function LocationsHierarchyPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <ExtensionPoint name="header.right">
-        <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/dashboard/locations/import">
-              <Upload className="size-4" />
-            </Link>
-          </Button>
-          <Button onClick={openCreateModal} size="sm" variant="outline">
-            <Plus className="size-4" />
-            New location
-          </Button>
-        </div>
+        <Button onClick={openCreateModal} size="sm" variant="outline">
+          <Plus className="size-4" />
+          New location
+        </Button>
       </ExtensionPoint>
 
       <DataTable table={table}>
