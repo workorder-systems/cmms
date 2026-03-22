@@ -220,18 +220,21 @@ describe('Mobile field', () => {
     it('registers existing file as work order attachment and returns attachment id', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
-      const workOrderId = await createTestWorkOrder(client, tenantId, 'Register WO', undefined, 'medium', user.id);
-      const attachmentId = await createTestAttachment(client, tenantId, workOrderId, 'reg.pdf');
+      const wo1 = await createTestWorkOrder(client, tenantId, 'Register WO1', undefined, 'medium', user.id);
+      const wo2 = await createTestWorkOrder(client, tenantId, 'Register WO2', undefined, 'medium', user.id);
+      const attachmentId = await createTestAttachment(client, tenantId, wo1, 'reg.pdf');
       await setTenantContext(client, tenantId);
       const attachment = await getAttachment(client, attachmentId, tenantId);
       const fileId = attachment.file_id;
 
-      await client.from('v_work_order_attachments').delete().eq('id', attachmentId);
+      // After entity_attachments lifecycle (prune unreferenced files), deleting the only
+      // attachment row removes app.files — so we link the same file to a second WO while
+      // the first row still exists (see work_order_attachments.test.ts).
 
       const { data: newAttachmentId, error } = await client.rpc('rpc_register_entity_attachment', {
         p_tenant_id: tenantId,
         p_entity_type: 'work_order',
-        p_entity_id: workOrderId,
+        p_entity_id: wo2,
         p_file_id: fileId,
         p_label: 'Re-registered',
         p_kind: 'document',
@@ -245,6 +248,7 @@ describe('Mobile field', () => {
       expect(reAttach.file_id).toBe(fileId);
       expect(reAttach.label).toBe('Re-registered');
       expect(reAttach.kind).toBe('document');
+      expect(reAttach.work_order_id).toBe(wo2);
     });
   });
 
