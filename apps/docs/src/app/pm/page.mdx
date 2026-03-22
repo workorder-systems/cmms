@@ -8,7 +8,7 @@ export const sections = [
   { title: 'Create and update template', id: 'create-update-template' },
   { title: 'Create and update schedule', id: 'create-update-schedule' },
   { title: 'Delete schedule', id: 'delete-schedule' },
-  { title: 'Dependencies and generation', id: 'dependencies-and-generation' },
+  { title: 'Dependencies and automatic generation', id: 'dependencies-and-generation' },
   { title: 'Due, overdue, upcoming, history', id: 'due-overdue-upcoming-history' },
 ]
 
@@ -134,9 +134,11 @@ await client.pm.deleteSchedule({
 
 </CodeGroup>
 
-## Dependencies and generation
+## Dependencies and automatic generation
 
-Create dependencies between PM schedules and generate due PMs.
+Create dependencies between PM schedules, generate due PMs on demand from your app, or rely on the database scheduler.
+
+**Automatic (hosted Supabase / pg_cron):** `pg_cron` runs `public.rpc_process_due_pm_generation()` about every 15 minutes (postgres role only; not exposed on the PostgREST API). It scans all tenants for active schedules with `auto_generate` and a due `next_due_date`, then creates work orders the same way as `generateDuePms`. It skips a schedule when a work order already exists in a **non-final** status (per `cfg.status_catalogs.is_final`), which prevents duplicate WOs for calendar-style schedules until `next_due_date` is advanced. **Usage-based** PMs are still created when meter readings cross thresholds (`rpc_record_meter_reading`), not by this job. **Manual** PMs still use `triggerManualPm`.
 
 <CodeGroup title="client.pm.createDependency and client.pm.generateDuePms">
 

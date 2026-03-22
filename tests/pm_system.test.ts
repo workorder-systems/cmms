@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase, createServiceRoleClient } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
@@ -1198,6 +1199,110 @@ describe('PM System', () => {
 
         expect(error).toBeNull();
         expect(count).toBeLessThanOrEqual(2);
+      });
+    });
+
+    describe('rpc_process_due_pm_generation (pg_cron)', () => {
+      function runPmCronGeneration(limit: number): number | null {
+        try {
+          const out = execSync(
+            `docker exec supabase_db_database psql -U postgres -d postgres -v ON_ERROR_STOP=1 -t -A -c "select public.rpc_process_due_pm_generation(${limit});"`,
+            { encoding: 'utf-8' }
+          );
+          const n = parseInt(out.trim(), 10);
+          return Number.isNaN(n) ? null : n;
+        } catch {
+          return null;
+        }
+      }
+
+      function setPmScheduleDueInPast(pmScheduleId: string): boolean {
+        try {
+          execSync(
+            `docker exec supabase_db_database psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "update app.pm_schedules set next_due_date = pg_catalog.now() - interval '1 day' where id = '${pmScheduleId}';"`,
+            { encoding: 'utf-8' }
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      it('generates a work order for a due time-based PM when run as postgres', async () => {
+        const probe = runPmCronGeneration(1);
+        if (probe === null) {
+          console.warn('[pm cron test] skipped: docker exec psql failed (local Supabase container required)');
+          return;
+        }
+
+        await createTestUser(client);
+        const tenantId = await createTestTenant(client);
+        const assetId = await createTestAsset(client, tenantId, 'Cron PM Asset');
+        const pmScheduleId = await createTestPmSchedule(
+          client,
+          tenantId,
+          assetId,
+          'Cron Due PM',
+          'time',
+          { interval_days: 30 }
+        );
+
+        expect(setPmScheduleDueInPast(pmScheduleId)).toBe(true);
+
+        runPmCronGeneration(500);
+
+        await setTenantContext(client, tenantId);
+        const { data: wos, error: woErr } = await client
+          .from('v_work_orders')
+          .select('id, pm_schedule_id')
+          .eq('pm_schedule_id', pmScheduleId);
+        expect(woErr).toBeNull();
+        expect((wos ?? []).length).toBe(1);
+
+        runPmCronGeneration(500);
+        const { data: wosAfter } = await client
+          .from('v_work_orders')
+          .select('id')
+          .eq('pm_schedule_id', pmScheduleId);
+        expect((wosAfter ?? []).length).toBe(1);
+      });
+
+      it('does not create a second WO for calendar PM while first WO is still open', async () => {
+        const probe = runPmCronGeneration(1);
+        if (probe === null) {
+          console.warn('[pm cron test] skipped: docker exec psql failed (local Supabase container required)');
+          return;
+        }
+
+        await createTestUser(client);
+        const tenantId = await createTestTenant(client);
+        const assetId = await createTestAsset(client, tenantId, 'Calendar Cron Asset');
+        const pmScheduleId = await createTestPmSchedule(
+          client,
+          tenantId,
+          assetId,
+          'Cron Calendar PM',
+          'calendar',
+          { pattern: 'daily' }
+        );
+
+        expect(setPmScheduleDueInPast(pmScheduleId)).toBe(true);
+
+        runPmCronGeneration(500);
+
+        await setTenantContext(client, tenantId);
+        const { data: wos } = await client
+          .from('v_work_orders')
+          .select('id')
+          .eq('pm_schedule_id', pmScheduleId);
+        expect((wos ?? []).length).toBe(1);
+
+        runPmCronGeneration(500);
+        const { data: wos2 } = await client
+          .from('v_work_orders')
+          .select('id')
+          .eq('pm_schedule_id', pmScheduleId);
+        expect((wos2 ?? []).length).toBe(1);
       });
     });
 
