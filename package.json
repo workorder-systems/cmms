@@ -6,7 +6,8 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "plugins/*"
   ],
   "dependencies": {
     "@workorder-systems/sdk": "workspace:*"

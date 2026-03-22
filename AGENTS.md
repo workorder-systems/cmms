@@ -10,6 +10,8 @@ This is a **pnpm** monorepo (**Turborepo**) for a multi-tenant CMMS **database l
 |-----------|------|---------|
 | Root (`database`) | `.` | Supabase migrations, root Vitest suite (`tests/`), scripts |
 | Docs | `apps/docs` | Next.js documentation site (MDX) |
+| Plugins | `plugins/*` | Optional integration services (webhook receivers, connectors); not shipped as part of core `apps` |
+| Example | `plugins/example` | Minimal HTTP webhook receiver for testing `pg_net` plugin deliveries locally |
 | SDK | `packages/sdk` | Type-safe SDK for the public Supabase API (views + RPCs) |
 | UI | `packages/ui` | Shared components (Radix UI, Tailwind v4, Storybook) |
 | ESLint config | `packages/eslint-config` | Shared flat ESLint configs |
@@ -85,6 +87,8 @@ Ensure **Docker + Supabase** are available. If **`SUPABASE_URL`** and **`SUPABAS
    - `pnpm --filter work-order-systems-docs dev` → Next.js (default **http://localhost:3000**)
    - `pnpm --filter @workspace/ui dev` → Storybook (**http://localhost:6006**)
    - `pnpm --filter @workorder-systems/sdk dev` → SDK watch build
+   - `pnpm --filter work-order-systems-example dev` → example webhook receiver (**http://127.0.0.1:8765**); for local Supabase Docker + `pg_net`, set installation `webhook_url` to `http://host.docker.internal:8765/webhook` (see `plugins/example/README.md`)
+   - `pnpm --filter work-order-systems-example smoke:setup` → registers `example_receiver`, seeds Vault (Docker), creates user/tenant, installs plugin, creates a work order, runs `rpc_process_plugin_deliveries` (needs `.env.local` **service role** + receiver running with matching `WEBHOOK_SECRET`; see that README)
 
 ### Environment variable precedence
 
