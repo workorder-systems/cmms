@@ -28,7 +28,7 @@
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
     "supabase:functions": "supabase functions serve --env-file .env.local --no-verify-jwt",
-    "test:setup": "supabase start && npm run test",
+    "test:setup": "supabase start && pnpm test",
     "test:teardown": "supabase stop",
     "test:reset": "supabase db reset && pnpm test",
     "gen-types": "bash packages/sdk/scripts/gen-types.sh"

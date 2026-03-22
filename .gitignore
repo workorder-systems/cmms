@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+# This repo uses pnpm; npm lockfiles are noise and confuse CI/tooling.
+package-lock.json
 .pnp
 .pnp.js
 
