@@ -9819,6 +9819,16 @@ export type Database = {
         Args: { p_name: string; p_tenant_id: string }
         Returns: Json
       }
+      rpc_create_tool: {
+        Args: {
+          p_asset_tag?: string
+          p_name: string
+          p_serial_number?: string
+          p_status?: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       rpc_create_work_order: {
         Args: {
           p_asset_id?: string
@@ -10432,6 +10442,17 @@ export type Database = {
           p_supplies_parts?: boolean
           p_tax_id?: string
           p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      rpc_update_tool: {
+        Args: {
+          p_asset_tag?: string
+          p_name?: string
+          p_serial_number?: string
+          p_status?: string
+          p_tenant_id: string
+          p_tool_id: string
         }
         Returns: undefined
       }

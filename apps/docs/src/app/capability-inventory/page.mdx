@@ -45,9 +45,9 @@ See [Work orders → Attachments](/work-orders) and migration `cmms_core_docs_to
 
 **In the database:** **`app.tools`** and **`app.tool_checkouts`** with **`public.v_tools`**, **`v_tool_checkouts`**, **`rpc_checkout_tool`**, **`rpc_return_tool`**.
 
-**Gap:** **`app.tools` is not exposed for REST insert/update** (only `v_tools` select). Catalog maintenance today is **SQL/service-role** or a future **`rpc_create_tool`** — field tech flows (checkout/return) are fully API-accessible.
+**API:** **`rpc_create_tool`** and **`rpc_update_tool`** with **`tool.manage`**; list via **`v_tools`**. Checkout requires **`tool.status = 'available'`**.
 
-**SDK:** **`client.fieldOps`** — list views + checkout/return RPCs. See [Field operations](/field-operations).
+**SDK:** **`client.fieldOps.createTool`**, **`updateTool`**, lists, checkout/return. See [Field operations](/field-operations).
 
 ## Shift handover / logbook
 

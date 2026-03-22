@@ -1,10 +1,12 @@
 export const metadata = {
   title: 'Field operations',
-  description: 'Tool catalog (read), checkouts and returns, shift handover logbook — SDK client.fieldOps.',
+  description:
+    'Tool catalog create/update, list, checkouts and returns, shift handover — SDK client.fieldOps.',
 }
 
 export const sections = [
-  { title: 'Tools', id: 'tools' },
+  { title: 'Tool catalog (create & update)', id: 'tool-catalog' },
+  { title: 'List tools and checkouts', id: 'tools' },
   { title: 'Checkout and return', id: 'checkout' },
   { title: 'Shift handovers', id: 'handovers' },
   { title: 'Permissions', id: 'permissions' },
@@ -12,13 +14,34 @@ export const sections = [
 
 # Field operations
 
-Use **`client.fieldOps`** on **`@workorder-systems/sdk`** for **tools** (list), **checkouts/returns**, and **shift handover** workflows. Set tenant context and refresh the JWT like other tenant APIs. {{ className: 'lead' }}
+Use **`client.fieldOps`** on **`@workorder-systems/sdk`** for **tool catalog** (create/update + list), **checkouts/returns**, and **shift handover** workflows. Set tenant context and refresh the JWT like other tenant APIs. {{ className: 'lead' }}
 
-<Note>
-  **Tool catalog writes** (create/edit tool rows) are not exposed on the public REST API today — only **`v_tools`** reads. Use the database or service role for catalog setup, or add an RPC in a future migration.
-</Note>
+## Tool catalog (create & update)
 
-## Tools
+Requires **`tool.manage`** (typically admin/manager). **`status`** must be lowercase snake_case (`^[a-z0-9_]+$`); default is **`available`**. Only **`available`** tools can be checked out.
+
+<CodeGroup title="client.fieldOps.createTool / updateTool">
+
+```ts
+const toolId = await client.fieldOps.createTool({
+  tenantId,
+  name: 'Torque wrench 1/2"',
+  assetTag: 'TW-204',
+  serialNumber: 'CDI-77889',
+  status: 'available',
+})
+
+await client.fieldOps.updateTool({
+  tenantId,
+  toolId,
+  name: 'Torque wrench 1/2" (cal due Q2)',
+  status: 'in_calibration', // not allowed while checked out
+})
+```
+
+</CodeGroup>
+
+## List tools and checkouts
 
 <CodeGroup title="client.fieldOps.listTools()">
 

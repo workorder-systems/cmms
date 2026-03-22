@@ -11,6 +11,25 @@ export type ShiftHandoverRow = Database['public']['Views']['v_shift_handovers'] 
   ? R
   : Record<string, unknown>;
 
+/** Create a tool catalog row. Requires `tool.manage`. Status must match `^[a-z0-9_]+$` (default `available`). */
+export interface CreateToolParams {
+  tenantId: string;
+  name: string;
+  assetTag?: string | null;
+  serialNumber?: string | null;
+  status?: string | null;
+}
+
+/** Update a tool. Omit fields to leave unchanged. Requires `tool.manage`. */
+export interface UpdateToolParams {
+  tenantId: string;
+  toolId: string;
+  name?: string | null;
+  assetTag?: string | null;
+  serialNumber?: string | null;
+  status?: string | null;
+}
+
 export interface CheckoutToolParams {
   tenantId: string;
   toolId: string;
@@ -56,11 +75,33 @@ const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(supabase);
 
 /**
- * Field operations: tool catalog (read), checkouts/returns, shift handover logbook.
- * Tool catalog rows are created with `tool.manage` via direct SQL or a future RPC — not exposed as REST insert today.
+ * Field operations: tool catalog (CRUD via RPC + list view), checkouts/returns, shift handover logbook.
  */
 export function createFieldOperationsResource(supabase: SupabaseClient<Database>) {
   return {
+    /** Requires `tool.manage`. Returns new tool UUID. */
+    async createTool(params: CreateToolParams): Promise<string> {
+      return callRpc(rpc(supabase), 'rpc_create_tool', {
+        p_tenant_id: params.tenantId,
+        p_name: params.name,
+        p_asset_tag: params.assetTag ?? null,
+        p_serial_number: params.serialNumber ?? null,
+        p_status: params.status ?? null,
+      });
+    },
+
+    /** Requires `tool.manage`. Cannot set non-`available` status while the tool has an open checkout. */
+    async updateTool(params: UpdateToolParams): Promise<void> {
+      await callRpc(rpc(supabase), 'rpc_update_tool', {
+        p_tenant_id: params.tenantId,
+        p_tool_id: params.toolId,
+        p_name: params.name ?? null,
+        p_asset_tag: params.assetTag ?? null,
+        p_serial_number: params.serialNumber ?? null,
+        p_status: params.status ?? null,
+      });
+    },
+
     async listTools(): Promise<ToolRow[]> {
       const { data, error } = await supabase.from('v_tools').select('*').order('name');
       if (error) throw normalizeError(error);

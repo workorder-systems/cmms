@@ -47,7 +47,7 @@ const id = await client.workOrders.create({
 | `tenants` | `list()`, `getById()` | `create()`, `inviteUser()`, `assignRole()`, `removeMember()` |
 | `workOrders` | `list()`, `getById()`, `listAttachments(workOrderId)`, `listMyRequests()`, `listSlaStatus()`, `getSlaStatus(workOrderId)` | `create()`, `createRequest()` (portal), `acknowledge()`, `upsertSlaRule()`, `transitionStatus()`, `complete()`, `logTime()`, `updateAttachmentMetadata()` |
 | `assets` | `list()`, `getById()`, `listWarranties(assetId?)` | `create()`, `update()`, `delete()`, `bulkImport()`, `upsertWarranty()`, `recordDowntime()` |
-| `fieldOps` | `listTools()`, `listToolCheckouts()`, `listShiftHandovers()` | `checkoutTool()`, `returnTool()`, `createShiftHandover()`, `submitShiftHandover()`, `acknowledgeShiftHandover()`, `addShiftHandoverItem()` |
+| `fieldOps` | `listTools()`, `listToolCheckouts()`, `listShiftHandovers()` | `createTool()`, `updateTool()`, `checkoutTool()`, `returnTool()`, `createShiftHandover()`, `submitShiftHandover()`, `acknowledgeShiftHandover()`, `addShiftHandoverItem()` |
 | `locations` | `list()`, `getById()` | `create()`, `update()`, `delete()`, `bulkImport()` |
 | `spaces` | `list()`, `getById()` | `create()`, `update()`, `delete()` |
 | `departments` | `list()`, `getById()` | `create()`, `update()`, `delete()` |

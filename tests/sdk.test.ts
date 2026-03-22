@@ -215,6 +215,25 @@ describe('SDK', () => {
       const tools = await sdk.fieldOps.listTools();
       expect(Array.isArray(tools)).toBe(true);
     });
+
+    it('createTool and updateTool', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const toolId = await sdk.fieldOps.createTool({
+        tenantId,
+        name: 'SDK test torque wrench',
+        assetTag: 'SDK-TW-1',
+        status: 'available',
+      });
+      expect(typeof toolId).toBe('string');
+      await sdk.fieldOps.updateTool({
+        tenantId,
+        toolId,
+        name: 'SDK test torque wrench (updated)',
+      });
+      const tools = await sdk.fieldOps.listTools();
+      const row = tools.find((t) => t.id === toolId);
+      expect(row?.name).toBe('SDK test torque wrench (updated)');
+    });
   });
 
   // Postgres/API errors are normalized to SdkError with code, message, details, hint preserved.

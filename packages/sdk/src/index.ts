@@ -79,6 +79,8 @@ export type {
   ToolRow,
   ToolCheckoutRow,
   ShiftHandoverRow,
+  CreateToolParams,
+  UpdateToolParams,
   CheckoutToolParams,
   ReturnToolParams,
   CreateShiftHandoverParams,
