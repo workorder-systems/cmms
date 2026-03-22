@@ -5,7 +5,7 @@ import { HeroPattern } from '@/components/HeroPattern'
 export const metadata = {
   title: 'API Documentation',
   description:
-    'Work Order Systems API and SDK. Supabase-backed views and RPCs, @workorder-systems/db client.',
+    'WorkOrder Systems OSS: Supabase views, RPCs, and @workorder-systems/sdk—the self-hostable CMMS core.',
 }
 
 export const sections = [
@@ -17,7 +17,7 @@ export const sections = [
 
 # API Documentation
 
-Build your app on the Work Order Systems API. Reads use public views; writes use RPCs. The `@workorder-systems/db` client gives you a type-safe API for tenants, work orders, assets, labor, reporting, and more. {{ className: 'lead' }}
+**WorkOrder Systems OSS** aims to be the **Linux of maintenance software**: a **production-grade, self-hostable** core you can deploy and extend without vendor lock-in. This site documents the **Supabase-backed** public API—reads through views, writes through RPCs—wrapped by **`@workorder-systems/sdk`** for tenants, work orders, assets, labor, reporting, and the rest of the domain. The [project vision and adoption notes](https://github.com/workorder-systems/db/blob/main/docs/PROJECT.md#vision) live in **`docs/PROJECT.md`**. {{ className: 'lead' }}
 
 <div className="not-prose mt-6 mb-16 flex flex-wrap gap-3">
   <Button href="/quickstart" arrow="right">
@@ -30,13 +30,22 @@ Build your app on the Work Order Systems API. Reads use public views; writes use
 
 ## Getting started {{ anchor: false }}
 
-You need your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Install the SDK, create a client, then sign in with Supabase Auth. For tenant-scoped data, set tenant context and refresh your session. {{ className: 'lead' }}
+1. Copy your **project URL** and **anon key** from the [dashboard](https://supabase.com/dashboard) → **Project Settings → API**.
+2. Install **`@workorder-systems/sdk`** and **`@supabase/supabase-js`**, then call **`createDbClient(url, anonKey)`**.
+3. Sign users in with **Supabase Auth**. For tenant-scoped data, set tenant context and refresh the session so the JWT includes **`tenant_id`**.
 
-<div className="not-prose flex flex-wrap gap-3">
-  <Button href="/installation" variant="text" arrow="right">
-    <>Get URL and anon key</>
-  </Button>
-</div>
+```mermaid
+flowchart TB
+  subgraph app[Your app]
+    SDK["@workorder-systems/sdk"]
+  end
+  subgraph project[Supabase project]
+    API[PostgREST]
+    PG[(Postgres + RLS)]
+    API --- PG
+  end
+  SDK --> API
+```
 
 <Guides />
 

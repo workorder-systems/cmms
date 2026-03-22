@@ -21,6 +21,7 @@
     "@animate-ui": "https://animate-ui.com/r/{name}.json",
     "@shadcn-map": "http://shadcn-map.vercel.app/r/{name}.json",
     "@tour": "https://onboarding-tour.vercel.app/r/{name}.json",
-    "@diceui": "https://diceui.com/r/{name}.json"
+    "@diceui": "https://diceui.com/r/{name}.json",
+    "@spell": "https://spell.sh/r/{name}.json"
   }
 }

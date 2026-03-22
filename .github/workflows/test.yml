@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master, testing]
     paths:
-      - 'supabase/migrations/**'
+      - 'apps/supabase/**'
       - 'tests/**'
       - 'packages/sdk/**'
       - '.github/workflows/test.yml'
@@ -12,7 +12,7 @@ on:
   pull_request:
     branches: [main, master, testing]
     paths:
-      - 'supabase/migrations/**'
+      - 'apps/supabase/**'
       - 'tests/**'
       - 'packages/sdk/**'
       - '.github/workflows/test.yml'
@@ -48,6 +48,7 @@ jobs:
 
       - name: 🚀 Start Supabase local instance
         id: start-supabase
+        working-directory: apps/supabase
         run: |
           echo "Starting Supabase local instance..."
           supabase start
@@ -57,6 +58,7 @@ jobs:
 
       - name: ⏳ Wait for Supabase to be ready and extract keys
         id: supabase-config
+        working-directory: apps/supabase
         run: |
           echo "Waiting for Supabase services to be ready..."
           max_attempts=60
@@ -132,6 +134,7 @@ jobs:
 
       - name: 📊 Display Supabase status
         if: success()
+        working-directory: apps/supabase
         run: |
           echo "Supabase instance status:"
           supabase status || true
@@ -154,6 +157,7 @@ jobs:
 
       - name: 🛑 Stop Supabase
         if: always()
+        working-directory: apps/supabase
         run: |
           echo "Stopping Supabase instance..."
           supabase stop || true

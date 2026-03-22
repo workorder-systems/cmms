@@ -1,55 +1,94 @@
-# Work Order Systems - Database
+<div align="center">
 
-[![CI](https://github.com/workorder-systems/db/actions/workflows/test.yml/badge.svg)](https://github.com/workorder-systems/db/actions/workflows/test.yml)
-[![License](https://img.shields.io/github/license/workorder-systems/db)](LICENSE)
+<h1>WorkOrder Systems</h1>
 
-A multi-tenant Supabase/Postgres schema for work order and
-maintenance management systems (CMMS).
+<p><strong>Open-source CMMS core</strong> · <strong>AGPL-3.0</strong></p>
 
-## What this is
-This repository provides the database layer for Work Order Systems: a secure,
-multi-tenant CMMS backend designed for teams managing assets, locations, and
-maintenance workflows.
+<p><strong><em>The Linux of maintenance software.</em></strong></p>
 
-## Core features
-- Multi-tenant isolation with row level security (RLS)
-- Work orders with configurable workflow statuses and priorities
-- Assets, locations (hierarchical), and departments
-- Roles, permissions, and ABAC scopes for access control
-- Audit logging and analytics-friendly materialized views
-- RPC-first API surface for safe, permissioned writes
+<p>
+  Production-grade, <strong>self-hostable</strong> <strong>CMMS backend</strong>.<br />
+  Postgres, RLS, RPCs, <code>@workorder-systems/sdk</code>, tests, docs.
+</p>
 
-## Quick start (local)
-Prereqs:
-- Node.js 20+ recommended
-- Supabase CLI
+<p><b>Deploy it. Own it. Extend it.</b></p>
+
+<p>No vendor lock-in. No black-box workflows.</p>
+
+<br />
+
+<p>
+  <a href="https://github.com/workorder-systems/db/actions/workflows/test.yml"><img src="https://github.com/workorder-systems/db/actions/workflows/test.yml/badge.svg" alt="CI" /></a>
+  &nbsp;
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/workorder-systems/db?style=flat-square&label=license" alt="License" /></a>
+  &nbsp;
+  <a href="docs/PROJECT.md#where-we-are-today"><img src="https://img.shields.io/badge/status-alpha-f97316?style=flat-square" alt="Alpha" /></a>
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/Postgres-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="Postgres" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=1C1C1C" alt="Supabase" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/pnpm-F69220?style=flat-square&logo=pnpm&logoColor=white" alt="pnpm" />
+</p>
+
+<br />
+
+<p>
+  <a href="GETTING_STARTED.md"><strong>Setup</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/PROJECT.md">Vision &amp; adoption</a>
+  <br />
+  <br />
+  <a href="CONTRIBUTING.md">Contributing</a>
+  &nbsp;·&nbsp;
+  <a href="SECURITY.md">Security</a>
+</p>
+
+<br />
+
+</div>
+
+## Quick start
+
+**Stack:** Node **20+**, **pnpm**, **Docker**, [**Supabase CLI**](https://supabase.com/docs/guides/cli).
+
+**New here?** Open **[`GETTING_STARTED.md`](GETTING_STARTED.md)** first (Docker must be running for the commands below).
 
 ```bash
-npm install
-npm run supabase:start
-npm test
+pnpm install
+pnpm start    # local Supabase (first cold start often 1 to 2 min)
+pnpm test
 ```
 
-If tests fail with auth/schema errors, ensure the DB is in sync: run `pnpm run supabase:reset` then `pnpm test` (or `pnpm run test:reset`). See [CONTRIBUTING.md](CONTRIBUTING.md#tests) for details.
+After `git pull`, if tests look wrong: **`pnpm supabase:reset`** then **`pnpm test`**, or **`pnpm test:reset`**.
 
-## Repo layout
-- `supabase/` - schema, migrations, and config
-- `packages/sdk/` - TypeScript SDK for the public API
-- `tests/` - Vitest integration tests
-- `docs/` - client flows ([attachments](docs/attachments-client-flow.md)), [SDK full-coverage plan](docs/sdk-full-coverage-plan.md), and `docs/adr/` - architecture decision records
+## Repository
 
-## Architecture and rules
-Detailed architecture and database rules live in:
-- [`supabase/README.md`](supabase/README.md)
+| Path | What |
+|:-----|:-----|
+| [`apps/supabase/`](apps/supabase/) | Migrations, RLS, RPCs, Edge Functions |
+| [`packages/sdk/`](packages/sdk/) | **`@workorder-systems/sdk`** (typed public API) |
+| [`apps/docs/`](apps/docs/) | API docs site (Next.js) |
+| [`tests/`](tests/) | Vitest + real Supabase integration tests |
 
-## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and migration rules.
+**Not in this repo:** the customer-facing product SPA. Build your UI on the SDK and Supabase.
 
-## Security
-Please review [SECURITY.md](SECURITY.md) for how to report vulnerabilities.
+## Documentation
 
-## Support
-Use GitHub Issues for bug reports and feature requests.
+| Topic | Link |
+|:------|:-----|
+| Database architecture | [`apps/supabase/README.md`](apps/supabase/README.md) |
+| Vision, alpha, stability, license | [`docs/PROJECT.md`](docs/PROJECT.md) |
+| Agents & CI playbook | [`AGENTS.md`](AGENTS.md) |
 
-## License
-Licensed under AGPL-3.0-or-later. See [LICENSE](LICENSE).
+<br />
+
+<div align="center">
+
+<sub><strong>Alpha.</strong> Pin a git commit before you depend on it. · <a href="https://github.com/workorder-systems/db/issues">Issues</a></sub>
+
+</div>

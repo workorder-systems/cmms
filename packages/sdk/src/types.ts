@@ -13,7 +13,6 @@ import type { CatalogsResource } from './resources/catalogs.js';
 import type { PmResource } from './resources/pm.js';
 import type { DashboardResource } from './resources/dashboard.js';
 import type { AuditResource } from './resources/audit.js';
-import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
 import type { TenantApiKeysResource } from './resources/tenant-api-keys.js';
 import type { LaborResource } from './resources/labor.js';
 import type { SchedulingResource } from './resources/scheduling.js';
@@ -22,6 +21,8 @@ import type { ProjectsResource } from './resources/projects.js';
 import type { PartsInventoryResource } from './resources/parts-inventory.js';
 import type { SafetyComplianceResource } from './resources/safety-compliance.js';
 import type { MobileFieldResource } from './resources/mobile-field.js';
+import type { MapZonesResource } from './resources/map-zones.js';
+import type { FieldOperationsResource } from './resources/field-operations.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -53,9 +54,9 @@ export type DbClient = {
   clearTenant(): Promise<void>;
   /** Tenants: list, create, invite, assign role. */
   tenants: TenantsResource;
-  /** Work orders: list, get, create, transition status, complete, log time, list/update attachments. */
+  /** Work orders: list, get, create, portal requests, SLA views/RPCs, transition, complete, log time, attachments. */
   workOrders: WorkOrdersResource;
-  /** Assets: list, get, create, update, delete. */
+  /** Assets: list, get, create, update, delete, bulk import, warranties, record downtime. */
   assets: AssetsResource;
   /** Locations: list, get, create, update, delete. */
   locations: LocationsResource;
@@ -77,8 +78,6 @@ export type DbClient = {
   dashboard: DashboardResource;
   /** Audit: entity and permission changes, retention configuration. */
   audit: AuditResource;
-  /** Similar Past Fixes: search for semantically similar completed work orders. */
-  similarPastFixes: SimilarPastFixesResource;
   /** Tenant API keys: create, list, revoke. For IoT / machine access (e.g. ingest-meter-reading Edge Function). */
   tenantApiKeys: TenantApiKeysResource;
   /** Labor: technicians, crews, skills, certifications, availability, shifts, assignments, labor actuals, capacity, and scheduling RPCs. */
@@ -95,4 +94,8 @@ export type DbClient = {
   safetyCompliance: SafetyComplianceResource;
   /** Mobile field: offline sync payload, start/stop work order, add note, register attachment, and lightweight mobile views. */
   mobile: MobileFieldResource;
+  /** Map zones: saved drawn shapes (polygons, lines, etc.) on the locations map. */
+  mapZones: MapZonesResource;
+  /** Tools (read), checkouts/returns, shift handover logbook. */
+  fieldOps: FieldOperationsResource;
 };

@@ -1,6 +1,7 @@
 export const metadata = {
   title: 'Work orders',
-  description: 'List, create, transition, complete, log time, list attachments, update attachment metadata.',
+  description:
+    'List, create, transition, complete, log time, attachments; portal requests and SLA are documented on a dedicated page.',
 }
 
 export const sections = [
@@ -20,6 +21,10 @@ export const sections = [
 # Work orders
 
 Lists and gets work orders for the current tenant; create, transition status, complete, log time; list attachments and update attachment metadata. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+<Note>
+  **End-user CMMS flows:** request portal (submit and track my requests), SLA rules, acknowledgment, and breach views are covered in [Request portal and SLA](/request-portal-and-sla). **Asset downtime** (availability events) is under [Asset downtime](/asset-downtime).
+</Note>
 
 ## List work orders
 
@@ -106,7 +111,7 @@ const workOrderId = await client.workOrders.create({
     Optional. PM schedule UUID.
   </Property>
   <Property name="projectId">
-    Optional. Project UUID for cost roll-up by project. See [Costs & lifecycle](/costs).
+    Optional. Project UUID for cost roll-up by project. See [Projects](/projects) and [Costs & lifecycle](/costs).
   </Property>
 </Properties>
 
@@ -186,12 +191,12 @@ const timeEntryId = await client.workOrders.logTime({
 
 ## Attachments overview
 
-Attachments use **Supabase Storage** and a **database trigger**: there is no RPC to “add” an attachment. You upload a file to the `attachments` bucket with a path that includes `tenant_id` and `work_order_id`. A trigger then creates the file record in `app.files` and the link in `app.work_order_attachments`. The SDK provides **list attachments** and **update attachment metadata**; use Storage for upload and signed URLs.
+Attachments use **Supabase Storage** and a **database trigger**: there is no RPC to “add” an attachment. You upload a file to the `attachments` bucket with path `tenant_id/work_order/work_order_id/filename` (three folder segments before the filename). A trigger creates `app.files` and `app.entity_attachments`. The SDK provides **list attachments** and **update attachment metadata**; use Storage for upload and signed URLs.
 
 | Action | SDK / API |
 |--------|-----------|
-| Create attachment | `client.supabase.storage.from('attachments').upload(path, file, opts)` — path: `tenant_id/work_order_id/uuid_filename`; trigger creates records. |
-| List attachments | `client.workOrders.listAttachments(workOrderId)` — returns `WorkOrderAttachmentRow[]` with `id`, `bucket_id`, `storage_path`, `filename`, `label`, `kind`, etc. |
+| Create attachment | `client.supabase.storage.from('attachments').upload(path, file, opts)`. Path: `tenant_id/work_order/work_order_id/uuid_filename`; trigger creates records. |
+| List attachments | `client.workOrders.listAttachments(workOrderId)`. Returns `WorkOrderAttachmentRow[]` with `id`, `bucket_id`, `storage_path`, `filename`, `label`, `kind`, etc. |
 | Get file URL | `client.supabase.storage.from(row.bucket_id).createSignedUrl(row.storage_path, expiresIn)`. |
 | Update label/kind | `client.workOrders.updateAttachmentMetadata({ attachmentId, label?, kind? })`. |
 
@@ -199,28 +204,29 @@ Set tenant context with `client.setTenant(tenantId)` before listing or uploading
 
 ## Upload attachment
 
-Upload the file to the `attachments` bucket. The path must be `{tenantId}/{workOrderId}/{uuid}_{filename}` so the trigger can associate the file with the work order. Optional metadata (`work_order_id`, `tenant_id`, `label`, `kind`) may be passed if your Supabase version supports it; otherwise set label/kind later via `rpc_update_work_order_attachment_metadata`.
+Upload the file to the `attachments` bucket. The path must be `{tenantId}/work_order/{workOrderId}/{uuid}_{filename}` (folder segments are tenant, entity type, entity id). Optional metadata (`tenant_id`, `entity_type`, `entity_id`, `label`, `kind`, document fields) may be passed if your Supabase version supports it; otherwise set label/kind later via `rpc_update_entity_attachment_metadata`.
 
 <CodeGroup title="Upload to attachments bucket">
 
 ```ts
 await client.setTenant(tenantId)
 
-const path = `${tenantId}/${workOrderId}/${crypto.randomUUID()}_${file.name}`
+const path = `${tenantId}/work_order/${workOrderId}/${crypto.randomUUID()}_${file.name}`
 const { data, error } = await client.supabase.storage
   .from('attachments')
   .upload(path, file, {
     contentType: file.type ?? 'application/octet-stream',
     upsert: false,
     metadata: {
-      work_order_id: workOrderId,
       tenant_id: tenantId,
+      entity_type: 'work_order',
+      entity_id: workOrderId,
       label: 'Before photo',  // optional
       kind: 'photo',          // optional
     },
   })
 if (error) throw error
-// Trigger creates app.files + work_order_attachments; no attachment UUID returned from upload.
+// Trigger creates app.files + entity_attachments; no attachment UUID returned from upload.
 // To get the new attachment id, list v_work_order_attachments for this work_order_id and take the latest.
 ```
 
@@ -273,7 +279,7 @@ const { data, error } = await client.supabase.storage
   .createSignedUrl(row.storage_path, 3600)  // 3600 seconds = 1 hour
 
 if (error) throw error
-// data.signedUrl — use for display or download
+// data.signedUrl: use for display or download
 ```
 
 </CodeGroup>
@@ -294,10 +300,10 @@ await client.workOrders.updateAttachmentMetadata({
 
 </CodeGroup>
 
-<CodeGroup title="Raw: rpc_update_work_order_attachment_metadata">
+<CodeGroup title="Raw: rpc_update_entity_attachment_metadata">
 
 ```ts
-await client.supabase.rpc('rpc_update_work_order_attachment_metadata', {
+await client.supabase.rpc('rpc_update_entity_attachment_metadata', {
   p_attachment_id: attachmentId,
   p_label: 'Before photo',
   p_kind: 'photo',

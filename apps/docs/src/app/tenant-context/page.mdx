@@ -12,11 +12,28 @@ export const sections = [
 
 # Tenant context
 
-The API is multi-tenant. Work orders, assets, locations, and other resources only return data for the **current tenant**. Set tenant context before you call any tenant-scoped resource. {{ className: 'lead' }}
+The API is **multi-tenant**. Work orders, assets, locations, and similar resources are scoped to a **current tenant** you choose for the session. {{ className: 'lead' }}
 
 ## Why tenant context?
 
-Tenant-scoped views and RPCs filter by the current tenant. You set it with `rpc_set_tenant_context` (or `client.setTenant(tenantId)`), then refresh the session so the JWT carries the `tenant_id` claim. Until you do, tenant-scoped queries can return nothing or RPCs can fail.
+Scoped views and RPCs read **`tenant_id`** from the JWT. Call **`client.setTenant(tenantId)`** (which invokes **`rpc_set_tenant_context`**), then **refresh the session** so the new claim is issued. Without that, many queries return empty results or RPCs may error.
+
+```mermaid
+sequenceDiagram
+  participant App as Your app
+  participant SDK as SDK
+  participant Auth as Supabase Auth
+  participant API as PostgREST
+  App->>SDK: setTenant(tenantId)
+  SDK->>API: rpc_set_tenant_context
+  API-->>SDK: ok
+  App->>SDK: getSession then setSession
+  SDK->>Auth: refresh JWT
+  Auth-->>SDK: JWT includes tenant_id
+  App->>SDK: e.g. workOrders.list()
+  SDK->>API: request with JWT
+  API-->>App: rows for that tenant
+```
 
 ## Set tenant context
 
@@ -44,7 +61,7 @@ const workOrders = await client.workOrders.list()
 
 </CodeGroup>
 
-If you skip the refresh step, the backend may not see the new tenant in the JWT and tenant-scoped calls can fail or return empty.
+Without that refresh, the JWT may still omit **`tenant_id`**, so tenant-scoped calls can fail or return nothing.
 
 ## Clear tenant context
 
@@ -58,7 +75,7 @@ Then set the new tenant and refresh, or sign out with `client.supabase.auth.sign
 
 ## Which resources are tenant-scoped?
 
-- **Not tenant-scoped:** `client.tenants.list()` and `client.tenants.getById(id)` — they return tenants the user is a member of; no tenant context needed.
+- **Not tenant-scoped:** `client.tenants.list()` and `client.tenants.getById(id)`. They return tenants the user is a member of; no tenant context needed.
 - **Tenant-scoped:** work orders, assets, locations, departments, meters, plugins, authorization, catalogs, PM, dashboard, audit. Always call `setTenant(tenantId)` and refresh the session before using these.
 
 <div className="not-prose flex flex-wrap gap-3">

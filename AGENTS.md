@@ -1,64 +1,144 @@
 # AGENTS.md
 
-## Cursor Cloud specific instructions
+## Cursor Cloud and local development
 
 ### Architecture overview
 
-This is a pnpm monorepo (Turborepo) for a multi-tenant CMMS (Computerized Maintenance Management System). Key workspaces:
+This is a **pnpm** monorepo (**Turborepo**) for a multi-tenant CMMS **database layer** and related packages. In Cursor Cloud the checkout is often at `/workspace`; locally it is your clone path.
 
 | Workspace | Path | Purpose |
 |-----------|------|---------|
-| Root (`database`) | `/workspace` | Supabase migrations, Vitest integration/RLS tests |
-| Web app | `apps/web` | React + Vite + TanStack Router SPA |
-| Docs | `apps/docs` | Next.js 15 documentation site |
-| SDK | `packages/sdk` | Type-safe domain SDK wrapping Supabase views + RPCs |
-| UI | `packages/ui` | Shared component library (Radix UI, Tailwind v4) |
+| Root (`database`) | `.` | Root Vitest suite (`tests/`), scripts, workspace orchestration |
+| Supabase | `apps/supabase` | Supabase CLI project: `config.toml`, SQL migrations, Edge Functions (`pnpm start` / `pnpm supabase:start`) |
+| Docs | `apps/docs` | Next.js documentation site (MDX) |
+| Plugins | `plugins/*` | Optional integration services (webhook receivers, connectors); not shipped as part of core `apps` |
+| Example | `plugins/example` | Minimal HTTP webhook receiver for testing `pg_net` plugin deliveries locally |
+| SDK | `packages/sdk` | Type-safe SDK for the public Supabase API (views + RPCs) |
+| UI | `packages/ui` | Shared components (Radix UI, Tailwind v4, Storybook) |
+| ESLint config | `packages/eslint-config` | Shared flat ESLint configs |
+| TypeScript config | `packages/typescript-config` | Shared `tsconfig` presets |
 
-### Prerequisites (already installed in the VM snapshot)
+The customer-facing **SPA is not in this repository** (this repo is schema, tests, SDK, docs site, and UI package).
 
-- Docker (with `fuse-overlayfs` storage driver and `iptables-legacy`)
-- Supabase CLI (installed via `.deb` from GitHub releases)
-- Node.js 22 + pnpm 9.12.3
+### Playbook for cloud agents (what to do)
+
+Use this as a default order of operations. Adjust when the user’s task is narrowly scoped (e.g. docs-only).
+
+#### 1. Orient yourself
+
+- First-time local setup: **`GETTING_STARTED.md`** (Docker, Supabase CLI, env, test failures).
+- Read **`apps/supabase/README.md`** before changing schema, RLS, views, or RPCs.
+- For **new migrations**, follow project SQL/RLS conventions in **`.cursor/rules/migration.mdc`** (and **`CONTRIBUTING.md`** → Database changes).
+- For **tests**, read **`tests/README.md`** for what the suite covers and which helpers exist.
+
+#### 2. Change the database
+
+1. Add a new file under **`apps/supabase/migrations/`** (Supabase CLI naming: `YYYYMMDDHHmmss_description.sql`), with a header comment and **lowercase** SQL.
+2. Prefer **RLS on new tables**, tenant-scoped policies, and exposing writes through **RPCs** / reads through **`public` (or `reporting`) views**—see `apps/supabase/README.md`.
+3. Apply locally: **`pnpm supabase:reset`** (or `cd apps/supabase && supabase db reset`) so the DB matches all migrations, then fix forward if something breaks.
+4. If PostgREST does not see new objects, see **PostgREST schema cache** below.
+
+#### 3. Write tests
+
+- Put integration tests in **`tests/*.test.ts`** (Vitest, Node environment, setup in **`tests/setup.ts`**).
+- **DB contract / RLS / RPCs:** almost all `*.test.ts` files **except** **`tests/sdk.test.ts`** use the Supabase JS client and helpers in **`tests/helpers/`** (`supabase.ts`, `tenant.ts`, `auth.ts`, `entities.ts`, `rpc.ts`, etc.).
+- **SDK:** extend or add coverage in **`tests/sdk.test.ts`** when the typed SDK must stay aligned with the API.
+- Reuse helpers instead of ad-hoc clients; use **`createServiceRoleClient()`** only when the scenario requires bypassing RLS.
+- Prefer assertions that include PostgREST **code / details / hint** (helpers already surface these where relevant).
+
+#### 4. Run tests
+
+From the **repository root**:
+
+| Goal | Command |
+|------|---------|
+| Full suite (matches CI style) | `pnpm test` or `pnpm test:ci` |
+| Faster config | `pnpm test:fast` |
+| DB tests only (skip SDK file) | `pnpm test:db` |
+| SDK file only | `pnpm test:sdk` |
+| One file | `pnpm test -- tests/work_orders.test.ts` |
+| One test by name | `pnpm test -- -t "should create a work order"` |
+| DB out of sync / many auth errors | `pnpm test:reset` (reset + test) |
+
+Ensure **Docker + Supabase** are available. If **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** are **not** set, **`tests/setup.ts`** will run **`supabase start`** when the stack is down. For a **remote** project, set those (and **`SUPABASE_SERVICE_ROLE_KEY`**) in **`.env.local`**—then local Supabase will not be started by tests.
+
+#### 5. Regenerate types and package tests
+
+- After schema or RPC/view changes that affect the public API, run **`pnpm gen-types`** and commit updates to **`packages/sdk/src/database.types.ts`** when they are part of the contract.
+- Run **`pnpm test:all`** if you changed **`packages/sdk`** (runs that package’s **`test`** task via Turborepo as well as whatever else defines `test`).
+
+#### 6. Before you call a task “done”
+
+- Run **`pnpm test`** (or the narrowest command above that still covers your change).
+- If you touched **docs app** or **UI**, try **`pnpm lint`** and **`pnpm build`**; fix any failures you introduced.
+- Summarize what you changed (migrations, tests, generated types) for the user or PR description.
+
+### Prerequisites
+
+- **Docker** (Cursor Cloud images typically include usable storage/network defaults for the Supabase stack.)
+- **Supabase CLI**
+- **Node.js 20+** (GitHub Actions uses Node 20; newer LTS is fine.)
+- **pnpm 9.12.3** — pinned via `packageManager` in root `package.json` (use `corepack enable` if needed).
 
 ### Starting services
 
-1. **Docker daemon** must be running first: `sudo dockerd &>/dev/null &` then wait 3s. Fix socket permissions if needed: `sudo chmod 666 /var/run/docker.sock`.
-2. **Supabase local stack**: `supabase start` from the workspace root. Takes ~2 minutes on first cold start (pulls Docker images). Subsequent starts are faster.
-3. **Env files**: The `.env.local` files in `/workspace` and `/workspace/apps/web` must point to the local Supabase instance (`http://127.0.0.1:54321`). The web app uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (the Supabase anon key JWT).
-4. **Web app**: `pnpm dev` from root (uses Turborepo) or `pnpm dev` from `apps/web`. Runs on `http://localhost:5173`.
+1. **Docker** must be running. On Cursor Cloud: `sudo dockerd &>/dev/null &`, wait a few seconds, then if needed `sudo chmod 666 /var/run/docker.sock`.
+2. **Supabase** from the repository root: **`pnpm start`** or **`pnpm supabase:start`** (runs the `work-order-systems-supabase` workspace in `apps/supabase`). First cold start can take ~2 minutes; later starts are faster.
+3. **Environment**: put **`SUPABASE_URL`**, **`SUPABASE_ANON_KEY`**, and **`SUPABASE_SERVICE_ROLE_KEY`** in a **root** `.env.local` for Vitest (see `.env.example`). `tests/setup.ts` loads `.env.local` / `.env` explicitly. With local CLI defaults, the API URL is `http://127.0.0.1:54321`.
+4. **Dev servers**: `pnpm dev` runs every workspace **`dev`** script via Turborepo (e.g. SDK `tsup --watch`, docs Next.js, UI Storybook). Run one workspace only, for example:
+   - `pnpm --filter work-order-systems-docs dev` → Next.js (default **http://localhost:3000**)
+   - `pnpm --filter @workspace/ui dev` → Storybook (**http://localhost:6006**)
+   - `pnpm --filter @workorder-systems/sdk dev` → SDK watch build
+   - `pnpm --filter work-order-systems-example dev` → example webhook receiver (**http://127.0.0.1:8765**); for local Supabase Docker + `pg_net`, set installation `webhook_url` to `http://host.docker.internal:8765/webhook` (see `plugins/example/README.md`)
+   - `pnpm --filter work-order-systems-example smoke:setup` → registers `example_receiver`, seeds Vault (Docker), creates user/tenant, installs plugin, creates a work order, runs `rpc_process_plugin_deliveries` (needs `.env.local` **service role** + receiver running with matching `WEBHOOK_SECRET`; see that README)
 
-### Critical gotcha: Cursor Cloud injected secrets override `.env.local`
+### Environment variable precedence
 
-If `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` are set as Cursor Cloud Secrets, they will be injected as process environment variables and **override** the `.env.local` file (Vite gives process env vars higher priority). To use local Supabase, either:
-- Remove those secrets from the Cursor Secrets panel, OR
-- Start the Vite dev server with: `env -u VITE_SUPABASE_URL -u VITE_SUPABASE_PUBLISHABLE_KEY pnpm dev`
+If variables are set in the **process environment** (e.g. Cursor Cloud Secrets) **and** in `.env.local`, tools that merge both usually prefer the process environment. Vitest loads `.env.local` in `tests/setup.ts`, but shell-injected values can still override depending on how the runner is started—unset or adjust secrets if local Supabase URLs/keys disagree.
 
 ### PostgREST schema cache
 
-After `supabase start`, if you get "Could not find the table 'public.v_tenants' in the schema cache" errors, restart PostgREST:
+After `supabase start`, errors like a table missing from the schema cache are often fixed by reloading PostgREST:
+
 ```bash
 docker restart supabase_rest_database
 ```
-Or send a NOTIFY: `docker exec supabase_db_database psql -U postgres -c "NOTIFY pgrst, 'reload schema';"`
+
+Or:
+
+```bash
+docker exec supabase_db_database psql -U postgres -c "NOTIFY pgrst, 'reload schema';"
+```
+
+Names assume `project_id = "database"` in `apps/supabase/config.toml`.
 
 ### Running tests
 
-- `pnpm test:ci` — runs all 34 test files (526 tests), excludes the `similar_past_fixes_e2e` test that requires `OPENAI_API_KEY`
-- `pnpm test` — runs all tests including the e2e test (will fail without `OPENAI_API_KEY`)
-- Tests require Supabase local stack to be running. The test setup (`tests/setup.ts`) auto-starts it if needed.
+- **`pnpm test`** / **`pnpm test:ci`** — root Vitest suite (`vitest run`, config `vitest.config.ts`).
+- **`pnpm test:fast`** — same runner with `vitest.config.fast.ts` when you need a quicker subset/config.
+- **`pnpm test:db`** — root tests excluding `tests/sdk.test.ts`.
+- **`pnpm test:sdk`** — only `tests/sdk.test.ts`.
+- **`pnpm test:all`** — `turbo run test` (includes `packages/sdk` and any other package that defines `test`).
+- **`pnpm test:reset`** — `supabase db reset` then **`pnpm test`** (use when migrations are ahead of the local DB).
 
-### Running lint
+`tests/setup.ts`: if **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** are set, it **does not** start Supabase locally; otherwise it runs **`supabase start`** in **`apps/supabase`** when **`supabase status`** fails there.
 
-- `pnpm lint` — runs lint across all workspaces via Turborepo
-- Pre-existing issues: the web app is missing an `eslint.config.js`, and the UI package has 155 warnings with `--max-warnings 0`
+If many tests fail with auth/schema errors, reset the DB (`pnpm supabase:reset` or `pnpm test:reset`). See **CONTRIBUTING.md** (Tests).
 
-### Building
+### Lint and build
 
-- `pnpm build` — builds all packages. The SDK builds successfully. The web app `tsc -b` has pre-existing TS errors in storybook stories and data-table types. The Vite dev server works fine regardless.
+- **`pnpm lint`** — Turborepo runs `lint` only where defined. Today that is mainly **`apps/docs`** (`next lint`) and **`packages/ui`** (`eslint .` via `eslint.config.js` with `--max-warnings 0`). Next.js 15 still ships `next lint` but deprecates it; first-time setup can prompt for ESLint options in some environments.
+- **`pnpm build`** — builds **`packages/sdk`** and **`apps/docs`**. **`packages/ui`** has no root `build` script; use `pnpm --filter @workspace/ui build-storybook` for a static Storybook bundle.
+
+### Type generation
+
+- **`pnpm gen-types`** — runs `packages/sdk/scripts/gen-types.sh` to refresh `packages/sdk/src/database.types.ts` (requires Supabase CLI and appropriate DB/API access).
 
 ### Database
 
-- 29 migration files across 7 custom schemas (`app`, `cfg`, `int`, `audit`, `util`, `authz`, `pm`)
-- See `supabase/README.md` for architecture rules and patterns
-- Auth uses a custom access token hook (`authz.custom_access_token_hook`) that adds tenant_id to JWT claims
-- `enable_confirmations = false` in local config — sign-up auto-confirms users
+- Migrations live in `apps/supabase/migrations/` (grows with the project).
+- Custom schemas include **`app`**, **`cfg`**, **`int`**, **`audit`**, **`util`**, **`authz`**, **`pm`**, and **`reporting`** (plus standard **`extensions`** usage where migrations create it). See **`apps/supabase/README.md`** for architecture rules.
+- PostgREST exposes **`public`** and **`reporting`** (`[api].schemas` in `apps/supabase/config.toml`).
+- Local DB port is **54332** (not the Supabase default 54322) per `[db].port` in `apps/supabase/config.toml`—use that URL when connecting with `psql` or GUI clients.
+- Auth: **`authz.custom_access_token_hook`** (wired in `apps/supabase/config.toml`) adds tenant context to JWT claims from user metadata.
+- **`enable_confirmations = false`** in local config — sign-up is auto-confirmed for development.

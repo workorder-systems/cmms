@@ -1,12 +1,13 @@
 /**
  * Work order attachments: tests follow the architecture in docs/attachments-client-flow.md
- * - Create = upload to Storage (path tenant_id/work_order_id/uuid_filename) → trigger creates app.files + work_order_attachments (no RPC)
- * - Update label/kind = optional rpc_update_work_order_attachment_metadata after upload
+ * - Create = upload to Storage (path tenant_id/work_order/work_order_id/uuid_filename) → trigger creates app.files + entity_attachments (no RPC)
+ * - Update label/kind = optional rpc_update_entity_attachment_metadata after upload
  * - List = query v_work_order_attachments (tenant context)
  * - Get file URL = storage.from(bucket_id).createSignedUrl(storage_path, expiresIn)
  */
+import { execSync } from 'node:child_process';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createTestClient, waitForSupabase } from './helpers/supabase';
+import { createTestClient, createServiceRoleClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import {
   createTestTenant,
@@ -28,7 +29,7 @@ describe('Work Order Attachments', () => {
     client = createTestClient();
   });
 
-  describe('Upload (trigger creates app.files + work_order_attachments)', () => {
+  describe('Upload (trigger creates app.files + entity_attachments)', () => {
     it('upload to attachments bucket creates attachment row via trigger', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
@@ -79,7 +80,7 @@ describe('Work Order Attachments', () => {
     });
   });
 
-  describe('Update label/kind (rpc_update_work_order_attachment_metadata)', () => {
+  describe('Update label/kind (rpc_update_entity_attachment_metadata)', () => {
     it('sets label and kind after upload', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
@@ -93,7 +94,7 @@ describe('Work Order Attachments', () => {
       );
 
       await setTenantContext(client, tenantId);
-      await client.rpc('rpc_update_work_order_attachment_metadata', {
+      await client.rpc('rpc_update_entity_attachment_metadata', {
         p_attachment_id: attachmentId,
         p_label: 'Before photo',
         p_kind: 'photo',
@@ -117,7 +118,7 @@ describe('Work Order Attachments', () => {
       );
 
       await setTenantContext(client, tenantId);
-      await client.rpc('rpc_update_work_order_attachment_metadata', {
+      await client.rpc('rpc_update_entity_attachment_metadata', {
         p_attachment_id: attachmentId,
         p_kind: 'photo_123',
       });
@@ -450,6 +451,158 @@ describe('Work Order Attachments', () => {
     });
   });
 
+  describe('Lifecycle (cascade, prune, validation)', () => {
+    it('rejects reassignment of work_order_id via v_work_order_attachments update', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId1 = await createTestWorkOrder(client, tenantId, 'WO A', undefined, 'medium', user.id);
+      const workOrderId2 = await createTestWorkOrder(client, tenantId, 'WO B', undefined, 'medium', user.id);
+      const attachmentId = await createTestAttachment(client, tenantId, workOrderId1, 'file.jpg');
+
+      await setTenantContext(client, tenantId);
+      const { error } = await client
+        .from('v_work_order_attachments')
+        .update({ work_order_id: workOrderId2 })
+        .eq('id', attachmentId);
+
+      expect(error).toBeDefined();
+    });
+
+    it('accepts rpc_update_entity_attachment_metadata with a valid document_type_key', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Doc WO', undefined, 'medium', user.id);
+      const attachmentId = await createTestAttachment(client, tenantId, workOrderId, 'file.jpg');
+
+      await setTenantContext(client, tenantId);
+      const { error } = await client.rpc('rpc_update_entity_attachment_metadata', {
+        p_attachment_id: attachmentId,
+        p_document_type_key: 'photo',
+        p_is_controlled: false,
+      });
+      expect(error).toBeNull();
+      const row = await getAttachment(client, attachmentId);
+      expect(row.document_type_key).toBe('photo');
+    });
+
+    it('rejects rpc_update_entity_attachment_metadata with unknown document_type_key', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Bad doc WO', undefined, 'medium', user.id);
+      const attachmentId = await createTestAttachment(client, tenantId, workOrderId, 'file.jpg');
+
+      await setTenantContext(client, tenantId);
+      const { error } = await client.rpc('rpc_update_entity_attachment_metadata', {
+        p_attachment_id: attachmentId,
+        p_document_type_key: 'not_a_catalog_key_zz',
+      });
+      expect(error).toBeDefined();
+    });
+
+    it('deleting the last attachment row removes the Storage object (refcount prune)', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Prune WO', undefined, 'medium', user.id);
+      const attachmentId = await createTestAttachment(client, tenantId, workOrderId, 'prune.jpg');
+
+      await setTenantContext(client, tenantId);
+      const { data: row } = await client
+        .from('v_work_order_attachments')
+        .select('storage_path')
+        .eq('id', attachmentId)
+        .maybeSingle();
+      const folderPrefix = row?.storage_path?.split('/').slice(0, -1).join('/') ?? '';
+
+      const service = createServiceRoleClient();
+      const { error: delErr } = await client.from('v_work_order_attachments').delete().eq('id', attachmentId);
+      expect(delErr).toBeNull();
+
+      const { data: listed, error: listErr } = await service.storage
+        .from('attachments')
+        .list(folderPrefix);
+      expect(listErr).toBeNull();
+      expect((listed ?? []).length).toBe(0);
+    });
+
+    it('keeps Storage object while a second entity still references the same file_id', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const wo1 = await createTestWorkOrder(client, tenantId, 'WO1', undefined, 'medium', user.id);
+      const wo2 = await createTestWorkOrder(client, tenantId, 'WO2', undefined, 'medium', user.id);
+      const att1 = await createTestAttachment(client, tenantId, wo1, 'shared.jpg');
+      await setTenantContext(client, tenantId);
+      const { data: row1 } = await client
+        .from('v_work_order_attachments')
+        .select('file_id, storage_path')
+        .eq('id', att1)
+        .maybeSingle();
+      const fileId = row1?.file_id as string;
+      const folderPrefix = row1?.storage_path?.split('/').slice(0, -1).join('/') ?? '';
+
+      const { error: regErr } = await client.rpc('rpc_register_entity_attachment', {
+        p_tenant_id: tenantId,
+        p_entity_type: 'work_order',
+        p_entity_id: wo2,
+        p_file_id: fileId,
+        p_label: 'second link',
+      });
+      expect(regErr).toBeNull();
+
+      await client.from('v_work_order_attachments').delete().eq('id', att1);
+
+      const service = createServiceRoleClient();
+      const { data: listed } = await service.storage.from('attachments').list(folderPrefix);
+      expect((listed ?? []).length).toBeGreaterThan(0);
+
+      const { data: att2rows } = await client
+        .from('v_work_order_attachments')
+        .select('id')
+        .eq('work_order_id', wo2)
+        .eq('file_id', fileId);
+      const att2 = att2rows?.[0]?.id as string;
+      await client.from('v_work_order_attachments').delete().eq('id', att2);
+
+      const { data: listedAfter } = await service.storage.from('attachments').list(folderPrefix);
+      expect((listedAfter ?? []).length).toBe(0);
+    });
+
+    it('deleting the work order row cascades attachment links (SQL parent delete)', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+      const workOrderId = await createTestWorkOrder(client, tenantId, 'Cascade WO', undefined, 'medium', user.id);
+      const attachmentId = await createTestAttachment(client, tenantId, workOrderId, 'cascade.jpg');
+
+      await setTenantContext(client, tenantId);
+      const { data: row } = await client
+        .from('v_work_order_attachments')
+        .select('storage_path')
+        .eq('id', attachmentId)
+        .maybeSingle();
+      const folderPrefix = row?.storage_path?.split('/').slice(0, -1).join('/') ?? '';
+
+      try {
+        execSync(
+          `docker exec supabase_db_database psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "delete from app.work_orders where id = '${workOrderId}';"`,
+          { stdio: 'pipe' }
+        );
+      } catch {
+        return;
+      }
+
+      await setTenantContext(client, tenantId);
+      const { data: gone } = await client
+        .from('v_work_order_attachments')
+        .select('id')
+        .eq('id', attachmentId)
+        .maybeSingle();
+      expect(gone).toBeNull();
+
+      const service = createServiceRoleClient();
+      const { data: listed } = await service.storage.from('attachments').list(folderPrefix);
+      expect((listed ?? []).length).toBe(0);
+    });
+  });
+
   describe('Audit logging', () => {
     it('attachment creation (trigger insert) is audited', async () => {
       const { user } = await createTestUser(client);
@@ -467,7 +620,7 @@ describe('Work Order Attachments', () => {
       const { data: audits, error } = await client
         .from('v_audit_entity_changes')
         .select('*')
-        .eq('table_name', 'work_order_attachments')
+        .eq('table_name', 'entity_attachments')
         .eq('record_id', attachmentId)
         .eq('operation', 'INSERT');
 

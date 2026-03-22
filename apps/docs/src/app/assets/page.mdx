@@ -7,6 +7,7 @@ export const sections = [
   { title: 'List assets', id: 'list-assets' },
   { title: 'Get by ID', id: 'get-by-id' },
   { title: 'Lifecycle fields', id: 'lifecycle-fields' },
+  { title: 'Warranties (multi-row)', id: 'warranties' },
   { title: 'Create asset', id: 'create-asset' },
   { title: 'Update asset', id: 'update-asset' },
   { title: 'Delete asset', id: 'delete-asset' },
@@ -15,6 +16,10 @@ export const sections = [
 # Assets
 
 Lists and gets assets for the current tenant; create, update, delete. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+<Note>
+  **Downtime / availability:** use **`client.assets.recordDowntime()`** for structured outage events — see [Asset downtime](/asset-downtime).
+</Note>
 
 ## List assets
 
@@ -56,6 +61,28 @@ const asset = await client.assets.getById('uuid-of-asset')
 - **planned_replacement_date** – planned replacement date for capital planning
 
 For alerts (e.g. warranty or EOL approaching), use `client.costs.listLifecycleAlerts()` or `client.costs.assetLifecycleAlerts()`. See [Costs & lifecycle](/costs).
+
+## Warranties (multi-row)
+
+**`warranty_expires_at`** above is a **rollup** from active **`app.asset_warranties`** rows. Use **`v_asset_warranties`** for full history and multiple policies.
+
+<CodeGroup title="client.assets.listWarranties / upsertWarranty">
+
+```ts
+const rows = await client.assets.listWarranties(assetId)
+
+const warrantyId = await client.assets.upsertWarranty({
+  tenantId,
+  assetId,
+  expiresOn: '2028-12-31',
+  warrantyType: 'standard',
+  coverageSummary: 'OEM coverage',
+})
+```
+
+</CodeGroup>
+
+More context: [Capability inventory — Warranty](/capability-inventory#warranty).
 
 ## Create asset
 

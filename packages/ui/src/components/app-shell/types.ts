@@ -9,7 +9,9 @@ export type ExtensionPointName =
   | 'sidebar.right.footer'
   | 'header.left'
   | 'header.right'
-  | 'page.header';
+  | 'page.header'
+  | 'section.nav.left'
+  | 'section.nav.right';
 
 export interface Extension {
   id: string;

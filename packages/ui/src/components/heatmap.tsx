@@ -270,7 +270,8 @@ export function Heatmap(props: HeatmapProps) {
 
   const monthLabels = weeks.map((week, i) => {
     const label = getMonthLabel(week);
-    const prevLabel = i > 0 ? getMonthLabel(weeks[i - 1]) : null;
+    const prevWeek = i > 0 ? weeks[i - 1] : undefined;
+    const prevLabel = prevWeek !== undefined ? getMonthLabel(prevWeek) : null;
     return label !== prevLabel ? label : null;
   });
 
@@ -381,7 +382,7 @@ export function Heatmap(props: HeatmapProps) {
 
           const thisDateValue = valueByDate.get(day) ?? 0;
           const safeValue = Math.max(0, thisDateValue);
-          const thisColor = getCellColor(safeValue);
+          const thisColor = getCellColor(safeValue) ?? "#f0fdf4";
           const dateForDisplay = new Date(day + "T00:00:00");
 
           return (

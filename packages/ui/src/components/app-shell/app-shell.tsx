@@ -39,8 +39,8 @@ export function AppShell({
   leftSidebarContent,
   leftSidebarFooter,
   headerLeft,
-  leftSidebarCollapsible = 'icon',
-  rightSidebarCollapsible = 'none',
+  leftSidebarCollapsible = 'offcanvas',
+  rightSidebarCollapsible = 'offcanvas',
   leftSidebarVariant = 'inset',
   rightSidebarVariant = 'inset',
   className,
@@ -53,6 +53,9 @@ export function AppShell({
       extensionsMap.has('sidebar.right.footer'),
     [extensionsMap]
   );
+
+  const hasSectionNavExtensions =
+    extensionsMap.has('section.nav.left') || extensionsMap.has('section.nav.right');
 
   const leftSidebarOpen = useAppShellStore((state: AppShellStore) => state.leftSidebarOpen);
   const setLeftSidebarOpen = useAppShellStore((state: AppShellStore) => state.setLeftSidebarOpen);
@@ -73,7 +76,11 @@ export function AppShell({
   );
 
   return (
-    <SidebarProvider open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>
+    <SidebarProvider
+      open={leftSidebarOpen}
+      onOpenChange={setLeftSidebarOpen}
+      className="h-svh overflow-hidden"
+    >
       <Sidebar
         variant={leftSidebarVariant}
         collapsible={leftSidebarCollapsible}
@@ -91,8 +98,7 @@ export function AppShell({
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="min-h-0 overflow-x-hidden">
-        
+      <SidebarInset className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-16 shrink-0 border-b items-center justify-between gap-2 px-4 transition-[width,height] duration-300 ease-in-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {headerLeft !== undefined ? headerLeft : <PortalTarget name="header.left" />}
@@ -101,9 +107,24 @@ export function AppShell({
             <PortalTarget name="header.right" />
           </div>
         </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 pt-0">
+        {hasSectionNavExtensions && (
+          <div
+            className="flex shrink-0 items-center overflow-x-auto border-b px-4 py-2"
+            data-section-nav
+          >
+            <div className="flex min-w-min items-center gap-2 flex-nowrap">
+              <div className="flex items-center gap-1 flex-nowrap">
+                <PortalTarget name="section.nav.left" />
+              </div>
+              <div className="flex items-center gap-1 flex-nowrap ml-auto">
+                <PortalTarget name="section.nav.right" />
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="flex min-h-0 flex-1 flex-col gap-0 @container/main overflow-hidden">
           <PortalTarget name="page.header" />
-          <div className="min-h-0 w-full min-w-0 flex-1 overflow-x-hidden">
+          <div className="min-h-0 w-full min-w-0 flex-1 overflow-auto overflow-x-hidden pt-4">
             {children}
           </div>
         </div>
@@ -120,10 +141,7 @@ export function AppShell({
             variant={rightSidebarVariant}
             collapsible={rightSidebarCollapsible}
             side="right"
-            className={cn(
-              'sticky top-0 h-svh',
-              rightSidebarVariant !== 'inset' && 'border-l'
-            )}
+            className={rightSidebarVariant !== 'inset' ? 'border-l' : undefined}
           >
             <SidebarHeader>
               <PortalTarget name="sidebar.right.header" />

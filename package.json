@@ -6,32 +6,33 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "plugins/*"
   ],
   "dependencies": {
     "@workorder-systems/sdk": "workspace:*"
   },
   "scripts": {
+    "start": "pnpm --filter work-order-systems-supabase start",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "vitest run",
     "test:fast": "vitest run -c vitest.config.fast.ts",
-    "test:ci": "vitest run --exclude tests/similar_past_fixes_e2e.test.ts",
+    "test:ci": "vitest run",
     "test:all": "turbo run test",
     "test:db": "vitest run --exclude tests/sdk.test.ts",
     "test:sdk": "vitest run tests/sdk.test.ts",
-    "test:e2e": "vitest run tests/similar_past_fixes_e2e.test.ts",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
-    "supabase:reset": "supabase db reset",
-    "supabase:functions": "supabase functions serve --env-file .env.local --no-verify-jwt",
-    "test:setup": "supabase start && npm run test",
-    "test:teardown": "supabase stop",
-    "test:reset": "supabase db reset && pnpm test",
+    "supabase:start": "pnpm --filter work-order-systems-supabase start",
+    "supabase:stop": "pnpm --filter work-order-systems-supabase stop",
+    "supabase:reset": "pnpm --filter work-order-systems-supabase reset",
+    "supabase:functions": "pnpm --filter work-order-systems-supabase functions",
+    "test:setup": "pnpm supabase:start && pnpm test",
+    "test:teardown": "pnpm supabase:stop",
+    "test:reset": "pnpm supabase:reset && pnpm test",
     "gen-types": "bash packages/sdk/scripts/gen-types.sh"
   },
   "keywords": [
@@ -49,9 +50,9 @@
     "@supabase/supabase-js": "^2.39.3",
     "@types/node": "^20.11.5",
     "dotenv": "^16.4.5",
-    "vite": "^5.0.0",
-    "turbo": "^2.7.5",
+    "turbo": "^2.8.20",
     "typescript": "^5.3.3",
+    "vite": "^5.0.0",
     "vitest": "^1.2.1"
   },
   "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"

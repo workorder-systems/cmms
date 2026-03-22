@@ -113,7 +113,7 @@ export function SystemMessage({
       {cta && (
         <Button
           size="sm"
-          variant={cta.variant ?? "outline"}
+          variant={cta.variant === "solid" ? "default" : (cta.variant ?? "outline")}
           onClick={cta.onClick}
         >
           {cta.label}

@@ -26,12 +26,12 @@ The database and SDK support mobile-first field workflows for technicians:
 
 | Capability | SDK / API |
 |------------|-----------|
-| **Offline sync** | `client.mobile.sync(params)` — single JSON payload of work orders, assets, locations, time entries, attachments, check-ins, notes. Use `updatedAfter` for incremental sync; optional `technicianId` to filter work orders. |
-| **Start job** | `client.mobile.startWorkOrder(params)` — transition to `in_progress` and create a check-in; optional GPS. Returns check-in id. |
-| **Stop job** | `client.mobile.stopWorkOrder(params)` — optionally log time, add note, complete work order with cause/resolution, and set completed-at GPS. |
-| **Add note** | `client.mobile.addNote(params)` — add a note to a work order; optional GPS. Returns note id. |
-| **Register attachment** | `client.mobile.registerWorkOrderAttachment(params)` — register an existing file (e.g. after resumable upload) as a work order attachment. Returns attachment id. |
-| **Mobile views** | `client.mobile.listMobileWorkOrders()`, `listMobileAssets()`, `listMobileLocations()`, etc. — minimal columns for offline use. |
+| **Offline sync** | `client.mobile.sync(params)`. Single JSON payload of work orders, assets, locations, time entries, attachments, check-ins, notes. Use `updatedAfter` for incremental sync; optional `technicianId` to filter work orders. |
+| **Start job** | `client.mobile.startWorkOrder(params)`. Transition to `in_progress` and create a check-in; optional GPS. Returns check-in id. |
+| **Stop job** | `client.mobile.stopWorkOrder(params)`. Optionally log time, add note, complete work order with cause/resolution, and set completed-at GPS. |
+| **Add note** | `client.mobile.addNote(params)`. Add a note to a work order; optional GPS. Returns note id. |
+| **Register attachment** | `client.mobile.registerWorkOrderAttachment(params)`. Register an existing file (e.g. after resumable upload) as a work order attachment. Returns attachment id. |
+| **Mobile views** | `client.mobile.listMobileWorkOrders()`, `listMobileAssets()`, `listMobileLocations()`, etc. Minimal columns for offline use. |
 
 Attachments (photos, documents, signatures, scans) are supported for **work orders**, **assets**, and **locations**. Work order attachments can be created by uploading to Storage (trigger creates the link) or by registering an existing file with `registerWorkOrderAttachment`. Asset and location attachments use Storage paths `tenant_id/asset/asset_id/filename` and `tenant_id/location/location_id/filename`.
 
@@ -150,7 +150,7 @@ const attachmentId = await client.mobile.registerWorkOrderAttachment({
 
 </CodeGroup>
 
-For the standard flow (upload to Storage path `tenant_id/work_order_id/filename`), the trigger creates the file and attachment automatically; use `client.workOrders.listAttachments(workOrderId)` to get the new row. Use `registerWorkOrderAttachment` only when you have an existing file id (e.g. after a resumable upload that wrote to Storage and created `app.files` separately).
+For the standard flow (upload to Storage path `tenant_id/work_order/{work_order_id}/filename`), the trigger creates the file and attachment automatically; use `client.workOrders.listAttachments(workOrderId)` to get the new row. Use `registerWorkOrderAttachment` only when you have an existing file id (e.g. after a resumable upload that wrote to Storage and created `app.files` separately).
 
 ## Mobile views
 
@@ -173,13 +173,14 @@ Other list methods: `listMobileAssets()`, `listMobileLocations()`, `listMobileTi
 
 Attachments (photos, documents, signatures, scans) are supported for **assets** and **locations** as well as work orders.
 
-| Entity | Storage path convention | View |
-|--------|-------------------------|------|
-| Work order | `tenant_id/work_order_id/filename` | `v_work_order_attachments` |
+| Entity | Storage path convention (`storage.foldername` = 3 segments) | View |
+|--------|--------------------------------------------------------------|------|
+| Work order | `tenant_id/work_order/work_order_id/filename` | `v_work_order_attachments` |
 | Asset | `tenant_id/asset/asset_id/filename` | `v_asset_attachments` |
 | Location | `tenant_id/location/location_id/filename` | `v_location_attachments` |
+| Other | `tenant_id/<entity_type>/<entity_id>/filename` (e.g. `part`, `purchase_order`, `incident`) | `v_entity_attachments` |
 
-Upload to the `attachments` bucket with the appropriate path; a trigger creates `app.files` and the corresponding link row (`app.work_order_attachments`, `app.asset_attachments`, or `app.location_attachments`). Use `client.supabase.storage.from('attachments').createSignedUrl(...)` with `bucket_id` and `storage_path` from the view rows. Kind values (e.g. `photo`, `document`, `signature`, `scan`) are free-form; document in your UI for consistency.
+Upload to the `attachments` bucket with the appropriate path; a trigger creates `app.files` and `app.entity_attachments`. Use `client.supabase.storage.from('attachments').createSignedUrl(...)` with `bucket_id` and `storage_path` from the view rows. Kind values (e.g. `photo`, `document`, `signature`, `scan`) are free-form; document in your UI for consistency.
 
 Raw queries:
 

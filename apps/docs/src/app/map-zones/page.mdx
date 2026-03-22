@@ -1,0 +1,125 @@
+export const metadata = {
+  title: 'Map zones',
+  description:
+    'Saved GeoJSON shapes on the locations map: list, get, create, update, delete via client.mapZones.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'List zones', id: 'list-zones' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Create zone', id: 'create-zone' },
+  { title: 'Update zone', id: 'update-zone' },
+  { title: 'Delete zone', id: 'delete-zone' },
+  { title: 'Access and limits', id: 'access-limits' },
+]
+
+# Map zones
+
+**Map zones** are saved shapes (polygons, lines, etc.) for the **locations map**, stored as **GeoJSON** (`type` + `coordinates`). They can optionally link to a **location** (for example a building footprint). {{ className: 'lead' }}
+
+## Overview
+
+Reads use **`v_map_zones`**. Writes use **`rpc_create_map_zone`**, **`rpc_update_map_zone`**, and **`rpc_delete_map_zone`**. Set **tenant context** before **`list`** and **`getById`**; write RPCs take an explicit **`tenantId`**.
+
+## List zones
+
+<CodeGroup title="client.mapZones.list()">
+
+```ts
+const zones = await client.mapZones.list()
+// Returns MapZoneRow[] — id, tenant_id, name, geometry, location_id, created_at, updated_at
+```
+
+</CodeGroup>
+
+## Get by ID
+
+<CodeGroup title="client.mapZones.getById(id)">
+
+```ts
+const zone = await client.mapZones.getById('uuid-of-zone')
+// Returns MapZoneRow | null
+```
+
+</CodeGroup>
+
+## Create zone
+
+`geometry` must be GeoJSON with **`type`** and **`coordinates`** (RFC 7946). **`locationId`** is optional; if set, it must reference a location in the same tenant.
+
+<CodeGroup title="client.mapZones.create(params)">
+
+```ts
+const zoneId = await client.mapZones.create({
+  tenantId: 'uuid-of-tenant',
+  name: 'North yard',
+  geometry: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [-122.4, 37.8],
+        [-122.39, 37.8],
+        [-122.39, 37.81],
+        [-122.4, 37.81],
+        [-122.4, 37.8],
+      ],
+    ],
+  },
+  locationId: 'uuid-of-location-or-null',
+})
+// Returns string (UUID)
+```
+
+</CodeGroup>
+
+<Properties>
+  <Property name="tenantId">
+    Required. Tenant UUID.
+  </Property>
+  <Property name="name">
+    Required. 1–255 characters.
+  </Property>
+  <Property name="geometry">
+    Required. GeoJSON geometry object (`type` + `coordinates`).
+  </Property>
+  <Property name="locationId">
+    Optional. Location UUID in the same tenant.
+  </Property>
+</Properties>
+
+## Update zone
+
+Only **`tenantId`** and **`zoneId`** are required. Pass **`name`**, **`geometry`**, and/or **`locationId`** only for fields you want to change (omitted fields stay as they are).
+
+<CodeGroup title="client.mapZones.update(params)">
+
+```ts
+await client.mapZones.update({
+  tenantId: 'uuid-of-tenant',
+  zoneId: 'uuid-of-zone',
+  name: 'North yard (revised)',
+})
+```
+
+</CodeGroup>
+
+## Delete zone
+
+<CodeGroup title="client.mapZones.delete(tenantId, zoneId)">
+
+```ts
+await client.mapZones.delete('uuid-of-tenant', 'uuid-of-zone')
+```
+
+</CodeGroup>
+
+## Access and limits
+
+Authenticated **tenant members** may create, update, and delete zones for their tenant. Rate limits (rolling, per user per tenant): **30/minute** for create, update, and delete.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/locations" variant="text" arrow="right">
+    <>Locations</>
+  </Button>
+</div>

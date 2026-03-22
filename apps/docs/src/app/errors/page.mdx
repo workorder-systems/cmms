@@ -11,7 +11,7 @@ export const sections = [
 
 # Errors
 
-When a request fails, the SDK throws an `SdkError` (or rethrows it if the error was already an `SdkError`). It wraps PostgREST/Supabase errors and preserves `code`, `details`, and `hint` for debugging. {{ className: 'lead' }}
+Failed SDK calls surface as **`SdkError`**: a normalized wrapper around PostgREST and Supabase errors, with **`message`**, optional **`code`**, **`details`**, and **`hint`** for debugging. {{ className: 'lead' }}
 
 ## SdkError
 
@@ -35,7 +35,7 @@ All resource methods and `setTenant` / `clearTenant` normalize failures into `Sd
 <CodeGroup title="Catching SdkError">
 
 ```ts
-import { createDbClient, SdkError } from '@workorder-systems/db'
+import { createDbClient, SdkError } from '@workorder-systems/sdk'
 
 const client = createDbClient(url, anonKey)
 
@@ -57,9 +57,9 @@ You can also use `normalizeError(error)` to turn an unknown thrown value into an
 
 Errors come from Supabase/PostgREST and your RPCs. Typical sources:
 
-- **PGRST*** — PostgREST (e.g. invalid filter, missing column). Check [PostgREST errors](https://postgrest.org/en/stable/errors.html) for code meanings.
-- **Auth** — Supabase Auth (e.g. invalid credentials, session expired). Check [Supabase Auth docs](https://supabase.com/docs/guides/auth) for handling.
-- **RPC** — Your `rpc_*` functions can return custom messages and codes; `details` and `hint` may contain server-set text.
+- **PGRST***: PostgREST (e.g. invalid filter, missing column). Check [PostgREST errors](https://postgrest.org/en/stable/errors.html) for code meanings.
+- **Auth**: Supabase Auth (e.g. invalid credentials, session expired). Check [Supabase Auth docs](https://supabase.com/docs/guides/auth) for handling.
+- **RPC**: your `rpc_*` functions can return custom messages and codes; `details` and `hint` may contain server-set text.
 
 ## Status codes
 

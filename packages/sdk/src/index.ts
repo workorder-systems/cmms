@@ -22,7 +22,12 @@ export type {
 export type {
   WorkOrderRow,
   WorkOrderAttachmentRow,
+  MyWorkOrderRequestRow,
+  WorkOrderSlaStatusRow,
   CreateWorkOrderParams,
+  CreateWorkOrderRequestParams,
+  AcknowledgeWorkOrderParams,
+  UpsertWorkOrderSlaRuleParams,
   TransitionStatusParams,
   CompleteWorkOrderParams,
   LogTimeParams,
@@ -46,8 +51,11 @@ export type {
 export type { ProjectRow, ProjectsResource } from './resources/projects.js';
 export type {
   AssetRow,
+  AssetWarrantyRow,
   CreateAssetParams,
   UpdateAssetParams,
+  UpsertAssetWarrantyParams,
+  RecordAssetDowntimeParams,
   AssetsResource,
 } from './resources/assets.js';
 export type {
@@ -60,6 +68,27 @@ export type {
   BulkImportLocationsParams,
   LocationsResource,
 } from './resources/locations.js';
+export type {
+  MapZoneRow,
+  MapZoneGeometry,
+  CreateMapZoneParams,
+  UpdateMapZoneParams,
+  MapZonesResource,
+} from './resources/map-zones.js';
+export type {
+  ToolRow,
+  ToolCheckoutRow,
+  ShiftHandoverRow,
+  CreateToolParams,
+  UpdateToolParams,
+  CheckoutToolParams,
+  ReturnToolParams,
+  CreateShiftHandoverParams,
+  SubmitShiftHandoverParams,
+  AcknowledgeShiftHandoverParams,
+  AddShiftHandoverItemParams,
+  FieldOperationsResource,
+} from './resources/field-operations.js';
 export type {
   SpaceRow,
   SpaceStatus,
@@ -84,9 +113,13 @@ export type {
 export type {
   PluginRow,
   PluginInstallationRow,
+  PluginWebhookSubscriptionRow,
+  PluginDeliveryQueueRecentRow,
   InstallPluginParams,
   UpdatePluginInstallationParams,
   UninstallPluginParams,
+  UpsertPluginWebhookSubscriptionParams,
+  DeletePluginWebhookSubscriptionParams,
   PluginsResource,
 } from './resources/plugins.js';
 export type {
@@ -144,6 +177,7 @@ export type {
   AssetsSummaryRow,
   LocationsSummaryRow,
   TenantsOverviewRow,
+  SiteRollupRow,
   DashboardResource,
 } from './resources/dashboard.js';
 export type {
@@ -152,10 +186,6 @@ export type {
   AuditRetentionConfigRow,
   AuditResource,
 } from './resources/audit.js';
-export type {
-  SimilarPastFixResult,
-  SearchSimilarParams,
-} from './resources/similar-past-fixes.js';
 export type {
   TenantApiKeyRow,
   CreateTenantApiKeyResult,
@@ -256,6 +286,6 @@ export type {
   StartWorkOrderParams,
   StopWorkOrderParams,
   AddWorkOrderNoteParams,
-  RegisterWorkOrderAttachmentParams,
+  RegisterEntityAttachmentParams,
   MobileFieldResource,
 } from './resources/mobile-field.js';

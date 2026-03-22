@@ -8,7 +8,7 @@ type NamedDefinition = {
   parameters?: string[];
 };
 
-const migrationsDir = resolve(__dirname, '..', 'supabase', 'migrations');
+const migrationsDir = resolve(__dirname, '..', 'apps', 'supabase', 'migrations');
 const sqlFiles = readdirSync(migrationsDir).filter((file) => file.endsWith('.sql'));
 
 function loadSql(file: string): string {

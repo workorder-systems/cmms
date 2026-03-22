@@ -13,7 +13,52 @@ import {
 } from 'react'
 import { create } from 'zustand'
 
+import { Mermaid } from '@/components/Mermaid'
 import { Tag } from '@/components/Tag'
+
+function languageFromCodeClassName(className: unknown): string | undefined {
+  if (typeof className === 'string') {
+    const m = className.match(/language-(\S+)/)
+    return m?.[1]
+  }
+  if (Array.isArray(className)) {
+    for (const c of className) {
+      if (typeof c === 'string' && c.startsWith('language-')) {
+        return c.replace(/^language-/, '')
+      }
+    }
+  }
+  return undefined
+}
+
+function plainTextFromReactNode(node: React.ReactNode): string | undefined {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node)
+  }
+  if (Array.isArray(node)) {
+    const parts = node.map(plainTextFromReactNode).filter(Boolean) as string[]
+    return parts.length ? parts.join('') : undefined
+  }
+  return undefined
+}
+
+/** Fenced ```mermaid blocks: plain source in <code>, no Shiki (see rehype.mjs). */
+function extractMermaidChart(children: React.ReactNode): string | null {
+  const nodes = Children.toArray(children)
+  if (nodes.length !== 1 || !isValidElement(nodes[0])) {
+    return null
+  }
+  const el = nodes[0]
+  const props = el.props as { className?: unknown; children?: React.ReactNode }
+  if (languageFromCodeClassName(props.className) !== 'mermaid') {
+    return null
+  }
+  const text = plainTextFromReactNode(props.children)
+  if (text === undefined || !/\S/.test(text)) {
+    return null
+  }
+  return text
+}
 
 const languageNames: Record<string, string> = {
   js: 'JavaScript',
@@ -142,13 +187,23 @@ function CodePanel({
   label?: string
   code?: string
 }) {
-  let child = Children.only(children)
+  const array = Children.toArray(children)
+  const firstChild = array[0]
 
-  if (isValidElement(child)) {
-    const props = child.props as { tag?: string; label?: string; code?: string }
+  if (isValidElement(firstChild)) {
+    const props = firstChild.props as { tag?: string; label?: string; code?: string }
     tag = props.tag ?? tag
     label = props.label ?? label
     code = props.code ?? code
+  }
+
+  // Fallback: extract text from children (e.g. raw string or nested code)
+  if (!code && typeof children === 'string') {
+    code = children
+  }
+  if (!code && array.length > 0 && isValidElement(firstChild)) {
+    const c = firstChild.props as { children?: React.ReactNode }
+    if (typeof c?.children === 'string') code = c.children
   }
 
   if (!code) {
@@ -381,6 +436,15 @@ export function Pre({
 
   if (isGrouped) {
     return children
+  }
+
+  const mermaidChart = extractMermaidChart(children)
+  if (mermaidChart !== null) {
+    return (
+      <div className="not-prose">
+        <Mermaid chart={mermaidChart} />
+      </div>
+    )
   }
 
   return <CodeGroup {...props}>{children}</CodeGroup>

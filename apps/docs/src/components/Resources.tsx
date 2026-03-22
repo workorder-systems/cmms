@@ -21,9 +21,10 @@ import { ListIcon } from '@/components/icons/ListIcon'
 import { CalendarIcon } from '@/components/icons/CalendarIcon'
 import { DocumentIcon } from '@/components/icons/DocumentIcon'
 import { ClipboardIcon } from '@/components/icons/ClipboardIcon'
-import { MagnifyingGlassIcon } from '@/components/icons/MagnifyingGlassIcon'
+import { BellIcon } from '@/components/icons/BellIcon'
 import { CartIcon } from '@/components/icons/CartIcon'
 import { ShapesIcon } from '@/components/icons/ShapesIcon'
+import { BookIcon } from '@/components/icons/BookIcon'
 
 interface Resource {
   href: string
@@ -76,6 +77,20 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         icon: ListIcon,
         pattern: { y: 8, squares: [[0, 1], [1, 3]] },
       },
+      {
+        href: '/capability-inventory',
+        name: 'Capability inventory',
+        description: 'Vendors as contractors, warranties, docs metadata, tools, handover.',
+        icon: BookIcon,
+        pattern: { y: 12, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/tenant-api-keys',
+        name: 'Tenant API keys',
+        description: 'Machine-scoped keys; create, list, revoke; meter ingest Edge Function.',
+        icon: BoltIcon,
+        pattern: { y: 6, squares: [[0, 1], [1, 3]] },
+      },
     ],
   },
   {
@@ -90,11 +105,11 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         pattern: { y: -6, squares: [[-1, 2], [1, 3]] },
       },
       {
-        href: '/similar-past-fixes',
-        name: 'Similar past fixes',
-        description: 'Search by text or work order for similar historical fixes.',
-        icon: MagnifyingGlassIcon,
-        pattern: { y: 12, squares: [[0, 2], [1, 4]] },
+        href: '/request-portal-and-sla',
+        name: 'Request portal and SLA',
+        description: 'Submit requests, SLA rules, acknowledgment, breach views.',
+        icon: ClipboardIcon,
+        pattern: { y: 10, squares: [[0, 1], [1, 3]] },
       },
       {
         href: '/scheduling',
@@ -110,6 +125,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         icon: MapPinIcon,
         pattern: { y: 8, squares: [[0, 1], [1, 3]] },
       },
+      {
+        href: '/field-operations',
+        name: 'Field operations',
+        description: 'Tool checkouts, returns, shift handover logbook.',
+        icon: CogIcon,
+        pattern: { y: 18, squares: [[0, 1], [1, 3]] },
+      },
     ],
   },
   {
@@ -121,6 +143,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         description: 'List, create, update, delete; hierarchy and site rollups.',
         icon: MapPinIcon,
         pattern: { y: 22, squares: [[0, 1]] },
+      },
+      {
+        href: '/map-zones',
+        name: 'Map zones',
+        description: 'GeoJSON shapes on the map; list, create, update, delete.',
+        icon: ShapesIcon,
+        pattern: { y: 14, squares: [[0, 1], [1, 3]] },
       },
       {
         href: '/spaces',
@@ -135,6 +164,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         description: 'List, create, update, and delete assets.',
         icon: PackageIcon,
         pattern: { y: 32, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/asset-downtime',
+        name: 'Asset downtime',
+        description: 'Downtime events for availability metrics and reporting.',
+        icon: CogIcon,
+        pattern: { y: 20, squares: [[0, 1], [1, 3]] },
       },
     ],
   },
@@ -182,6 +218,20 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         pattern: { y: 18, squares: [[0, 1], [1, 3]] },
       },
       {
+        href: '/projects',
+        name: 'Projects',
+        description: 'Read-only list/get; link work orders for project cost roll-up.',
+        icon: FolderIcon,
+        pattern: { y: 10, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/notifications',
+        name: 'Notifications',
+        description: 'In-app feed, mark read, and per-event preferences (typed Supabase client).',
+        icon: BellIcon,
+        pattern: { y: 14, squares: [[0, 1], [1, 3]] },
+      },
+      {
         href: '/audit',
         name: 'Audit',
         description: 'Entity and permission change logs; retention config.',
@@ -206,6 +256,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         description: 'Parts, stock, suppliers, reservations, POs, requisitions.',
         icon: CartIcon,
         pattern: { y: 16, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/plugins/how-to-build',
+        name: 'How to build a plugin',
+        description: 'End-to-end checklist from catalog registration to first webhook delivery.',
+        icon: CogIcon,
+        pattern: { y: 14, squares: [[0, 1], [1, 3]] },
       },
       {
         href: '/plugins',

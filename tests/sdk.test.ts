@@ -24,6 +24,7 @@ describe('SDK', () => {
       expect(sdk.supabase).toBeDefined();
       expect(sdk.tenants).toBeDefined();
       expect(sdk.workOrders).toBeDefined();
+      expect(sdk.fieldOps).toBeDefined();
       expect(typeof sdk.setTenant).toBe('function');
       expect(typeof sdk.clearTenant).toBe('function');
     });
@@ -130,6 +131,108 @@ describe('SDK', () => {
       expect(wo).not.toBeNull();
       expect((wo as { id: string }).id).toBe(woId);
       expect((wo as { title: string }).title).toBe('SDK Get WO');
+    });
+
+    it('createRequest and listMyRequests (portal)', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const id = await sdk.workOrders.createRequest({
+        tenantId,
+        title: 'SDK portal request',
+        priority: 'medium',
+      });
+      const mine = await sdk.workOrders.listMyRequests();
+      expect(mine.some((r) => r.id === id)).toBe(true);
+    });
+
+    it('upsertSlaRule (maintenance-specific), getSlaStatus, and acknowledge', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      await sdk.workOrders.upsertSlaRule({
+        tenantId,
+        priorityKey: 'medium',
+        maintenanceTypeKey: 'corrective',
+        responseInterval: '15 minutes',
+        resolutionInterval: '2 hours',
+      });
+      const woId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK SLA WO',
+        priority: 'medium',
+        maintenanceType: 'corrective',
+      });
+      const sla = await sdk.workOrders.getSlaStatus(woId);
+      expect(sla).not.toBeNull();
+      expect(sla?.sla_response_due_at).toBeTruthy();
+      await sdk.workOrders.acknowledge({ tenantId, workOrderId: woId });
+      const after = await sdk.workOrders.getSlaStatus(woId);
+      expect(after?.acknowledged_at).toBeTruthy();
+    });
+
+    it('listSlaStatus returns an array', async () => {
+      await withAuthenticatedTenant(sdk);
+      const rows = await sdk.workOrders.listSlaStatus();
+      expect(Array.isArray(rows)).toBe(true);
+    });
+  });
+
+  describe('assets resource', () => {
+    it('recordDowntime returns event UUID', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK downtime asset',
+      });
+      const eventId = await sdk.assets.recordDowntime({
+        tenantId,
+        assetId,
+        reasonKey: 'breakdown',
+      });
+      expect(typeof eventId).toBe('string');
+      expect(eventId.length).toBeGreaterThan(10);
+    });
+
+    it('upsertWarranty and listWarranties', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK warranty asset',
+      });
+      const wid = await sdk.assets.upsertWarranty({
+        tenantId,
+        assetId,
+        expiresOn: '2030-06-01',
+        warrantyType: 'standard',
+        coverageSummary: 'SDK test',
+      });
+      expect(typeof wid).toBe('string');
+      const rows = await sdk.assets.listWarranties(assetId);
+      expect(rows.some((r) => r.id === wid)).toBe(true);
+    });
+  });
+
+  describe('fieldOps resource', () => {
+    it('listTools returns an array', async () => {
+      await withAuthenticatedTenant(sdk);
+      const tools = await sdk.fieldOps.listTools();
+      expect(Array.isArray(tools)).toBe(true);
+    });
+
+    it('createTool and updateTool', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const toolId = await sdk.fieldOps.createTool({
+        tenantId,
+        name: 'SDK test torque wrench',
+        assetTag: 'SDK-TW-1',
+        status: 'available',
+      });
+      expect(typeof toolId).toBe('string');
+      await sdk.fieldOps.updateTool({
+        tenantId,
+        toolId,
+        name: 'SDK test torque wrench (updated)',
+      });
+      const tools = await sdk.fieldOps.listTools();
+      const row = tools.find((t) => t.id === toolId);
+      expect(row?.name).toBe('SDK test torque wrench (updated)');
     });
   });
 

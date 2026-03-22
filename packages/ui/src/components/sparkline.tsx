@@ -62,19 +62,21 @@ export function Sparkline({
     }
 
     // Smooth curve using quadratic bezier
-    let path = `M ${points[0].x} ${points[0].y}`
+    const p0 = points[0]
+    if (!p0) return ""
+    let path = `M ${p0.x} ${p0.y}`
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1]
       const curr = points[i]
       const next = points[i + 1]
 
-      if (next) {
+      if (prev && curr && next) {
         const cp1x = prev.x + (curr.x - prev.x) / 2
         const cp1y = prev.y
         const cp2x = curr.x - (next.x - curr.x) / 2
         const cp2y = curr.y
         path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`
-      } else {
+      } else if (curr) {
         path += ` L ${curr.x} ${curr.y}`
       }
     }
@@ -86,6 +88,7 @@ export function Sparkline({
     if (points.length === 0) return ""
     const first = points[0]
     const last = points[points.length - 1]
+    if (!first || !last) return ""
     return `${pathData} L ${last.x} ${height} L ${first.x} ${height} Z`
   }, [pathData, points, height])
 

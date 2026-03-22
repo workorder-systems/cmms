@@ -1,0 +1,152 @@
+export const metadata = {
+  title: 'How to build a plugin',
+  description:
+    'Step-by-step: register a plugin, Vault secrets, tenant install, webhooks, subscriptions, and verifying deliveries locally.',
+}
+
+export const sections = [
+  { title: 'What you are building', id: 'what-you-build' },
+  { title: 'Prerequisites', id: 'prerequisites' },
+  { title: '1. Register in the catalog', id: 'register-catalog' },
+  { title: '2. Store secrets in Vault', id: 'vault-secrets' },
+  { title: '3. Install for a tenant', id: 'tenant-install' },
+  { title: '4. Configure outbound webhooks', id: 'outbound-url' },
+  { title: '5. Subscribe to entity changes', id: 'subscriptions' },
+  { title: '6. Implement your HTTPS receiver', id: 'receiver' },
+  { title: '7. Processing and retries', id: 'delivery-processing' },
+  { title: '8. Call the API and inbound webhooks', id: 'api-inbound' },
+  { title: '9. Verify locally', id: 'local-verify' },
+  { title: 'See also', id: 'see-also' },
+]
+
+# How to build a plugin
+
+Build an **integration** or extension that runs **outside** the core database: your code calls the public API, and optionally receives **signed outbound webhooks** when audited data changes. This page is the **checklist** from zero to first delivery. For deeper behavior (payload shape, HMAC details, inbound allowlist), read [Building plugins](/plugins-building) and the [Plugins](/plugins) SDK reference. {{ className: 'lead' }}
+
+<Note>
+  Plugins **do not** add tables or migrations in core. If you need new schema, that belongs in a first-party **module**, not a plugin.
+</Note>
+
+## What you are building
+
+At a high level:
+
+1. A **catalog row** (`int.plugins`) so tenants can discover and install your integration.
+2. Per-tenant **installation** with `config` (e.g. `webhook_url`) and optional **`secret_ref`** pointing at a **Vault secret name** used for HMAC.
+3. Optional **subscriptions** so specific `audit.entity_changes` rows enqueue **outbound** HTTPS POSTs to your URL.
+4. Your **service**: verify signatures, stay idempotent, then call **views/RPCs** or talk to external systems (SAP, Slack, etc.).
+
+```mermaid
+flowchart TB
+  CAT[Catalog row] --> INS[Tenant installation]
+  INS --> SUB[Change subscriptions]
+  SUB --> OUT[Outbound signed webhooks]
+  OUT --> REC[Your receiver]
+  REC --> IN[Inbound RPCs or external APIs]
+```
+
+## Prerequisites
+
+- **Supabase project** with this schema (or compatible deployment): Auth, Vault, `pg_net`, scheduled `rpc_process_plugin_deliveries` (e.g. `pg_cron`).
+- **Backend** that can call **`rpc_register_plugin`** with a key allowed for your environment (service role or equivalent—never from the browser).
+- **HTTPS endpoint** reachable from the database for outbound webhooks (local Docker often needs `host.docker.internal` or a tunnel). The database repo ships **`plugins/example`**—see **`plugins/example/README.md`** for a minimal receiver and smoke script.
+- Familiarity with [Authentication](/authentication), [Tenant context](/tenant-context), and [Authorization](/authorization)—tenant admins install plugins; your receiver acts as its own integration.
+
+## 1. Register in the catalog
+
+Pick a stable **`p_key`**: lowercase, `a-z`, `0-9`, underscores only (`^[a-z0-9_]+$`), 2–80 characters. Register once from a **trusted server** (idempotent upsert):
+
+<CodeGroup title="Backend-only registration">
+
+```ts
+const { error } = await supabase.rpc('rpc_register_plugin', {
+  p_key: 'my_integration',
+  p_name: 'My integration',
+  p_description: 'Syncs work orders with an external system',
+  p_is_integration: true,
+  p_is_active: true,
+})
+```
+
+</CodeGroup>
+
+Set **`p_is_integration: true`** when the plugin talks to an external system. See [Building plugins — Register plugin](/plugins-building#register-plugin) for full context.
+
+## 2. Store secrets in Vault
+
+For **outbound** signing (and **inbound** verification), create a secret in **Supabase Vault** with a unique **`name`** (e.g. `my_integration_hmac_prod`). The **plaintext** is your shared HMAC key.
+
+On the installation you set **`secret_ref`** to that **name**, not the secret value. The database resolves the secret when signing outbound requests and when verifying `rpc_plugin_ingest_webhook`.
+
+## 3. Install for a tenant
+
+A user with **`tenant.admin`** (and correct tenant context) installs via the SDK:
+
+<CodeGroup title="Install from your admin UI">
+
+```ts
+const installationId = await client.plugins.install({
+  tenantId,
+  pluginKey: 'my_integration',
+  secretRef: 'my_integration_hmac_prod',
+  config: {
+    webhook_url: 'https://integrations.example.com/hooks/cmms',
+  },
+})
+```
+
+</CodeGroup>
+
+`config` is JSON—use it for non-secret routing (API base URLs, feature flags). See [Plugins — Install](/plugins#install-plugin).
+
+## 4. Configure outbound webhooks
+
+Outbound delivery POSTs JSON to **`config.webhook_url`**. Optional: `timeout_ms`, `headers` (non-secret only). The URL must be reachable **from the Postgres host** (Supabase: DB side / `pg_net`).
+
+## 5. Subscribe to entity changes
+
+Nothing is sent until you create **subscriptions** for `(table_schema, table_name)` and **`operations`** (`INSERT` / `UPDATE` / `DELETE`). For `UPDATE`, use **`changed_fields_allowlist`** to filter noisy columns.
+
+- **`include_payload: false`** (default): `snapshot` carries **`record_id`** and **`changed_fields`** only—good for privacy and small payloads.
+- **`include_payload: true`**: includes **`old_data`** / **`new_data`** from audit—use only when you need full rows and accept PII/size risk.
+
+Use `client.plugins.upsertWebhookSubscription(...)` as in [Plugins — Webhook subscriptions](/plugins#webhook-subscriptions).
+
+## 6. Implement your HTTPS receiver
+
+Your endpoint should:
+
+1. Read the **raw body bytes** and verify **`X-Plugin-Signature`** (hex **HMAC-SHA256** over the body) with the **same plaintext** as Vault—see [Building plugins — Outbound webhooks](/plugins-building#outbound-webhooks).
+2. Treat delivery as **at-least-once**: dedupe with **`X-Plugin-Delivery-Id`** and/or **`audit.id`** in the payload.
+3. Respond with **2xx** when the message is accepted for processing; non-2xx contributes to retries and eventual **dead** state.
+
+Headers to expect include **`X-Plugin-Delivery-Id`** and **`X-Plugin-Event-Type`**.
+
+## 7. Processing and retries
+
+The queue is drained by **`rpc_process_plugin_deliveries`** (typically **every minute** via `pg_cron`). You do not run a separate worker in-app: **`pg_net`** performs HTTP. Failed deliveries backoff and can land in **`dead`** after repeated failures—monitor **`client.plugins.listRecentDeliveries()`** or your ops stack.
+
+## 8. Call the API and inbound webhooks
+
+- **Reads/writes:** Use public **views** (`v_*`) and **RPCs** (`rpc_*`) with appropriate JWTs—see [Building plugins — Use the public API](/plugins-building#use-public-api).
+- **Inbound from partners:** **`rpc_plugin_ingest_webhook`** verifies HMAC using the installation’s Vault secret; allowlisted actions are intentionally narrow—see [Building plugins — Inbound webhooks](/plugins-building#inbound-webhooks).
+
+## 9. Verify locally
+
+If you work in the **database monorepo**, use the **`plugins/example`** package: a minimal receiver plus **`pnpm smoke:setup`** to register `example_receiver`, seed Vault, create a tenant, subscribe to `work_orders` **INSERT**, enqueue a delivery, and run the processor. See that package’s **README** for `WEBHOOK_SECRET`, `host.docker.internal`, and env vars.
+
+<div className="not-prose mt-6 flex flex-wrap gap-3">
+  <Button href="/plugins-building" variant="text" arrow="right">
+    <>Building plugins (architecture)</>
+  </Button>
+  <Button href="/plugins" variant="text" arrow="right">
+    <>Plugins SDK reference</>
+  </Button>
+</div>
+
+## See also
+
+- [Building plugins](/plugins-building) — lifecycle, payload details, inbound allowlist
+- [Plugins](/plugins) — `client.plugins.*` methods
+- [Tenant context](/tenant-context) — required before tenant-scoped plugin APIs
+- [Audit](/audit) — where `entity_changes` come from

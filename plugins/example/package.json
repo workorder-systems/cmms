@@ -1,0 +1,21 @@
+{
+  "name": "work-order-systems-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal webhook receiver for local plugin delivery smoke tests (pg_net → HTTPS).",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "smoke:setup": "tsx scripts/smoke-setup.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.3.3"
+  }
+}

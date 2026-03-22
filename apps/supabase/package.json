@@ -1,0 +1,13 @@
+{
+  "name": "work-order-systems-supabase",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Supabase CLI project: local stack config, SQL migrations, and Edge Functions.",
+  "scripts": {
+    "start": "supabase start",
+    "stop": "supabase stop",
+    "status": "supabase status",
+    "reset": "supabase db reset",
+    "functions": "supabase functions serve --env-file ../../.env.local --no-verify-jwt"
+  }
+}

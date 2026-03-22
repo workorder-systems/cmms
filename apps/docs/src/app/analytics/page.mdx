@@ -14,15 +14,15 @@ export const sections = [
 
 # Analytics reporting layer
 
-Use the read-only `reporting` schema for BI tools and data warehouse export. Dimension and fact views, plus KPI views (MTTR, MTBF, PM compliance, utilization, backlog). All views are tenant-scoped—set tenant context before you query. {{ className: 'lead' }}
+Use the read-only `reporting` schema for BI tools and data warehouse export. Dimension and fact views, plus KPI views (MTTR, MTBF, PM compliance, utilization, backlog). All views are tenant-scoped: set tenant context before you query. {{ className: 'lead' }}
 
 ## Overview
 
 The reporting layer gives you:
 
-- **Dimension views** — tenant, location (with site), department, asset (with site), and a date dimension table for time slicing
-- **Fact views** — work orders, labor (time entries), parts, downtime/incidents (reactive completed WOs), PM compliance
-- **KPI views** — MTTR, MTBF, PM compliance %, technician utilization %, backlog (open/overdue counts)
+- **Dimension views**: tenant, location (with site), department, asset (with site), and a date dimension table for time slicing
+- **Fact views**: work orders, labor (time entries), parts, downtime/incidents (reactive completed WOs), PM compliance
+- **KPI views**: MTTR, MTBF, PM compliance %, technician utilization %, backlog (open/overdue counts)
 
 Every view filters by the current tenant via `authz.get_current_tenant_id()`. No cross-tenant data is exposed. You can slice by `site_id`, `department_id`, and date columns in your BI tool by filtering or grouping on the fact/dimension columns.
 
@@ -35,7 +35,7 @@ BI and warehouse clients must run with the current tenant set so `get_current_te
 1. Authenticate as a user who is a member of the tenant.
 2. Call `rpc_set_tenant_context(tenant_id)` (or the SDK: `client.setTenant(tenantId)`).
 3. Optionally refresh the JWT so the token carries the tenant; then all later requests use that tenant.
-4. Query the reporting views—they return only that tenant's data.
+4. Query the reporting views; they return only that tenant's data.
 
 Always set tenant context first so BI and exports only see the intended tenant.
 
@@ -95,5 +95,5 @@ Call it after setting tenant context if your client uses the same session for me
 
 ## Next steps
 
-- [Tenant context](/tenant-context) — Set and clear tenant context
-- [Work orders](/work-orders) — Work order API reference
+- [Tenant context](/tenant-context): set and clear tenant context
+- [Work orders](/work-orders): work order API reference

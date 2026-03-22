@@ -16,7 +16,6 @@ import { createCatalogsResource } from './resources/catalogs.js';
 import { createPmResource } from './resources/pm.js';
 import { createDashboardResource } from './resources/dashboard.js';
 import { createAuditResource } from './resources/audit.js';
-import { createSimilarPastFixesResource } from './resources/similar-past-fixes.js';
 import { createTenantApiKeysResource } from './resources/tenant-api-keys.js';
 import { createLaborResource } from './resources/labor.js';
 import { createSchedulingResource } from './resources/scheduling.js';
@@ -25,6 +24,8 @@ import { createProjectsResource } from './resources/projects.js';
 import { createPartsInventoryResource } from './resources/parts-inventory.js';
 import { createSafetyComplianceResource } from './resources/safety-compliance.js';
 import { createMobileFieldResource } from './resources/mobile-field.js';
+import { createMapZonesResource } from './resources/map-zones.js';
+import { createFieldOperationsResource } from './resources/field-operations.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -83,7 +84,6 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     pm: createPmResource(supabase),
     dashboard: createDashboardResource(supabase),
     audit: createAuditResource(supabase),
-    similarPastFixes: createSimilarPastFixesResource(supabase),
     tenantApiKeys: createTenantApiKeysResource(supabase),
     labor: createLaborResource(supabase),
     scheduling: createSchedulingResource(supabase),
@@ -92,6 +92,8 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     partsInventory: createPartsInventoryResource(supabase),
     safetyCompliance: createSafetyComplianceResource(supabase),
     mobile: createMobileFieldResource(supabase),
+    mapZones: createMapZonesResource(supabase),
+    fieldOps: createFieldOperationsResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',

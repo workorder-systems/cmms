@@ -23,6 +23,11 @@ const guides = [
     description: 'Set and clear tenant context for multi-tenant operations.',
   },
   {
+    href: '/tenant-api-keys',
+    name: 'Tenant API keys',
+    description: 'Machine auth per tenant; SDK management and automated meter ingest.',
+  },
+  {
     href: '/authorization',
     name: 'Authorization (RBAC & ABAC)',
     description: 'Roles, permissions, scopes, and how RPCs enforce access.',
@@ -33,9 +38,19 @@ const guides = [
     description: 'SdkError and common PostgREST/Supabase error codes.',
   },
   {
+    href: '/capability-inventory',
+    name: 'Capability inventory',
+    description: 'Vendors as contractors, warranties, docs metadata, tools, handover — what exists vs gaps.',
+  },
+  {
+    href: '/plugins/how-to-build',
+    name: 'How to build a plugin',
+    description: 'Checklist: catalog, Vault, install, webhooks, subscriptions, and local verification.',
+  },
+  {
     href: '/plugins-building',
     name: 'Building plugins',
-    description: 'Architecture and steps for building plugins and integrations on top of the API.',
+    description: 'Architecture and deep reference for plugins, HMAC, and the public API surface.',
   },
 ]
 

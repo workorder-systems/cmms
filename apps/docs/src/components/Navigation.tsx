@@ -239,10 +239,13 @@ export const navigation: Array<NavGroup> = [
       { title: 'Introduction', href: '/' },
       { title: 'Quickstart', href: '/quickstart' },
       { title: 'Installation', href: '/installation' },
+      { title: 'Configuration', href: '/configuration' },
       { title: 'Authentication', href: '/authentication' },
       { title: 'Tenant context', href: '/tenant-context' },
+      { title: 'Tenant API keys', href: '/tenant-api-keys' },
       { title: 'Authorization (RBAC and ABAC)', href: '/authorization' },
       { title: 'Errors', href: '/errors' },
+      { title: 'Capability inventory', href: '/capability-inventory' },
     ],
   },
   {
@@ -258,16 +261,20 @@ export const navigation: Array<NavGroup> = [
     title: 'Work orders & dispatch',
     links: [
       { title: 'Work orders', href: '/work-orders' },
-      { title: 'Similar past fixes', href: '/similar-past-fixes' },
+      { title: 'Request portal and SLA', href: '/request-portal-and-sla' },
       { title: 'Scheduling & dispatch', href: '/scheduling' },
+      { title: 'Mobile field', href: '/mobile-field' },
+      { title: 'Field operations', href: '/field-operations' },
     ],
   },
   {
     title: 'Places & assets',
     links: [
       { title: 'Locations', href: '/locations' },
+      { title: 'Map zones', href: '/map-zones' },
       { title: 'Spaces', href: '/spaces' },
       { title: 'Assets', href: '/assets' },
+      { title: 'Asset downtime', href: '/asset-downtime' },
     ],
   },
   {
@@ -283,6 +290,8 @@ export const navigation: Array<NavGroup> = [
       { title: 'Dashboard', href: '/dashboard' },
       { title: 'Analytics reporting', href: '/analytics' },
       { title: 'Costs & lifecycle', href: '/costs' },
+      { title: 'Projects', href: '/projects' },
+      { title: 'Notifications', href: '/notifications' },
       { title: 'Audit', href: '/audit' },
       { title: 'Safety & compliance', href: '/safety-compliance' },
     ],
@@ -291,6 +300,7 @@ export const navigation: Array<NavGroup> = [
     title: 'Inventory & plugins',
     links: [
       { title: 'Parts & inventory', href: '/parts-inventory' },
+      { title: 'How to build a plugin', href: '/plugins/how-to-build' },
       { title: 'Plugins', href: '/plugins' },
     ],
   },

@@ -1,0 +1,66 @@
+export const metadata = {
+  title: 'Configuration',
+  description:
+    'Environment variables for the SDK, CI, and Supabase Edge Functions.',
+}
+
+export const sections = [
+  { title: 'SDK and CI', id: 'sdk-ci' },
+  { title: 'Edge Functions', id: 'edge-functions' },
+  { title: 'Local development', id: 'local-development' },
+  { title: 'Tests', id: 'tests' },
+]
+
+# Configuration
+
+Where you run code (your app, CI, or a script), you supply the Supabase URL and keys yourself. **Deployed** Edge Functions are different: Supabase injects every variable whose name starts with `SUPABASE_`; you never set those as custom secrets. {{ className: 'lead' }}
+
+See the repo [`.env.example`](https://github.com/workorder-systems/db/blob/main/.env.example) for names used in this project.
+
+## SDK and CI
+
+Point `createDbClient`, tests, and scripts at your project using values from **Project Settings → API** in the [Supabase dashboard](https://supabase.com/dashboard). Do not commit real keys.
+
+<Properties>
+  <Property name="SUPABASE_URL">
+    Project API URL (cloud <code>https://…supabase.co</code> or local <code>http://127.0.0.1:54321</code>).
+  </Property>
+  <Property name="SUPABASE_ANON_KEY">
+    Anon JWT. Safe for clients; RLS still applies.
+  </Property>
+  <Property name="SUPABASE_SERVICE_ROLE_KEY">
+    Service-role JWT. Bypasses RLS. Use only in trusted environments (e.g. CI setup or admin tools).
+  </Property>
+</Properties>
+
+## Edge Functions
+
+### Built-in `SUPABASE_*` variables
+
+On Supabase-hosted functions, the runtime provides `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and any other reserved `SUPABASE_*` names for your project. Read them with `Deno.env.get(...)` as usual.
+
+You **cannot** create dashboard secrets or `supabase secrets set` entries that start with `SUPABASE_`. Those prefixes are reserved. Nothing to configure for them in production.
+
+### Your own secrets
+
+Only use **Edge Functions → Secrets** or `supabase secrets set` for names that **do not** start with `SUPABASE_` (feature flags, third-party API keys, and so on).
+
+### `ingest-meter-reading`
+
+Relies on the injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for service-role access. No manual `SUPABASE_*` setup.
+
+## Local development
+
+1. From the repo root: `pnpm start` or `pnpm supabase:start` (Supabase CLI project in `apps/supabase`).
+2. After migrations: `pnpm gen-types` so the SDK matches the database.
+3. `pnpm supabase:functions` (or `cd apps/supabase && supabase functions serve …`) exposes the same built-in `SUPABASE_*` names locally; anything else your function needs goes in your env file or CLI flags. See [local Edge Functions](https://supabase.com/docs/guides/functions/local-development).
+
+## Tests
+
+`pnpm test` and `pnpm test:ci` read `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and when needed `SUPABASE_SERVICE_ROLE_KEY` from the environment (same as the SDK table above). Details: `tests/README.md` in the repo.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/installation" variant="text" arrow="right">
+    <>Installation</>
+  </Button>
+</div>

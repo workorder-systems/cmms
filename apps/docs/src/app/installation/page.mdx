@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Installation',
-  description: 'Install and use @workorder-systems/db in browser, Node, and edge.',
+  description: 'Install and use @workorder-systems/sdk in browser, Node, and edge.',
 }
 
 export const sections = [
@@ -8,52 +8,49 @@ export const sections = [
   { title: 'Peer dependency', id: 'peer-dependency' },
   { title: 'Create a client', id: 'usage' },
   { title: 'Edge runtimes', id: 'edge-runtimes' },
+  { title: 'Environment variables', id: 'environment-variables' },
 ]
 
 # Installation
 
-Install the `@workorder-systems/db` SDK to get a type-safe client for Supabase views and RPCs. {{ className: 'lead' }}
+Add **`@workorder-systems/sdk`** to get a typed client over the project’s public views and RPCs. The package ships compiled **`dist/`** output and declarations, with no compile step in your app. {{ className: 'lead' }}
 
 ## Install the package
 
 <CodeGroup title="Install">
 
 ```bash
-npm install @workorder-systems/db @supabase/supabase-js
+npm install @workorder-systems/sdk @supabase/supabase-js
 ```
 
 </CodeGroup>
 
-Package name: `@workorder-systems/db`. It ships a pre-built `dist/` with TypeScript declarations—no build step needed in your app.
-
-<Note>
-  In the monorepo you may see `@workorder-systems/sdk` as the workspace name; use `@workorder-systems/db` when installing from npm.
-</Note>
-
 ## Peer dependency
 
-`@supabase/supabase-js` is a **peer dependency**. You need to install it yourself (same version range as the SDK’s peer: `^2.39.0`). The SDK uses it under the hood and re-exports types from your `Database` type when used in the same repo.
+Install **`@supabase/supabase-js`** alongside the SDK (peer range **`^2.39.0`**). The SDK builds on the Supabase client; your app supplies both packages.
 
 ## Create a client
 
-Import `createDbClient` and pass your Supabase project URL and anon key:
+Pass the project URL and anon key from **Project Settings → API**:
 
 ```ts
-import { createDbClient } from '@workorder-systems/db'
+import { createDbClient } from '@workorder-systems/sdk'
 
 const client = createDbClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!
 )
 
-// client.supabase — typed Supabase client
+// client.supabase: typed Supabase client
 // client.setTenant(tenantId) / client.clearTenant()
-// Domain resources:
-//   client.tenants, client.workOrders, client.assets, client.locations, client.departments, client.meters
-//   client.plugins, client.authorization, client.catalogs, client.pm, client.dashboard, client.audit
+// Domain resources (see package README for method lists):
+//   client.tenants, client.workOrders, client.assets, client.locations, client.spaces, client.departments,
+//   client.meters, client.plugins, client.authorization, client.catalogs, client.pm, client.dashboard,
+//   client.audit, client.tenantApiKeys, client.labor, client.scheduling, client.costs, client.projects,
+//   client.partsInventory, client.safetyCompliance, client.mobile, client.mapZones, client.fieldOps
 ```
 
-Works in the browser and in Node.js with no extra config. For edge runtimes (Cloudflare Workers, Vercel Edge), pass a custom `fetch` and optionally turn off session persistence:
+Same pattern works in the browser and in Node. For **edge** runtimes (Cloudflare Workers, Vercel Edge, etc.), pass the platform **`fetch`** and turn off session persistence if you do not need it:
 
 ```ts
 const client = createDbClient(url, anonKey, {
@@ -70,4 +67,14 @@ const client = createDbClient(url, anonKey, {
 
 ## Edge runtimes
 
-In edge environments, pass `global: { fetch }` so the client uses the runtime’s `fetch`. Set `auth: { persistSession: false }` if you don’t need session persistence. For custom storage, use the `auth.storage` option (Supabase `SessionStorage`-compatible).
+Use **`global: { fetch }`** so requests use the host runtime. Use **`auth: { persistSession: false }`** when there is no durable session store. For custom storage, set **`auth.storage`** (Supabase-compatible session storage).
+
+## Environment variables
+
+The SDK expects **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** in the environment you run it in. Deployed Edge Functions get all **`SUPABASE_*`** values from Supabase automatically. See [Configuration](/configuration).
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/configuration" variant="text" arrow="right">
+    <>Configuration</>
+  </Button>
+</div>

@@ -9,6 +9,7 @@ export const sections = [
   { title: 'Create meter', id: 'create-meter' },
   { title: 'Update meter', id: 'update-meter' },
   { title: 'Record reading', id: 'record-reading' },
+  { title: 'Automated readings (API keys)', id: 'automated-readings-api-keys' },
   { title: 'Delete meter', id: 'delete-meter' },
 ]
 
@@ -156,6 +157,10 @@ const readingId = await client.meters.recordReading({
     Optional. Notes.
   </Property>
 </Properties>
+
+## Automated readings (API keys)
+
+For **unauthenticated devices or jobs**, use a **tenant API key** and the **`ingest-meter-reading`** Edge Function. That path records readings as **`automated`** (not the interactive **`client.meters.recordReading`** flow). See [Tenant API keys](/tenant-api-keys).
 
 ## Delete meter
 

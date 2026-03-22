@@ -1,5 +1,16 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { execSync } from 'node:child_process';
+import { execSync, type ExecSyncOptions } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+/** Directory containing `config.toml` (Supabase CLI project root). */
+export const SUPABASE_PROJECT_DIR = join(repoRoot, 'apps', 'supabase');
+
+function supabaseExec(command: string, options?: Omit<ExecSyncOptions, 'cwd'>): void {
+  execSync(command, { ...options, cwd: SUPABASE_PROJECT_DIR });
+}
 
 /**
  * Get Supabase configuration from environment variables or Supabase CLI
@@ -21,6 +32,7 @@ export function getSupabaseConfig(): { url: string; anonKey: string } {
   try {
     const statusOutput = execSync('supabase status --output json', {
       encoding: 'utf-8',
+      cwd: SUPABASE_PROJECT_DIR,
     });
     const status = JSON.parse(statusOutput) as Record<string, unknown>;
     
@@ -68,6 +80,7 @@ function getServiceRoleKeyForUrl(url: string): string {
       const statusOutput = execSync('supabase status --output json', {
         encoding: 'utf-8',
         stdio: ['ignore', 'pipe', 'ignore'],
+        cwd: SUPABASE_PROJECT_DIR,
       });
       const status = JSON.parse(statusOutput) as Record<string, unknown>;
       const key = status.service_role_key || status.SERVICE_ROLE_KEY;
@@ -139,7 +152,7 @@ export function createServiceRoleClient(): SupabaseClient {
  */
 export function resetDatabase(): void {
   try {
-    execSync('supabase db reset', { stdio: 'inherit' });
+    supabaseExec('supabase db reset', { stdio: 'inherit' });
   } catch (error) {
     throw new Error(`Failed to reset database: ${error instanceof Error ? error.message : String(error)}`);
   }

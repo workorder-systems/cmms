@@ -8,9 +8,10 @@ export const sections = [
   { title: 'Get by ID', id: 'get-by-id' },
   { title: 'Create location', id: 'create-location' },
   { title: 'Update location', id: 'update-location' },
-  { title: 'Delete location', id: 'delete-location' },
   { title: 'Bulk import', id: 'bulk-import' },
   { title: 'Hierarchy and portfolio views', id: 'hierarchy-portfolio-views' },
+  { title: 'Map zones', id: 'map-zones' },
+  { title: 'Delete location', id: 'delete-location' },
 ]
 
 # Locations
@@ -138,7 +139,7 @@ const result = await client.locations.bulkImport({
 
 With tenant context set, query these views via the raw Supabase client for tree UIs, breadcrumbs, and multi-site dashboards.
 
-**v_location_hierarchy** — each location with `path_ids`, `path_names`, `depth` (0 = root).
+**v_location_hierarchy**: each location with `path_ids`, `path_names`, `depth` (0 = root).
 
 <CodeGroup title="Hierarchy (tree / breadcrumbs)">
 
@@ -149,7 +150,7 @@ const { data } = await client.supabase.from('v_location_hierarchy').select('*')
 
 </CodeGroup>
 
-**v_site_rollup** — one row per site with aggregated counts (buildings, floors, rooms, zones, assets, work orders).
+**v_site_rollup**: one row per site with aggregated counts (buildings, floors, rooms, zones, assets, work orders).
 
 <CodeGroup title="Site rollup (multi-site KPIs)">
 
@@ -160,7 +161,7 @@ const { data } = await client.supabase.from('v_site_rollup').select('*')
 
 </CodeGroup>
 
-**v_portfolio_overview** — tenant-level summary plus one row per site (tenant metrics plus site breakdown).
+**v_portfolio_overview**: tenant-level summary plus one row per site (tenant metrics plus site breakdown).
 
 <CodeGroup title="Portfolio overview">
 
@@ -170,6 +171,10 @@ const { data } = await client.supabase.from('v_portfolio_overview').select('*')
 ```
 
 </CodeGroup>
+
+## Map zones
+
+Saved **GeoJSON** shapes on the locations map (optional link to a location) are managed with **`client.mapZones`**. See [Map zones](/map-zones).
 
 ## Delete location
 

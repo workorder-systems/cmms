@@ -1,6 +1,7 @@
 export const metadata = {
   title: 'Plugins',
-  description: 'List available plugins and tenant installations; install, update, uninstall. Requires tenant.admin for installations.',
+  description:
+    'List available plugins and tenant installations; install, update, uninstall; webhook subscriptions and delivery metadata. Requires tenant.admin for installations.',
 }
 
 export const sections = [
@@ -10,11 +11,22 @@ export const sections = [
   { title: 'Install plugin', id: 'install-plugin' },
   { title: 'Update installation', id: 'update-installation' },
   { title: 'Uninstall plugin', id: 'uninstall-plugin' },
+  { title: 'Webhook subscriptions', id: 'webhook-subscriptions' },
+  { title: 'Recent webhook deliveries', id: 'webhook-deliveries' },
 ]
 
 # Plugins
 
-Lists the catalog of available plugins (`v_plugins`) and tenant plugin installations (`v_plugin_installations`). Install, update, and uninstall plugins for a tenant. **Installing and managing installations requires `tenant.admin` permission.** Set tenant context before listing or managing installations. For plugin authors, see [Building plugins](/plugins-building). {{ className: 'lead' }}
+Lists the catalog of available plugins (`v_plugins`) and tenant plugin installations (`v_plugin_installations`). Install, update, and uninstall plugins for a tenant. **Outbound webhooks** are driven by `audit.entity_changes` when you add allowlisted subscriptions; deliveries are processed in-database via `pg_net` and `pg_cron` (see [How to build a plugin](/plugins/how-to-build) and [Building plugins](/plugins-building)). **Installing and managing installations and subscriptions requires `tenant.admin` permission.** Set tenant context before listing or managing installations. {{ className: 'lead' }}
+
+```mermaid
+flowchart LR
+  DB[(Tenant data change)] --> AUD[audit.entity_changes]
+  AUD --> Q[plugin delivery queue]
+  Q --> CRON[pg_cron + rpc_process_plugin_deliveries]
+  CRON --> NET[pg_net HTTP]
+  NET --> EP[Subscriber webhook_url]
+```
 
 ## List plugins (catalog)
 
@@ -149,6 +161,70 @@ await client.plugins.uninstall({
     Required. Installation UUID.
   </Property>
 </Properties>
+
+## Webhook subscriptions
+
+Allowlist which audited tables and operations should enqueue outbound webhook deliveries for an installation. **No subscription rows means no outbound events** for that installation. Requires **tenant.admin** and tenant context.
+
+<CodeGroup title="client.plugins.upsertWebhookSubscription(params)">
+
+```ts
+await client.setTenant(tenantId)
+
+const subscriptionId = await client.plugins.upsertWebhookSubscription({
+  tenantId,
+  installationId,
+  tableSchema: 'app',
+  tableName: 'work_orders',
+  operations: ['INSERT', 'UPDATE'],
+  changedFieldsAllowlist: null, // optional: for UPDATE, require overlap with these columns
+  includePayload: false, // when false, snapshot omits full old_data/new_data (recommended)
+})
+// Returns string (subscription UUID)
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.plugins.listWebhookSubscriptions()">
+
+```ts
+await client.setTenant(tenantId)
+
+const subs = await client.plugins.listWebhookSubscriptions()
+// v_plugin_webhook_subscriptions — plugin_key, table_schema, table_name, operations, include_payload, …
+```
+
+</CodeGroup>
+
+<CodeGroup title="client.plugins.deleteWebhookSubscription(params)">
+
+```ts
+await client.plugins.deleteWebhookSubscription({
+  tenantId,
+  subscriptionId: 'uuid-of-subscription',
+})
+```
+
+</CodeGroup>
+
+Installation `config` should include a **`webhook_url`** string for the subscriber HTTPS endpoint. Optional: `timeout_ms` (1000–120000), and `headers` (json object of non-secret header names/values). Signing uses **Supabase Vault**: store the HMAC secret under a unique **`name`**, and set **`secret_ref`** on the installation to that same name (see [Building plugins](/plugins-building)).
+
+## Recent webhook deliveries
+
+Tenant admins can read metadata for recent outbound deliveries (status, attempts, last error). Payload bodies are not exposed here.
+
+<CodeGroup title="client.plugins.listRecentDeliveries()">
+
+```ts
+await client.setTenant(tenantId)
+
+const rows = await client.plugins.listRecentDeliveries()
+// v_plugin_delivery_queue_recent — event_type, status, attempts, last_error, …
+```
+
+</CodeGroup>
+
+Processing is normally scheduled every minute (`pg_cron` calling `rpc_process_plugin_deliveries`). For automation or diagnostics, a client using the **service role** JWT can call `client.plugins.processDeliveries(batchSize?)` (not available to end-user sessions).
 
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/tenant-context" variant="text" arrow="right">
