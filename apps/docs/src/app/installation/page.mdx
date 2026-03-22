@@ -47,7 +47,7 @@ const client = createDbClient(
 //   client.tenants, client.workOrders, client.assets, client.locations, client.spaces, client.departments,
 //   client.meters, client.plugins, client.authorization, client.catalogs, client.pm, client.dashboard,
 //   client.audit, client.tenantApiKeys, client.labor, client.scheduling, client.costs, client.projects,
-//   client.partsInventory, client.safetyCompliance, client.mobile, client.mapZones
+//   client.partsInventory, client.safetyCompliance, client.mobile, client.mapZones, client.fieldOps
 ```
 
 Same pattern works in the browser and in Node. For **edge** runtimes (Cloudflare Workers, Vercel Edge, etc.), pass the platform **`fetch`** and turn off session persistence if you do not need it:

@@ -1,0 +1,69 @@
+export const metadata = {
+  title: 'Capability inventory',
+  description:
+    'What the database and SDK already include versus common CMMS checklists — vendors, warranties, documents, tools, handover.',
+}
+
+export const sections = [
+  { title: 'Vendors and contractors', id: 'vendors-contractors' },
+  { title: 'Warranty tracking', id: 'warranty' },
+  { title: 'Documents and attachments', id: 'documents' },
+  { title: 'Tools and equipment', id: 'tools' },
+  { title: 'Shift handover / logbook', id: 'handover' },
+  { title: 'Work order labor assignment', id: 'labor-assignment' },
+]
+
+# Capability inventory
+
+This page answers **“is that in the platform?”** for areas that are easy to confuse with gaps. The **schema** is authoritative; **SDK** and **docs** catch up over time — use **`client.supabase`** for any typed RPC/view not yet wrapped on `client.*`. {{ className: 'lead' }}
+
+## Vendors and contractors
+
+**In the database:** `app.suppliers` is the **vendor/contractor master** (parts vendor, labor contractor, or both). Columns include **`supplies_parts`**, **`supplies_labor`**, **`tax_id`**, **`insurance_expires_at`**. Work orders link a **primary contractor** via **`primary_supplier_id`**; **vendor cost lines** use **`work_order_vendor_costs.supplier_id`** with RPCs such as **`rpc_upsert_work_order_vendor_cost`**.
+
+**Not a separate “contractor” table** — contractors are suppliers flagged for labor. **SDK:** use **`client.partsInventory`** for suppliers/parts flows where wrapped; otherwise **`client.supabase.rpc`**.
+
+See also [Parts & inventory](/parts-inventory).
+
+## Warranty tracking
+
+**In the database:** **`app.asset_warranties`** holds **multiple warranty rows per asset** (supplier link, type, dates, coverage). A trigger keeps **`assets.warranty_expires_at`** aligned with the **max active `expires_on`**. **`rpc_upsert_asset_warranty`** creates/updates rows; **`public.v_asset_warranties`** lists them for the tenant.
+
+**Not “only a single column”** — the column is a **rollup** for quick filters and lifecycle alerts; the table is the source of truth.
+
+**SDK:** **`client.assets.listWarranties()`**, **`client.assets.upsertWarranty()`**. Lifecycle rollups remain on **`client.costs`** (alerts / TCO).
+
+## Documents and attachments
+
+**In the database:** Files use **Storage** plus **`app.entity_attachments`** (and triggers). **`cfg.document_types`** catalogs document kinds; attachment tables carry **`document_type_key`**, **`is_controlled`**, **`effective_date`**, **`revision_label`** (lightweight metadata — not a full QMS revision graph).
+
+**Gap vs strict “controlled document” systems:** no automatic revision chains, approvals, or obsolescence workflow in-app — you model discipline in **`revision_label`** / process, or extend later.
+
+See [Work orders → Attachments](/work-orders) and migration `cmms_core_docs_tools_handover`.
+
+## Tools and equipment
+
+**In the database:** **`app.tools`** and **`app.tool_checkouts`** with **`public.v_tools`**, **`v_tool_checkouts`**, **`rpc_checkout_tool`**, **`rpc_return_tool`**.
+
+**Gap:** **`app.tools` is not exposed for REST insert/update** (only `v_tools` select). Catalog maintenance today is **SQL/service-role** or a future **`rpc_create_tool`** — field tech flows (checkout/return) are fully API-accessible.
+
+**SDK:** **`client.fieldOps`** — list views + checkout/return RPCs. See [Field operations](/field-operations).
+
+## Shift handover / logbook
+
+**In the database:** **`app.shift_handovers`** and related RPCs (**`rpc_create_shift_handover`**, **`rpc_submit_shift_handover`**, **`rpc_acknowledge_shift_handover`**, **`rpc_add_shift_handover_item`**), plus **`public.v_shift_handovers`**.
+
+**SDK:** **`client.fieldOps`** (create/submit/ack/item + list view).
+
+## Work order labor assignment
+
+**Internal technicians:** **`assigned_to`** on the work order (auth user) plus the **labor** module (crews, assignments, scheduling). **External labor:** **`primary_supplier_id`** and **vendor cost lines**, not a second “assign to supplier user” field — external identity is out-of-band unless you add integration.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/field-operations" variant="text" arrow="right">
+    <>Field operations</>
+  </Button>
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+</div>

@@ -244,6 +244,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Tenant context', href: '/tenant-context' },
       { title: 'Authorization (RBAC and ABAC)', href: '/authorization' },
       { title: 'Errors', href: '/errors' },
+      { title: 'Capability inventory', href: '/capability-inventory' },
     ],
   },
   {
@@ -262,6 +263,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Request portal and SLA', href: '/request-portal-and-sla' },
       { title: 'Scheduling & dispatch', href: '/scheduling' },
       { title: 'Mobile field', href: '/mobile-field' },
+      { title: 'Field operations', href: '/field-operations' },
     ],
   },
   {

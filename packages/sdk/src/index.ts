@@ -51,8 +51,10 @@ export type {
 export type { ProjectRow, ProjectsResource } from './resources/projects.js';
 export type {
   AssetRow,
+  AssetWarrantyRow,
   CreateAssetParams,
   UpdateAssetParams,
+  UpsertAssetWarrantyParams,
   RecordAssetDowntimeParams,
   AssetsResource,
 } from './resources/assets.js';
@@ -73,6 +75,18 @@ export type {
   UpdateMapZoneParams,
   MapZonesResource,
 } from './resources/map-zones.js';
+export type {
+  ToolRow,
+  ToolCheckoutRow,
+  ShiftHandoverRow,
+  CheckoutToolParams,
+  ReturnToolParams,
+  CreateShiftHandoverParams,
+  SubmitShiftHandoverParams,
+  AcknowledgeShiftHandoverParams,
+  AddShiftHandoverItemParams,
+  FieldOperationsResource,
+} from './resources/field-operations.js';
 export type {
   SpaceRow,
   SpaceStatus,

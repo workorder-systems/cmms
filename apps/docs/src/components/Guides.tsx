@@ -33,6 +33,11 @@ const guides = [
     description: 'SdkError and common PostgREST/Supabase error codes.',
   },
   {
+    href: '/capability-inventory',
+    name: 'Capability inventory',
+    description: 'Vendors as contractors, warranties, docs metadata, tools, handover — what exists vs gaps.',
+  },
+  {
     href: '/plugins/how-to-build',
     name: 'How to build a plugin',
     description: 'Checklist: catalog, Vault, install, webhooks, subscriptions, and local verification.',

@@ -1,0 +1,122 @@
+export const metadata = {
+  title: 'Field operations',
+  description: 'Tool catalog (read), checkouts and returns, shift handover logbook — SDK client.fieldOps.',
+}
+
+export const sections = [
+  { title: 'Tools', id: 'tools' },
+  { title: 'Checkout and return', id: 'checkout' },
+  { title: 'Shift handovers', id: 'handovers' },
+  { title: 'Permissions', id: 'permissions' },
+]
+
+# Field operations
+
+Use **`client.fieldOps`** on **`@workorder-systems/sdk`** for **tools** (list), **checkouts/returns**, and **shift handover** workflows. Set tenant context and refresh the JWT like other tenant APIs. {{ className: 'lead' }}
+
+<Note>
+  **Tool catalog writes** (create/edit tool rows) are not exposed on the public REST API today — only **`v_tools`** reads. Use the database or service role for catalog setup, or add an RPC in a future migration.
+</Note>
+
+## Tools
+
+<CodeGroup title="client.fieldOps.listTools()">
+
+```ts
+const tools = await client.fieldOps.listTools()
+// ToolRow[] — id, name, status, serial_number, asset_tag, …
+```
+
+</CodeGroup>
+
+<CodeGroup title="Open checkouts">
+
+```ts
+const open = await client.fieldOps.listToolCheckouts()
+// ToolCheckoutRow[] — filter client-side where returned_at is null
+```
+
+</CodeGroup>
+
+## Checkout and return
+
+<CodeGroup title="Checkout to user (optional work order)">
+
+```ts
+const checkoutId = await client.fieldOps.checkoutTool({
+  tenantId,
+  toolId,
+  checkedOutToUserId: userId,
+  workOrderId: woIdOrNull,
+  dueAt: null,
+  notes: null,
+})
+```
+
+</CodeGroup>
+
+<CodeGroup title="Return">
+
+```ts
+await client.fieldOps.returnTool({
+  tenantId,
+  checkoutId,
+})
+```
+
+</CodeGroup>
+
+## Shift handovers
+
+<CodeGroup title="Create → submit → acknowledge">
+
+```ts
+const handoverId = await client.fieldOps.createShiftHandover({
+  tenantId,
+  locationId,
+  toUserId,
+  shiftStartedAt: new Date().toISOString(),
+  shiftEndedAt: new Date().toISOString(),
+  summary: 'Line 2 steady; see items',
+})
+
+await client.fieldOps.addShiftHandoverItem({
+  tenantId,
+  handoverId,
+  body: 'Pump 3 vibration elevated — WO opened',
+  workOrderId: woId,
+})
+
+await client.fieldOps.submitShiftHandover({ tenantId, handoverId })
+
+// Incoming shift:
+await client.fieldOps.acknowledgeShiftHandover({ tenantId, handoverId })
+```
+
+</CodeGroup>
+
+<CodeGroup title="List handovers">
+
+```ts
+const rows = await client.fieldOps.listShiftHandovers()
+```
+
+</CodeGroup>
+
+## Permissions
+
+| Permission | Use |
+|------------|-----|
+| `tool.manage` | Create/edit tools (DB-side today) |
+| `tool.checkout` / `tool.return` | Checkout and return RPCs |
+| `shift_handover.create` | Create, submit, add items |
+| `shift_handover.acknowledge` | Acknowledge incoming handover |
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/capability-inventory" variant="text" arrow="right">
+    <>Capability inventory</>
+  </Button>
+  <Button href="/labor" variant="text" arrow="right">
+    <>Labor</>
+  </Button>
+</div>

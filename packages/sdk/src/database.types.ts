@@ -442,6 +442,108 @@ export type Database = {
           },
         ]
       }
+      v_asset_warranties: {
+        Row: {
+          asset_id: string | null
+          coverage_summary: string | null
+          created_at: string | null
+          expires_on: string | null
+          external_reference: string | null
+          id: string | null
+          is_active: boolean | null
+          starts_on: string | null
+          supplier_id: string | null
+          tenant_id: string | null
+          updated_at: string | null
+          warranty_type: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          coverage_summary?: string | null
+          created_at?: string | null
+          expires_on?: string | null
+          external_reference?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          starts_on?: string | null
+          supplier_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          warranty_type?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          coverage_summary?: string | null
+          created_at?: string | null
+          expires_on?: string | null
+          external_reference?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          starts_on?: string | null
+          supplier_id?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          warranty_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_warranties_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_warranties_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_mobile_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_warranties_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "v_suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_warranties_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "asset_warranties_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "asset_warranties_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "asset_warranties_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_warranties_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       v_assets: {
         Row: {
           asset_number: string | null

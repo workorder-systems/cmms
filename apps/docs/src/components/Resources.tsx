@@ -24,6 +24,7 @@ import { ClipboardIcon } from '@/components/icons/ClipboardIcon'
 import { BellIcon } from '@/components/icons/BellIcon'
 import { CartIcon } from '@/components/icons/CartIcon'
 import { ShapesIcon } from '@/components/icons/ShapesIcon'
+import { BookIcon } from '@/components/icons/BookIcon'
 
 interface Resource {
   href: string
@@ -76,6 +77,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         icon: ListIcon,
         pattern: { y: 8, squares: [[0, 1], [1, 3]] },
       },
+      {
+        href: '/capability-inventory',
+        name: 'Capability inventory',
+        description: 'Vendors as contractors, warranties, docs metadata, tools, handover.',
+        icon: BookIcon,
+        pattern: { y: 12, squares: [[0, 2], [1, 4]] },
+      },
     ],
   },
   {
@@ -109,6 +117,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         description: 'Offline sync, start/stop work order, notes, attachments; mobile views.',
         icon: MapPinIcon,
         pattern: { y: 8, squares: [[0, 1], [1, 3]] },
+      },
+      {
+        href: '/field-operations',
+        name: 'Field operations',
+        description: 'Tool checkouts, returns, shift handover logbook.',
+        icon: CogIcon,
+        pattern: { y: 18, squares: [[0, 1], [1, 3]] },
       },
     ],
   },

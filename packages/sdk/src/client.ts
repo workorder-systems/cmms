@@ -25,6 +25,7 @@ import { createPartsInventoryResource } from './resources/parts-inventory.js';
 import { createSafetyComplianceResource } from './resources/safety-compliance.js';
 import { createMobileFieldResource } from './resources/mobile-field.js';
 import { createMapZonesResource } from './resources/map-zones.js';
+import { createFieldOperationsResource } from './resources/field-operations.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -92,6 +93,7 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     safetyCompliance: createSafetyComplianceResource(supabase),
     mobile: createMobileFieldResource(supabase),
     mapZones: createMapZonesResource(supabase),
+    fieldOps: createFieldOperationsResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',

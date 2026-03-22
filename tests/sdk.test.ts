@@ -24,6 +24,7 @@ describe('SDK', () => {
       expect(sdk.supabase).toBeDefined();
       expect(sdk.tenants).toBeDefined();
       expect(sdk.workOrders).toBeDefined();
+      expect(sdk.fieldOps).toBeDefined();
       expect(typeof sdk.setTenant).toBe('function');
       expect(typeof sdk.clearTenant).toBe('function');
     });
@@ -187,6 +188,32 @@ describe('SDK', () => {
       });
       expect(typeof eventId).toBe('string');
       expect(eventId.length).toBeGreaterThan(10);
+    });
+
+    it('upsertWarranty and listWarranties', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK warranty asset',
+      });
+      const wid = await sdk.assets.upsertWarranty({
+        tenantId,
+        assetId,
+        expiresOn: '2030-06-01',
+        warrantyType: 'standard',
+        coverageSummary: 'SDK test',
+      });
+      expect(typeof wid).toBe('string');
+      const rows = await sdk.assets.listWarranties(assetId);
+      expect(rows.some((r) => r.id === wid)).toBe(true);
+    });
+  });
+
+  describe('fieldOps resource', () => {
+    it('listTools returns an array', async () => {
+      await withAuthenticatedTenant(sdk);
+      const tools = await sdk.fieldOps.listTools();
+      expect(Array.isArray(tools)).toBe(true);
     });
   });
 
