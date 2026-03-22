@@ -1,7 +1,7 @@
 /**
  * Work order attachments: tests follow the architecture in docs/attachments-client-flow.md
- * - Create = upload to Storage (path tenant_id/work_order_id/uuid_filename) → trigger creates app.files + work_order_attachments (no RPC)
- * - Update label/kind = optional rpc_update_work_order_attachment_metadata after upload
+ * - Create = upload to Storage (path tenant_id/work_order/work_order_id/uuid_filename) → trigger creates app.files + entity_attachments (no RPC)
+ * - Update label/kind = optional rpc_update_entity_attachment_metadata after upload
  * - List = query v_work_order_attachments (tenant context)
  * - Get file URL = storage.from(bucket_id).createSignedUrl(storage_path, expiresIn)
  */
@@ -28,7 +28,7 @@ describe('Work Order Attachments', () => {
     client = createTestClient();
   });
 
-  describe('Upload (trigger creates app.files + work_order_attachments)', () => {
+  describe('Upload (trigger creates app.files + entity_attachments)', () => {
     it('upload to attachments bucket creates attachment row via trigger', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
@@ -79,7 +79,7 @@ describe('Work Order Attachments', () => {
     });
   });
 
-  describe('Update label/kind (rpc_update_work_order_attachment_metadata)', () => {
+  describe('Update label/kind (rpc_update_entity_attachment_metadata)', () => {
     it('sets label and kind after upload', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
@@ -93,7 +93,7 @@ describe('Work Order Attachments', () => {
       );
 
       await setTenantContext(client, tenantId);
-      await client.rpc('rpc_update_work_order_attachment_metadata', {
+      await client.rpc('rpc_update_entity_attachment_metadata', {
         p_attachment_id: attachmentId,
         p_label: 'Before photo',
         p_kind: 'photo',
@@ -117,7 +117,7 @@ describe('Work Order Attachments', () => {
       );
 
       await setTenantContext(client, tenantId);
-      await client.rpc('rpc_update_work_order_attachment_metadata', {
+      await client.rpc('rpc_update_entity_attachment_metadata', {
         p_attachment_id: attachmentId,
         p_kind: 'photo_123',
       });
@@ -467,7 +467,7 @@ describe('Work Order Attachments', () => {
       const { data: audits, error } = await client
         .from('v_audit_entity_changes')
         .select('*')
-        .eq('table_name', 'work_order_attachments')
+        .eq('table_name', 'entity_attachments')
         .eq('record_id', attachmentId)
         .eq('operation', 'INSERT');
 

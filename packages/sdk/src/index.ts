@@ -264,6 +264,6 @@ export type {
   StartWorkOrderParams,
   StopWorkOrderParams,
   AddWorkOrderNoteParams,
-  RegisterWorkOrderAttachmentParams,
+  RegisterEntityAttachmentParams,
   MobileFieldResource,
 } from './resources/mobile-field.js';

@@ -179,7 +179,7 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
 
     /** Update label and/or kind for a work order attachment. Attachments are created by uploading to Storage bucket "attachments"; use listAttachments to get ids. */
     async updateAttachmentMetadata(params: UpdateAttachmentMetadataParams): Promise<void> {
-      return callRpc(rpc(supabase), 'rpc_update_work_order_attachment_metadata', {
+      return callRpc(rpc(supabase), 'rpc_update_entity_attachment_metadata', {
         p_attachment_id: params.attachmentId,
         p_label: params.label ?? null,
         p_kind: params.kind ?? null,

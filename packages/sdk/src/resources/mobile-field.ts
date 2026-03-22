@@ -142,10 +142,12 @@ export interface AddWorkOrderNoteParams {
   longitude?: number | null;
 }
 
-/** Params for registering an existing file as a work order attachment (e.g. after resumable upload). */
-export interface RegisterWorkOrderAttachmentParams {
+/** Params for registering an existing file against any supported entity_type (e.g. after resumable upload). */
+export interface RegisterEntityAttachmentParams {
   tenantId: string;
-  workOrderId: string;
+  /** Storage path segment, e.g. work_order, asset, part, purchase_order. */
+  entityType: string;
+  entityId: string;
   fileId: string;
   label?: string | null;
   kind?: string | null;
@@ -212,11 +214,12 @@ export function createMobileFieldResource(supabase: SupabaseClient<Database>) {
       });
     },
 
-    /** Register an existing file (e.g. uploaded to Storage first) as a work order attachment. Returns attachment id. */
-    async registerWorkOrderAttachment(params: RegisterWorkOrderAttachmentParams): Promise<string> {
-      return callRpc(rpc(supabase), 'rpc_register_work_order_attachment', {
+    /** Register an existing file (e.g. uploaded to Storage first) as an attachment on any supported entity. Returns attachment id. */
+    async registerEntityAttachment(params: RegisterEntityAttachmentParams): Promise<string> {
+      return callRpc(rpc(supabase), 'rpc_register_entity_attachment', {
         p_tenant_id: params.tenantId,
-        p_work_order_id: params.workOrderId,
+        p_entity_type: params.entityType,
+        p_entity_id: params.entityId,
         p_file_id: params.fileId,
         p_label: params.label ?? null,
         p_kind: params.kind ?? null,

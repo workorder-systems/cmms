@@ -313,8 +313,8 @@ export async function getTimeEntry(
 
 /**
  * Create a test attachment for a work order.
- * Uploads a small file to the attachments bucket with path tenant_id/work_order_id/uuid_filename
- * and metadata; the storage trigger creates app.files and app.work_order_attachments.
+ * Uploads a small file to the attachments bucket with path tenant_id/work_order/work_order_id/uuid_filename
+ * and metadata; the storage trigger creates app.files and app.entity_attachments.
  * Returns the new attachment id by querying v_work_order_attachments (public API only).
  */
 export async function createTestAttachment(
@@ -326,15 +326,16 @@ export async function createTestAttachment(
   kind?: string
 ): Promise<string> {
   const filename = fileRef.split('/').pop() || 'file';
-  const storagePath = `${tenantId}/${workOrderId}/${crypto.randomUUID()}_${filename}`;
+  const storagePath = `${tenantId}/work_order/${workOrderId}/${crypto.randomUUID()}_${filename}`;
   const body = Buffer.from('test');
 
   // Set tenant context before upload so Storage RLS and trigger path see consistent auth/session
   await setTenantContext(client, tenantId);
 
   const metadata = {
-    work_order_id: workOrderId,
     tenant_id: tenantId,
+    entity_type: 'work_order',
+    entity_id: workOrderId,
     content_type: 'application/octet-stream',
     byte_size: body.length,
     ...(label != null && { label }),
@@ -347,8 +348,9 @@ export async function createTestAttachment(
       contentType: 'application/octet-stream',
       upsert: false,
       metadata: {
-        work_order_id: workOrderId,
         tenant_id: tenantId,
+        entity_type: 'work_order',
+        entity_id: workOrderId,
         ...(label != null && { label }),
         ...(kind != null && { kind }),
       },
@@ -363,9 +365,10 @@ export async function createTestAttachment(
       if (userError || !userData?.user?.id) {
         throw new Error(formatPostgrestError('Failed to upload attachment (RLS) and could not get current user', userError ?? uploadError));
       }
-      const { error: rpcError } = await client.rpc('rpc_insert_work_order_attachment_object', {
+      const { error: rpcError } = await client.rpc('rpc_insert_attachment_storage_object', {
         p_tenant_id: tenantId,
-        p_work_order_id: workOrderId,
+        p_entity_type: 'work_order',
+        p_entity_id: workOrderId,
         p_name: storagePath,
         p_owner_id: userData.user.id,
         p_metadata: metadata,

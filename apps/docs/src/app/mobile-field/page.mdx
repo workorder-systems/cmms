@@ -173,13 +173,14 @@ Other list methods: `listMobileAssets()`, `listMobileLocations()`, `listMobileTi
 
 Attachments (photos, documents, signatures, scans) are supported for **assets** and **locations** as well as work orders.
 
-| Entity | Storage path convention | View |
-|--------|-------------------------|------|
-| Work order | `tenant_id/work_order_id/filename` | `v_work_order_attachments` |
+| Entity | Storage path convention (`storage.foldername` = 3 segments) | View |
+|--------|--------------------------------------------------------------|------|
+| Work order | `tenant_id/work_order/work_order_id/filename` | `v_work_order_attachments` |
 | Asset | `tenant_id/asset/asset_id/filename` | `v_asset_attachments` |
 | Location | `tenant_id/location/location_id/filename` | `v_location_attachments` |
+| Other | `tenant_id/<entity_type>/<entity_id>/filename` (e.g. `part`, `purchase_order`, `incident`) | `v_entity_attachments` |
 
-Upload to the `attachments` bucket with the appropriate path; a trigger creates `app.files` and the corresponding link row (`app.work_order_attachments`, `app.asset_attachments`, or `app.location_attachments`). Use `client.supabase.storage.from('attachments').createSignedUrl(...)` with `bucket_id` and `storage_path` from the view rows. Kind values (e.g. `photo`, `document`, `signature`, `scan`) are free-form; document in your UI for consistency.
+Upload to the `attachments` bucket with the appropriate path; a trigger creates `app.files` and `app.entity_attachments`. Use `client.supabase.storage.from('attachments').createSignedUrl(...)` with `bucket_id` and `storage_path` from the view rows. Kind values (e.g. `photo`, `document`, `signature`, `scan`) are free-form; document in your UI for consistency.
 
 Raw queries:
 

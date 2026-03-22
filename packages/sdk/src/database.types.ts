@@ -263,49 +263,35 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "asset_attachments_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: false
-            referencedRelation: "v_assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "asset_attachments_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: false
-            referencedRelation: "v_mobile_assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "asset_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "mv_tenant_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "asset_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_dashboard_metrics"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "asset_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_portfolio_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "asset_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "asset_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants_overview"
@@ -1863,6 +1849,66 @@ export type Database = {
           },
         ]
       }
+      v_entity_attachments: {
+        Row: {
+          bucket_id: string | null
+          content_type: string | null
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          document_type_key: string | null
+          effective_date: string | null
+          entity_id: string | null
+          entity_type: string | null
+          file_id: string | null
+          filename: string | null
+          id: string | null
+          is_controlled: boolean | null
+          kind: string | null
+          label: string | null
+          revision_label: string | null
+          storage_path: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       v_incident_actions: {
         Row: {
           action_type: string | null
@@ -2708,70 +2754,35 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "location_attachments_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "mv_site_summary"
-            referencedColumns: ["site_id"]
-          },
-          {
-            foreignKeyName: "location_attachments_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "v_locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "location_attachments_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "v_mobile_locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "location_attachments_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "v_portfolio_overview"
-            referencedColumns: ["site_id"]
-          },
-          {
-            foreignKeyName: "location_attachments_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "v_site_rollup"
-            referencedColumns: ["site_id"]
-          },
-          {
-            foreignKeyName: "location_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "mv_tenant_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "location_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_dashboard_metrics"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "location_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_portfolio_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "location_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "location_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants_overview"
@@ -3490,88 +3501,39 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "mv_tenant_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_dashboard_metrics"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_portfolio_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants_overview"
             referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_dashboard_open_work_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_dashboard_overdue_work_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_mobile_work_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_my_work_order_requests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_work_order_costs"
-            referencedColumns: ["work_order_id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_work_order_sla_status"
-            referencedColumns: ["work_order_id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_work_orders"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -8678,88 +8640,39 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "mv_tenant_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_dashboard_metrics"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_portfolio_overview"
             referencedColumns: ["tenant_id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "work_order_attachments_tenant_id_fkey"
+            foreignKeyName: "entity_attachments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenants_overview"
             referencedColumns: ["tenant_id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_dashboard_open_work_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_dashboard_overdue_work_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_mobile_work_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_my_work_order_requests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_work_order_costs"
-            referencedColumns: ["work_order_id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_work_order_sla_status"
-            referencedColumns: ["work_order_id"]
-          },
-          {
-            foreignKeyName: "work_order_attachments_work_order_id_fkey"
-            columns: ["work_order_id"]
-            isOneToOne: false
-            referencedRelation: "v_work_orders"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -9902,13 +9815,14 @@ export type Database = {
         Args: { p_permission_key: string; p_tenant_id: string }
         Returns: boolean
       }
-      rpc_insert_work_order_attachment_object: {
+      rpc_insert_attachment_storage_object: {
         Args: {
+          p_entity_id: string
+          p_entity_type: string
           p_metadata?: Json
           p_name: string
           p_owner_id: string
           p_tenant_id: string
-          p_work_order_id: string
         }
         Returns: undefined
       }
@@ -10031,6 +9945,17 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_register_entity_attachment: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_file_id: string
+          p_kind?: string
+          p_label?: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       rpc_register_plugin: {
         Args: {
           p_description?: string
@@ -10038,16 +9963,6 @@ export type Database = {
           p_is_integration?: boolean
           p_key: string
           p_name: string
-        }
-        Returns: string
-      }
-      rpc_register_work_order_attachment: {
-        Args: {
-          p_file_id: string
-          p_kind?: string
-          p_label?: string
-          p_tenant_id: string
-          p_work_order_id: string
         }
         Returns: string
       }
@@ -10195,6 +10110,18 @@ export type Database = {
           p_description?: string
           p_name?: string
           p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      rpc_update_entity_attachment_metadata: {
+        Args: {
+          p_attachment_id: string
+          p_document_type_key?: string
+          p_effective_date?: string
+          p_is_controlled?: boolean
+          p_kind?: string
+          p_label?: string
+          p_revision_label?: string
         }
         Returns: undefined
       }
@@ -10404,10 +10331,6 @@ export type Database = {
           p_tax_id?: string
           p_tenant_id: string
         }
-        Returns: undefined
-      }
-      rpc_update_work_order_attachment_metadata: {
-        Args: { p_attachment_id: string; p_kind?: string; p_label?: string }
         Returns: undefined
       }
       rpc_upsert_asset_warranty: {

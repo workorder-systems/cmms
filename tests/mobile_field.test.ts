@@ -216,7 +216,7 @@ describe('Mobile field', () => {
     });
   });
 
-  describe('rpc_register_work_order_attachment', () => {
+  describe('rpc_register_entity_attachment', () => {
     it('registers existing file as work order attachment and returns attachment id', async () => {
       const { user } = await createTestUser(client);
       const tenantId = await createTestTenant(client);
@@ -228,9 +228,10 @@ describe('Mobile field', () => {
 
       await client.from('v_work_order_attachments').delete().eq('id', attachmentId);
 
-      const { data: newAttachmentId, error } = await client.rpc('rpc_register_work_order_attachment', {
+      const { data: newAttachmentId, error } = await client.rpc('rpc_register_entity_attachment', {
         p_tenant_id: tenantId,
-        p_work_order_id: workOrderId,
+        p_entity_type: 'work_order',
+        p_entity_id: workOrderId,
         p_file_id: fileId,
         p_label: 'Re-registered',
         p_kind: 'document',
