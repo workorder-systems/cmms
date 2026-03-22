@@ -3,8 +3,12 @@
 # Prerequisite: enable GitHub Pages for this repo (Settings → Pages) with
 # "GitHub Actions" as the source.
 #
-# Project sites use a subpath (e.g. https://org.github.io/db/). base_path comes
-# from actions/configure-pages; apps/docs reads NEXT_PAGES_BASE_PATH at build time.
+# Custom domain: DNS should have CNAME docs.workorder.systems → workorder-systems.github.io
+# (verify: dig CNAME docs.workorder.systems +short). The file apps/docs/public/CNAME is
+# copied into the export root so each deploy keeps the hostname configured.
+#
+# Project sites use a subpath (e.g. https://org.github.io/db/) until a custom domain is set;
+# base_path comes from actions/configure-pages; apps/docs reads NEXT_PAGES_BASE_PATH at build time.
 #
 name: Deploy Next.js docs to Pages
 
