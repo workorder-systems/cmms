@@ -114,4 +114,4 @@ pnpm test:reset
 - **Schema and API rules:** [`apps/supabase/README.md`](apps/supabase/README.md)
 - **Contributing and migrations:** [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - **Agent/automation playbook:** [`AGENTS.md`](AGENTS.md)
-- **Vision, alpha status, stability:** [`README.md`](README.md) (sections *Vision*, *Where we are today*, *Stability and releases*)
+- **Vision, alpha, stability, license:** [`docs/PROJECT.md`](docs/PROJECT.md)

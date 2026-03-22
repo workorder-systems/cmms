@@ -2,7 +2,7 @@
 
 SQL migrations and CLI config for the **multi-tenant CMMS** Postgres backend. Application code is expected to use **PostgREST** (`public` RPCs/views and `reporting` views)—not direct access to internal schemas.
 
-**Related docs:** [AGENTS.md](../../AGENTS.md) (agent playbook, ports, tests), [CONTRIBUTING.md](../../CONTRIBUTING.md) (workflow), [tests/README.md](../../tests/README.md) (how we verify the contract).
+**Related docs:** [docs/PROJECT.md](../../docs/PROJECT.md) (vision, alpha, stability, license), [AGENTS.md](../../AGENTS.md) (agent playbook, ports, tests), [CONTRIBUTING.md](../../CONTRIBUTING.md) (workflow), [tests/README.md](../../tests/README.md) (how we verify the contract).
 
 ---
 
@@ -189,4 +189,4 @@ This directory is the **Supabase CLI project** (`config.toml`, `migrations/`, `f
 
 ## License
 
-Migrations and SQL follow the repository license (**AGPL-3.0-or-later** unless a file header states otherwise). For **open-source status**, **alpha** expectations, and what this repo includes vs excludes, see the monorepo root **README** (sections *Where we are today* and *Open source and license*).
+Migrations and SQL follow the repository license (**AGPL-3.0-or-later** unless a file header states otherwise). For **vision**, **alpha**, **stability**, and **OSS vs commercial** boundaries, see **[`docs/PROJECT.md`](../../docs/PROJECT.md)**.

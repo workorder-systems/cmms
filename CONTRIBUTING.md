@@ -2,7 +2,7 @@
 
 Thanks for helping build **WorkOrder Systems OSS**: the **Linux of maintenance software**—a CMMS core teams can **own**, developers can **extend**, and vendors can **integrate with**, without open-core bait-and-switch. The project is **alpha**; we welcome issues, pull requests, and documentation improvements.
 
-**New to the repo?** Follow **[GETTING_STARTED.md](GETTING_STARTED.md)** first (Docker, Supabase CLI, `.env.local`, common failures). **What you are contributing to** versus commercial product code is spelled out in the README: [OSS core and commercial boundary](README.md#oss-core-and-commercial-boundary).
+**New to the repo?** Follow **[GETTING_STARTED.md](GETTING_STARTED.md)** first (Docker, Supabase CLI, `.env.local`, common failures). **What you are contributing to** versus commercial product code: [OSS core and commercial boundary](docs/PROJECT.md#oss-core-and-commercial-boundary).
 
 ## Quick start
 Prereqs (details in [GETTING_STARTED.md](GETTING_STARTED.md)):

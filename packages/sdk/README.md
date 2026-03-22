@@ -1,6 +1,6 @@
 # @workorder-systems/sdk
 
-The **typed bridge** to **WorkOrder Systems OSS**—the Postgres/Supabase **CMMS core** this repo is building to be the **default substrate** for maintenance software (see the [monorepo README](https://github.com/workorder-systems/db#vision)). Public **views** for reads, **RPCs** for writes, nothing hidden. Use it in the browser, Node.js, or edge runtimes (Cloudflare Workers, Vercel Edge) so your apps speak the same contract the database tests enforce.
+The **typed bridge** to **WorkOrder Systems OSS**—the Postgres/Supabase **CMMS core** this repo is building to be the **default substrate** for maintenance software (see [`docs/PROJECT.md`](https://github.com/workorder-systems/db/blob/main/docs/PROJECT.md#vision)). Public **views** for reads, **RPCs** for writes, nothing hidden. Use it in the browser, Node.js, or edge runtimes (Cloudflare Workers, Vercel Edge) so your apps speak the same contract the database tests enforce.
 
 ## Install
 
@@ -109,4 +109,4 @@ CI runs `gen-types` after `supabase start` and builds the SDK so committed types
 
 ## Open source
 
-`@workorder-systems/sdk` is developed in the **[workorder-systems/db](https://github.com/workorder-systems/db)** monorepo and licensed under **AGPL-3.0-or-later** together with the migrations and docs. See the repository **README** for project status, what is and is not included in that tree, and a short AGPL summary (not legal advice).
+`@workorder-systems/sdk` is developed in the **[workorder-systems/db](https://github.com/workorder-systems/db)** monorepo and licensed under **AGPL-3.0-or-later** together with the migrations and docs. See **[`docs/PROJECT.md`](https://github.com/workorder-systems/db/blob/main/docs/PROJECT.md)** for vision, alpha, stability, AGPL notes, and OSS vs commercial boundaries (not legal advice).
