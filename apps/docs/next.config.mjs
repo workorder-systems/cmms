@@ -13,8 +13,21 @@ const withMDX = nextMDX({
   },
 })
 
+/*
+ * GitHub Pages (and similar static hosts under a subpath): set in CI only:
+ *   NEXT_STATIC_EXPORT=true
+ *   NEXT_PAGES_BASE_PATH=/<repo-name>   (e.g. /db for https://org.github.io/db/)
+ */
+const staticExport = process.env.NEXT_STATIC_EXPORT === 'true'
+const pagesBasePath = (process.env.NEXT_PAGES_BASE_PATH || '').replace(/\/$/, '') || undefined
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...(staticExport && {
+    output: 'export',
+    images: { unoptimized: true },
+    ...(pagesBasePath ? { basePath: pagesBasePath, assetPrefix: pagesBasePath } : {}),
+  }),
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
   outputFileTracingIncludes: {
     '/**/*': ['./src/app/**/*.mdx'],

@@ -1,0 +1,84 @@
+# Build and deploy the Next.js documentation app (apps/docs) to GitHub Pages.
+#
+# Prerequisite: enable GitHub Pages for this repo (Settings → Pages) with
+# "GitHub Actions" as the source.
+#
+# Project sites use a subpath (e.g. https://org.github.io/db/). base_path comes
+# from actions/configure-pages; apps/docs reads NEXT_PAGES_BASE_PATH at build time.
+#
+name: Deploy Next.js docs to Pages
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'apps/docs/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-docs-to-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-docs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Metadata and base path for project vs user/org Pages (no config file injection;
+      # next.config.mjs uses NEXT_STATIC_EXPORT + NEXT_PAGES_BASE_PATH).
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: apps/docs/.next/cache
+          key: ${{ runner.os }}-next-docs-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/docs/**/*.[jt]s', 'apps/docs/**/*.[jt]sx', 'apps/docs/**/*.mdx', 'apps/docs/**/*.mjs') }}
+          restore-keys: |
+            ${{ runner.os }}-next-docs-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static export
+        env:
+          NEXT_STATIC_EXPORT: 'true'
+          NEXT_PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: pnpm --filter work-order-systems-docs build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/docs/out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
