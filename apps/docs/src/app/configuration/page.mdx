@@ -51,9 +51,9 @@ Relies on the injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for servic
 
 ## Local development
 
-1. From the repo root: `supabase start`.
+1. From the repo root: `pnpm start` or `pnpm supabase:start` (Supabase CLI project in `apps/supabase`).
 2. After migrations: `pnpm gen-types` so the SDK matches the database.
-3. `supabase functions serve` exposes the same built-in `SUPABASE_*` names locally; anything else your function needs goes in your env file or CLI flags. See [local Edge Functions](https://supabase.com/docs/guides/functions/local-development).
+3. `pnpm supabase:functions` (or `cd apps/supabase && supabase functions serve …`) exposes the same built-in `SUPABASE_*` names locally; anything else your function needs goes in your env file or CLI flags. See [local Edge Functions](https://supabase.com/docs/guides/functions/local-development).
 
 ## Tests
 

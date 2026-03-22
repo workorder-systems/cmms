@@ -17,6 +17,10 @@ export const sections = [
 
 Build an optional extension or integration on top of the Work Order Systems API. Plugins are separate services or UIs that call the public API; they do not change the database schema. {{ className: 'lead' }}
 
+<Note>
+  New to plugins? Start with the step-by-step guide: [How to build a plugin](/plugins/how-to-build).
+</Note>
+
 ## What is a plugin?
 
 - **Module:** First-party core capability that owns schema and migrations.
@@ -118,6 +122,7 @@ Use `@supabase/supabase-js` in your backend with server-side credentials for ten
 
 ## Next steps
 
+- [How to build a plugin](/plugins/how-to-build): ordered checklist from catalog to first delivery.
 - Local **webhook receiver** sample app: `plugins/example` (`pnpm --filter work-order-systems-example dev`). See its README for `host.docker.internal` and HMAC env vars.
 - [Plugins](/plugins): list and manage plugins
 - [Work orders](/work-orders): work order API reference

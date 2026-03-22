@@ -9,9 +9,9 @@ Prereqs:
 - Supabase CLI
 
 ```bash
-npm install
-npm run supabase:start
-npm test
+pnpm install
+pnpm start
+pnpm test
 ```
 
 ## Development workflow
@@ -22,17 +22,17 @@ npm test
 
 ## Database changes
 When adding or changing schema:
-1. Add migrations under `supabase/migrations/` using the Supabase CLI format.
+1. Add migrations under `apps/supabase/migrations/` using the Supabase CLI format.
 2. Use lowercase SQL and include clear header comments.
 3. Enable RLS on new tables and add tenant policies.
 4. Add audit triggers for core entities where needed.
 5. Expose new writes via RPC and reads via public views.
 
-See `supabase/README.md` for architecture rules and patterns.
+See `apps/supabase/README.md` for architecture rules and patterns.
 
 ## Tests
 - `npm test` (or `pnpm test`) runs the Vitest suite.
-- Use `npm run supabase:stop` to stop local services if needed.
+- Use `pnpm supabase:stop` to stop local services if needed.
 
 **If many tests fail with auth errors** (e.g. "Database error finding user", "Database error querying schema"), the local DB may be out of sync with migrations. Run a full reset then test:
 

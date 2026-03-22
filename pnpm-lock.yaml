@@ -167,6 +167,8 @@ importers:
         specifier: 0.34.3
         version: 0.34.3
 
+  apps/supabase: {}
+
   packages/eslint-config:
     devDependencies:
       '@eslint/js':

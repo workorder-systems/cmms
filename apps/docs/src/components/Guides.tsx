@@ -33,9 +33,14 @@ const guides = [
     description: 'SdkError and common PostgREST/Supabase error codes.',
   },
   {
+    href: '/plugins/how-to-build',
+    name: 'How to build a plugin',
+    description: 'Checklist: catalog, Vault, install, webhooks, subscriptions, and local verification.',
+  },
+  {
     href: '/plugins-building',
     name: 'Building plugins',
-    description: 'Architecture and steps for building plugins and integrations on top of the API.',
+    description: 'Architecture and deep reference for plugins, HMAC, and the public API surface.',
   },
 ]
 

@@ -2,7 +2,7 @@
 
 SQL migrations and CLI config for the **multi-tenant CMMS** Postgres backend. Application code is expected to use **PostgREST** (`public` RPCs/views and `reporting` views)—not direct access to internal schemas.
 
-**Related docs:** [AGENTS.md](../AGENTS.md) (agent playbook, ports, tests), [CONTRIBUTING.md](../CONTRIBUTING.md) (workflow), [tests/README.md](../tests/README.md) (how we verify the contract).
+**Related docs:** [AGENTS.md](../../AGENTS.md) (agent playbook, ports, tests), [CONTRIBUTING.md](../../CONTRIBUTING.md) (workflow), [tests/README.md](../../tests/README.md) (how we verify the contract).
 
 ---
 
@@ -169,12 +169,12 @@ Cursor-specific checklist: **`.cursor/rules/migration.mdc`** at repo root. Postg
 
 ## Local development
 
-From the **repository root** (not only `supabase/`):
+This directory is the **Supabase CLI project** (`config.toml`, `migrations/`, `functions/`). From the **repository root**:
 
 | Task | Command |
 |------|---------|
 | Install deps | `pnpm install` |
-| Start stack | `pnpm supabase:start` or `supabase start` |
+| Start stack | `pnpm start`, `pnpm supabase:start`, or `cd apps/supabase && supabase start` |
 | Reset DB (all migrations from scratch) | `pnpm supabase:reset` |
 | Run DB tests | `pnpm test` |
 

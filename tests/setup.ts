@@ -1,6 +1,7 @@
 import { beforeAll, afterAll } from 'vitest';
 import { execSync } from 'node:child_process';
 import dotenv from 'dotenv';
+import { SUPABASE_PROJECT_DIR } from './helpers/supabase';
 
 // Load environment variables explicitly (Vitest doesn't auto-load .env files)
 dotenv.config({ path: '.env.local' });
@@ -32,11 +33,11 @@ beforeAll(() => {
     return;
   }
 
-  // Check if Supabase is already running
+  // Check if Supabase is already running (CLI project: apps/supabase)
   try {
-    execSync('supabase status', { stdio: 'ignore' });
+    execSync('supabase status', { stdio: 'ignore', cwd: SUPABASE_PROJECT_DIR });
   } catch {
-    execSync('supabase start', { stdio: 'inherit' });
+    execSync('supabase start', { stdio: 'inherit', cwd: SUPABASE_PROJECT_DIR });
   }
 });
 

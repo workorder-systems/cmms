@@ -17,7 +17,7 @@ export const sections = [
 
 # Plugins
 
-Lists the catalog of available plugins (`v_plugins`) and tenant plugin installations (`v_plugin_installations`). Install, update, and uninstall plugins for a tenant. **Outbound webhooks** are driven by `audit.entity_changes` when you add allowlisted subscriptions; deliveries are processed in-database via `pg_net` and `pg_cron` (see [Building plugins](/plugins-building)). **Installing and managing installations and subscriptions requires `tenant.admin` permission.** Set tenant context before listing or managing installations. {{ className: 'lead' }}
+Lists the catalog of available plugins (`v_plugins`) and tenant plugin installations (`v_plugin_installations`). Install, update, and uninstall plugins for a tenant. **Outbound webhooks** are driven by `audit.entity_changes` when you add allowlisted subscriptions; deliveries are processed in-database via `pg_net` and `pg_cron` (see [How to build a plugin](/plugins/how-to-build) and [Building plugins](/plugins-building)). **Installing and managing installations and subscriptions requires `tenant.admin` permission.** Set tenant context before listing or managing installations. {{ className: 'lead' }}
 
 ## List plugins (catalog)
 

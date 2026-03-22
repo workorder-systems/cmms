@@ -16,7 +16,7 @@
 | `npm test -- tests/work_orders.test.ts` | Single file |
 | `npm test -- -t "should create a work order"` | Single test by name |
 
-Ensure Supabase is running locally (`npm run supabase:start`) or set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (and optionally a privileged key for tests that bypass RLS) for a remote instance.
+Ensure Supabase is running locally (`pnpm start` or `pnpm supabase:start`; CLI project under `apps/`) or set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (and optionally a privileged key for tests that bypass RLS) for a remote instance.
 
 ## Helpers
 

@@ -291,6 +291,7 @@ export const navigation: Array<NavGroup> = [
     title: 'Inventory & plugins',
     links: [
       { title: 'Parts & inventory', href: '/parts-inventory' },
+      { title: 'How to build a plugin', href: '/plugins/how-to-build' },
       { title: 'Plugins', href: '/plugins' },
     ],
   },

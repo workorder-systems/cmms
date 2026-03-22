@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 OUTPUT="$SCRIPT_DIR/../src/database.types.ts"
 
-cd "$REPO_ROOT"
+SUPABASE_DIR="$REPO_ROOT/apps/supabase"
+cd "$SUPABASE_DIR"
 
 # Prefer an already-installed Supabase CLI (e.g. via supabase/setup-cli in CI),
 # and only fall back to npx if it's not available. This avoids on-the-fly

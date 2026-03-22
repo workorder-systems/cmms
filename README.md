@@ -25,22 +25,24 @@ Prereqs:
 - Supabase CLI
 
 ```bash
-npm install
-npm run supabase:start
-npm test
+pnpm install
+pnpm start
+pnpm test
 ```
 
 If tests fail with auth/schema errors, ensure the DB is in sync: run `pnpm run supabase:reset` then `pnpm test` (or `pnpm run test:reset`). See [CONTRIBUTING.md](CONTRIBUTING.md#tests) for details.
 
 ## Repo layout
-- `supabase/` - schema, migrations, and config
+- `apps/supabase/` - Supabase CLI project: schema migrations, `config.toml`, Edge Functions (`work-order-systems-supabase` workspace; `pnpm start` starts the local stack)
+- `apps/docs/` - Next.js API documentation site
 - `packages/sdk/` - TypeScript SDK for the public API
+- `plugins/example/` - optional local webhook receiver for plugin smoke tests
 - `tests/` - Vitest integration tests
 - `docs/` - client flows ([attachments](docs/attachments-client-flow.md)), [SDK full-coverage plan](docs/sdk-full-coverage-plan.md), and `docs/adr/` - architecture decision records
 
 ## Architecture and rules
 Detailed architecture and database rules live in:
-- [`supabase/README.md`](supabase/README.md)
+- [`apps/supabase/README.md`](apps/supabase/README.md)
 
 ## Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, workflow, and migration rules.

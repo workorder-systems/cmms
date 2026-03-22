@@ -8,7 +8,8 @@ This is a **pnpm** monorepo (**Turborepo**) for a multi-tenant CMMS **database l
 
 | Workspace | Path | Purpose |
 |-----------|------|---------|
-| Root (`database`) | `.` | Supabase migrations, root Vitest suite (`tests/`), scripts |
+| Root (`database`) | `.` | Root Vitest suite (`tests/`), scripts, workspace orchestration |
+| Supabase | `apps/supabase` | Supabase CLI project: `config.toml`, SQL migrations, Edge Functions (`pnpm start` / `pnpm supabase:start`) |
 | Docs | `apps/docs` | Next.js documentation site (MDX) |
 | Plugins | `plugins/*` | Optional integration services (webhook receivers, connectors); not shipped as part of core `apps` |
 | Example | `plugins/example` | Minimal HTTP webhook receiver for testing `pg_net` plugin deliveries locally |
@@ -25,15 +26,15 @@ Use this as a default order of operations. Adjust when the user’s task is narr
 
 #### 1. Orient yourself
 
-- Read **`supabase/README.md`** before changing schema, RLS, views, or RPCs.
+- Read **`apps/supabase/README.md`** before changing schema, RLS, views, or RPCs.
 - For **new migrations**, follow project SQL/RLS conventions in **`.cursor/rules/migration.mdc`** (and **`CONTRIBUTING.md`** → Database changes).
 - For **tests**, read **`tests/README.md`** for what the suite covers and which helpers exist.
 
 #### 2. Change the database
 
-1. Add a new file under **`supabase/migrations/`** (Supabase CLI naming: `YYYYMMDDHHmmss_description.sql`), with a header comment and **lowercase** SQL.
-2. Prefer **RLS on new tables**, tenant-scoped policies, and exposing writes through **RPCs** / reads through **`public` (or `reporting`) views**—see `supabase/README.md`.
-3. Apply locally: **`pnpm supabase:reset`** (or `supabase db reset`) so the DB matches all migrations, then fix forward if something breaks.
+1. Add a new file under **`apps/supabase/migrations/`** (Supabase CLI naming: `YYYYMMDDHHmmss_description.sql`), with a header comment and **lowercase** SQL.
+2. Prefer **RLS on new tables**, tenant-scoped policies, and exposing writes through **RPCs** / reads through **`public` (or `reporting`) views**—see `apps/supabase/README.md`.
+3. Apply locally: **`pnpm supabase:reset`** (or `cd apps/supabase && supabase db reset`) so the DB matches all migrations, then fix forward if something breaks.
 4. If PostgREST does not see new objects, see **PostgREST schema cache** below.
 
 #### 3. Write tests
@@ -81,7 +82,7 @@ Ensure **Docker + Supabase** are available. If **`SUPABASE_URL`** and **`SUPABAS
 ### Starting services
 
 1. **Docker** must be running. On Cursor Cloud: `sudo dockerd &>/dev/null &`, wait a few seconds, then if needed `sudo chmod 666 /var/run/docker.sock`.
-2. **Supabase** from the repository root: `pnpm supabase:start` or `supabase start`. First cold start can take ~2 minutes; later starts are faster.
+2. **Supabase** from the repository root: **`pnpm start`** or **`pnpm supabase:start`** (runs the `work-order-systems-supabase` workspace in `apps/supabase`). First cold start can take ~2 minutes; later starts are faster.
 3. **Environment**: put **`SUPABASE_URL`**, **`SUPABASE_ANON_KEY`**, and **`SUPABASE_SERVICE_ROLE_KEY`** in a **root** `.env.local` for Vitest (see `.env.example`). `tests/setup.ts` loads `.env.local` / `.env` explicitly. With local CLI defaults, the API URL is `http://127.0.0.1:54321`.
 4. **Dev servers**: `pnpm dev` runs every workspace **`dev`** script via Turborepo (e.g. SDK `tsup --watch`, docs Next.js, UI Storybook). Run one workspace only, for example:
    - `pnpm --filter work-order-systems-docs dev` → Next.js (default **http://localhost:3000**)
@@ -108,7 +109,7 @@ Or:
 docker exec supabase_db_database psql -U postgres -c "NOTIFY pgrst, 'reload schema';"
 ```
 
-Names assume `project_id = "database"` in `supabase/config.toml`.
+Names assume `project_id = "database"` in `apps/supabase/config.toml`.
 
 ### Running tests
 
@@ -119,7 +120,7 @@ Names assume `project_id = "database"` in `supabase/config.toml`.
 - **`pnpm test:all`** — `turbo run test` (includes `packages/sdk` and any other package that defines `test`).
 - **`pnpm test:reset`** — `supabase db reset` then **`pnpm test`** (use when migrations are ahead of the local DB).
 
-`tests/setup.ts`: if **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** are set, it **does not** start Supabase locally; otherwise it runs **`supabase start`** when **`supabase status`** fails.
+`tests/setup.ts`: if **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** are set, it **does not** start Supabase locally; otherwise it runs **`supabase start`** in **`apps/supabase`** when **`supabase status`** fails there.
 
 If many tests fail with auth/schema errors, reset the DB (`pnpm supabase:reset` or `pnpm test:reset`). See **CONTRIBUTING.md** (Tests).
 
@@ -134,9 +135,9 @@ If many tests fail with auth/schema errors, reset the DB (`pnpm supabase:reset` 
 
 ### Database
 
-- Migrations live in `supabase/migrations/` (50+ SQL files; grows with the project).
-- Custom schemas include **`app`**, **`cfg`**, **`int`**, **`audit`**, **`util`**, **`authz`**, **`pm`**, and **`reporting`** (plus standard **`extensions`** usage where migrations create it). See **`supabase/README.md`** for architecture rules.
-- PostgREST exposes **`public`** and **`reporting`** (`[api].schemas` in `supabase/config.toml`).
-- Local DB port is **54332** (not the Supabase default 54322) per `[db].port` in `supabase/config.toml`—use that URL when connecting with `psql` or GUI clients.
-- Auth: **`authz.custom_access_token_hook`** (wired in `supabase/config.toml`) adds tenant context to JWT claims from user metadata.
+- Migrations live in `apps/supabase/migrations/` (grows with the project).
+- Custom schemas include **`app`**, **`cfg`**, **`int`**, **`audit`**, **`util`**, **`authz`**, **`pm`**, and **`reporting`** (plus standard **`extensions`** usage where migrations create it). See **`apps/supabase/README.md`** for architecture rules.
+- PostgREST exposes **`public`** and **`reporting`** (`[api].schemas` in `apps/supabase/config.toml`).
+- Local DB port is **54332** (not the Supabase default 54322) per `[db].port` in `apps/supabase/config.toml`—use that URL when connecting with `psql` or GUI clients.
+- Auth: **`authz.custom_access_token_hook`** (wired in `apps/supabase/config.toml`) adds tenant context to JWT claims from user metadata.
 - **`enable_confirmations = false`** in local config — sign-up is auto-confirmed for development.

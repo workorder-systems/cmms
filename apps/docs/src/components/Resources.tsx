@@ -200,6 +200,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         pattern: { y: 16, squares: [[0, 2], [1, 4]] },
       },
       {
+        href: '/plugins/how-to-build',
+        name: 'How to build a plugin',
+        description: 'End-to-end checklist from catalog registration to first webhook delivery.',
+        icon: CogIcon,
+        pattern: { y: 14, squares: [[0, 1], [1, 3]] },
+      },
+      {
         href: '/plugins',
         name: 'Plugins',
         description: 'Catalog and tenant installations; install, update, uninstall.',

@@ -13,6 +13,7 @@
     "@workorder-systems/sdk": "workspace:*"
   },
   "scripts": {
+    "start": "pnpm --filter work-order-systems-supabase start",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
@@ -25,13 +26,13 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
-    "supabase:reset": "supabase db reset",
-    "supabase:functions": "supabase functions serve --env-file .env.local --no-verify-jwt",
-    "test:setup": "supabase start && pnpm test",
-    "test:teardown": "supabase stop",
-    "test:reset": "supabase db reset && pnpm test",
+    "supabase:start": "pnpm --filter work-order-systems-supabase start",
+    "supabase:stop": "pnpm --filter work-order-systems-supabase stop",
+    "supabase:reset": "pnpm --filter work-order-systems-supabase reset",
+    "supabase:functions": "pnpm --filter work-order-systems-supabase functions",
+    "test:setup": "pnpm supabase:start && pnpm test",
+    "test:teardown": "pnpm supabase:stop",
+    "test:reset": "pnpm supabase:reset && pnpm test",
     "gen-types": "bash packages/sdk/scripts/gen-types.sh"
   },
   "keywords": [
