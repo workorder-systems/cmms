@@ -20,5 +20,15 @@ else
 fi
 
 echo "Generating types from local DB (schema: public) into $OUTPUT ..."
-"$SUPABASE_CMD" gen types typescript --local -s public > "$OUTPUT"
+# write to a temp file first, then rename. using `> "$OUTPUT"` truncates the
+# target immediately; while supabase streams output, the file is empty and
+# tsup --watch / turbo may rebuild and hit TS2306 (file is not a module).
+output_tmp="${OUTPUT}.tmp.$$"
+trap 'rm -f "$output_tmp"' EXIT
+if ! "$SUPABASE_CMD" gen types typescript --local -s public >"$output_tmp"; then
+  rm -f "$output_tmp"
+  exit 1
+fi
+mv "$output_tmp" "$OUTPUT"
+trap - EXIT
 echo "Done. Update packages/sdk if you added views or RPCs."

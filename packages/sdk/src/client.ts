@@ -16,7 +16,6 @@ import { createCatalogsResource } from './resources/catalogs.js';
 import { createPmResource } from './resources/pm.js';
 import { createDashboardResource } from './resources/dashboard.js';
 import { createAuditResource } from './resources/audit.js';
-import { createSimilarPastFixesResource } from './resources/similar-past-fixes.js';
 import { createTenantApiKeysResource } from './resources/tenant-api-keys.js';
 import { createLaborResource } from './resources/labor.js';
 import { createSchedulingResource } from './resources/scheduling.js';
@@ -84,7 +83,6 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     pm: createPmResource(supabase),
     dashboard: createDashboardResource(supabase),
     audit: createAuditResource(supabase),
-    similarPastFixes: createSimilarPastFixesResource(supabase),
     tenantApiKeys: createTenantApiKeysResource(supabase),
     labor: createLaborResource(supabase),
     scheduling: createSchedulingResource(supabase),

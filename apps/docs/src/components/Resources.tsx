@@ -21,7 +21,6 @@ import { ListIcon } from '@/components/icons/ListIcon'
 import { CalendarIcon } from '@/components/icons/CalendarIcon'
 import { DocumentIcon } from '@/components/icons/DocumentIcon'
 import { ClipboardIcon } from '@/components/icons/ClipboardIcon'
-import { MagnifyingGlassIcon } from '@/components/icons/MagnifyingGlassIcon'
 import { CartIcon } from '@/components/icons/CartIcon'
 import { ShapesIcon } from '@/components/icons/ShapesIcon'
 
@@ -88,13 +87,6 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
           'List, create, transition, complete, log time; attachments and metadata.',
         icon: BoltIcon,
         pattern: { y: -6, squares: [[-1, 2], [1, 3]] },
-      },
-      {
-        href: '/similar-past-fixes',
-        name: 'Similar past fixes',
-        description: 'Search by text or work order for similar historical fixes.',
-        icon: MagnifyingGlassIcon,
-        pattern: { y: 12, squares: [[0, 2], [1, 4]] },
       },
       {
         href: '/scheduling',

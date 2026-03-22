@@ -43,8 +43,7 @@ Or send a NOTIFY: `docker exec supabase_db_database psql -U postgres -c "NOTIFY 
 
 ### Running tests
 
-- `pnpm test:ci` — runs all 34 test files (526 tests), excludes the `similar_past_fixes_e2e` test that requires `OPENAI_API_KEY`
-- `pnpm test` — runs all tests including the e2e test (will fail without `OPENAI_API_KEY`)
+- `pnpm test:ci` / `pnpm test` — run the full Vitest suite (DB contract + SDK); requires Supabase (local or env-configured)
 - Tests require Supabase local stack to be running. The test setup (`tests/setup.ts`) auto-starts it if needed.
 
 ### Running lint
@@ -58,7 +57,7 @@ Or send a NOTIFY: `docker exec supabase_db_database psql -U postgres -c "NOTIFY 
 
 ### Database
 
-- 29 migration files across 7 custom schemas (`app`, `cfg`, `int`, `audit`, `util`, `authz`, `pm`)
+- 30+ migration files across 7 custom schemas (`app`, `cfg`, `int`, `audit`, `util`, `authz`, `pm`)
 - See `supabase/README.md` for architecture rules and patterns
 - Auth uses a custom access token hook (`authz.custom_access_token_hook`) that adds tenant_id to JWT claims
 - `enable_confirmations = false` in local config — sign-up auto-confirms users

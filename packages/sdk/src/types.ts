@@ -13,7 +13,6 @@ import type { CatalogsResource } from './resources/catalogs.js';
 import type { PmResource } from './resources/pm.js';
 import type { DashboardResource } from './resources/dashboard.js';
 import type { AuditResource } from './resources/audit.js';
-import type { SimilarPastFixesResource } from './resources/similar-past-fixes.js';
 import type { TenantApiKeysResource } from './resources/tenant-api-keys.js';
 import type { LaborResource } from './resources/labor.js';
 import type { SchedulingResource } from './resources/scheduling.js';
@@ -78,8 +77,6 @@ export type DbClient = {
   dashboard: DashboardResource;
   /** Audit: entity and permission changes, retention configuration. */
   audit: AuditResource;
-  /** Similar Past Fixes: search for semantically similar completed work orders. */
-  similarPastFixes: SimilarPastFixesResource;
   /** Tenant API keys: create, list, revoke. For IoT / machine access (e.g. ingest-meter-reading Edge Function). */
   tenantApiKeys: TenantApiKeysResource;
   /** Labor: technicians, crews, skills, certifications, availability, shifts, assignments, labor actuals, capacity, and scheduling RPCs. */

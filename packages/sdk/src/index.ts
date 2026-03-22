@@ -161,10 +161,6 @@ export type {
   AuditResource,
 } from './resources/audit.js';
 export type {
-  SimilarPastFixResult,
-  SearchSimilarParams,
-} from './resources/similar-past-fixes.js';
-export type {
   TenantApiKeyRow,
   CreateTenantApiKeyResult,
   TenantApiKeysResource,

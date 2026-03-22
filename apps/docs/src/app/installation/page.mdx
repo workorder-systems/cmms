@@ -8,6 +8,7 @@ export const sections = [
   { title: 'Peer dependency', id: 'peer-dependency' },
   { title: 'Create a client', id: 'usage' },
   { title: 'Edge runtimes', id: 'edge-runtimes' },
+  { title: 'Environment variables', id: 'environment-variables' },
 ]
 
 # Installation
@@ -71,3 +72,13 @@ const client = createDbClient(url, anonKey, {
 ## Edge runtimes
 
 In edge environments, pass `global: { fetch }` so the client uses the runtime’s `fetch`. Set `auth: { persistSession: false }` if you don’t need session persistence. For custom storage, use the `auth.storage` option (Supabase `SessionStorage`-compatible).
+
+## Environment variables
+
+The SDK needs **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** in your app or test environment. On Supabase, hosted Edge Functions receive **`SUPABASE_*`** variables automatically (you cannot define those names as custom secrets). See [Configuration](/configuration).
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/configuration" variant="text" arrow="right">
+    <>Configuration</>
+  </Button>
+</div>

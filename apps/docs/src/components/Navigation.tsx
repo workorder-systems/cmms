@@ -239,6 +239,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Introduction', href: '/' },
       { title: 'Quickstart', href: '/quickstart' },
       { title: 'Installation', href: '/installation' },
+      { title: 'Configuration', href: '/configuration' },
       { title: 'Authentication', href: '/authentication' },
       { title: 'Tenant context', href: '/tenant-context' },
       { title: 'Authorization (RBAC and ABAC)', href: '/authorization' },
@@ -258,7 +259,6 @@ export const navigation: Array<NavGroup> = [
     title: 'Work orders & dispatch',
     links: [
       { title: 'Work orders', href: '/work-orders' },
-      { title: 'Similar past fixes', href: '/similar-past-fixes' },
       { title: 'Scheduling & dispatch', href: '/scheduling' },
     ],
   },

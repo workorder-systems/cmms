@@ -53,7 +53,6 @@ const id = await client.workOrders.create({
 | `plugins`     | `list()`, `getById()`, `listInstallations()` | `install()`, `updateInstallation()`, `uninstall()` (tenant.admin) |
 | `costs`       | `listWorkOrderCosts()`, `listAssetCosts()`, `listLocationCosts()`, `listDepartmentCosts()`, `listProjectCosts()`, `listLifecycleAlerts()` | Use `costRollup()`, `assetLifecycleAlerts()`, `assetTotalCostOfOwnership()` for RPC-based reporting. |
 | `projects`    | `list()`, `getById()` | — (read-only from v_projects) |
-| `similarPastFixes` | `search()` | — (read-only, via Edge Function) |
 
 For **PM** (templates, schedules, due/overdue pms), **permissions** (grant, revoke, hasPermission), **workflow** (status/priority/maintenance type catalogs), **audit**, and **dashboard** views, use `client.supabase.from('v_*')` and `client.supabase.rpc('rpc_*', params)` until dedicated resource methods are added. All public views and RPCs are typed via the SDK’s `Database` type.
 
