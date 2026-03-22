@@ -84,6 +84,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         icon: BookIcon,
         pattern: { y: 12, squares: [[0, 2], [1, 4]] },
       },
+      {
+        href: '/tenant-api-keys',
+        name: 'Tenant API keys',
+        description: 'Machine-scoped keys; create, list, revoke; meter ingest Edge Function.',
+        icon: BoltIcon,
+        pattern: { y: 6, squares: [[0, 1], [1, 3]] },
+      },
     ],
   },
   {

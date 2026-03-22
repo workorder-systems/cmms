@@ -23,6 +23,11 @@ const guides = [
     description: 'Set and clear tenant context for multi-tenant operations.',
   },
   {
+    href: '/tenant-api-keys',
+    name: 'Tenant API keys',
+    description: 'Machine auth per tenant; SDK management and automated meter ingest.',
+  },
+  {
     href: '/authorization',
     name: 'Authorization (RBAC & ABAC)',
     description: 'Roles, permissions, scopes, and how RPCs enforce access.',
