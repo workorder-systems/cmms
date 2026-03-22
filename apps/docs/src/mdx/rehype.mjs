@@ -8,11 +8,17 @@ import { visit } from 'unist-util-visit'
 function rehypeParseCodeBlocks() {
   return (tree) => {
     visit(tree, 'element', (node, _nodeIndex, parentNode) => {
-      if (node.tagName === 'code') {
-        parentNode.properties.language = node.properties.className
-          ? node.properties?.className[0]?.replace(/^language-/, '')
-          : 'txt'
+      // Only fenced blocks are `pre > code`. Inline `code` inside MDX (e.g. <Property>)
+      // has another parent; those nodes may not have `properties`, so do not touch them.
+      if (node.tagName !== 'code' || parentNode?.tagName !== 'pre') {
+        return
       }
+      if (!parentNode.properties) {
+        parentNode.properties = {}
+      }
+      parentNode.properties.language = node.properties.className
+        ? node.properties?.className[0]?.replace(/^language-/, '')
+        : 'txt'
     })
   }
 }
