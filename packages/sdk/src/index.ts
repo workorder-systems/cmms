@@ -91,9 +91,13 @@ export type {
 export type {
   PluginRow,
   PluginInstallationRow,
+  PluginWebhookSubscriptionRow,
+  PluginDeliveryQueueRecentRow,
   InstallPluginParams,
   UpdatePluginInstallationParams,
   UninstallPluginParams,
+  UpsertPluginWebhookSubscriptionParams,
+  DeletePluginWebhookSubscriptionParams,
   PluginsResource,
 } from './resources/plugins.js';
 export type {

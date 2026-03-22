@@ -8,6 +8,8 @@ export const sections = [
   { title: 'Plugin lifecycle', id: 'plugin-lifecycle' },
   { title: 'Register plugin in the catalog', id: 'register-plugin' },
   { title: 'Install plugin for a tenant', id: 'install-plugin' },
+  { title: 'Outbound webhooks (audit-driven)', id: 'outbound-webhooks' },
+  { title: 'Inbound webhooks (HMAC)', id: 'inbound-webhooks' },
   { title: 'Use the public API from your plugin', id: 'use-public-api' },
 ]
 
@@ -87,12 +89,28 @@ const installationId = await client.plugins.install({
 
 List and update installations with `client.plugins.listInstallations()` and `client.plugins.updateInstallation(params)`. See [Plugins](/plugins).
 
+## Outbound webhooks (audit-driven)
+
+The database enqueues outbound deliveries when rows appear in **`audit.entity_changes`**, but only for installations that have **explicit subscription allowlists** (`int.plugin_webhook_subscriptions` via `rpc_upsert_plugin_webhook_subscription`). This keeps noise low: without subscriptions, nothing is sent.
+
+1. **Vault:** Create a secret in **Supabase Vault** with a stable **`name`** (for example `my_plugin_hmac_prod`). The plaintext is your shared signing secret.
+2. **Install:** Set `secretRef` on the installation to that **same name** (not the secret value). Set `config.webhook_url` to your HTTPS endpoint. Optional: `config.timeout_ms`, `config.headers` (non-secret only).
+3. **Subscribe:** Upsert a subscription for each `(table_schema, table_name)` and `operations` (`INSERT` / `UPDATE` / `DELETE`). For `UPDATE`, you can pass `changed_fields_allowlist` so only relevant column changes fire events.
+4. **Payload:** Subscribers receive JSON with `v`, `tenant_id`, `installation_id`, `plugin_key`, `audit` (id, schema, table, record_id, operation, changed_fields), and `snapshot` (either metadata-only or full `old_data`/`new_data` when `include_payload` is true). **HMAC-SHA256** (hex) of `payload::text` (UTF-8) is sent as header **`X-Plugin-Signature`** when a Vault secret resolves.
+5. **Delivery:** `pg_net` posts asynchronously; `rpc_process_plugin_deliveries` (scheduled by **`pg_cron`** every minute) collects responses, retries with exponential backoff, and marks **`dead`** after repeated failures. Treat delivery as **at-least-once**; dedupe using `audit.id` and `X-Plugin-Delivery-Id`.
+
+## Inbound webhooks (HMAC)
+
+Partners can call **`rpc_plugin_ingest_webhook`** with the **anon** or **authenticated** role (no end-user session required). Arguments: `p_plugin_key`, `p_installation_id`, `p_payload` (jsonb), `p_signature` (hex). The signature must match **HMAC-SHA256** over **`p_payload::text`** using the same Vault secret referenced by **`secret_ref`**. Rate limiting is applied using the installation’s **`installed_by`** user when present.
+
+Allowlisted actions today include **`noop`** and **`work_order.create`** (with `data.title` and optional catalog-valid fields). Extend with care—never execute arbitrary SQL from webhook bodies.
+
 ## Use the public API from your plugin
 
 Treat the Work Order Systems API as your backend:
 
 - **Reads:** Query public views like `v_work_orders`, `v_assets`, `v_work_order_attachments`, `v_pm_*`, `v_dashboard_*`, and so on.
-- **Writes:** Call public RPCs like `rpc_create_work_order`, `rpc_log_work_order_time`, `rpc_install_plugin`, `rpc_update_plugin_installation`, `rpc_create_pm_schedule`, and others.
+- **Writes:** Call public RPCs like `rpc_create_work_order`, `rpc_log_work_order_time`, `rpc_install_plugin`, `rpc_update_plugin_installation`, `rpc_upsert_plugin_webhook_subscription`, `rpc_plugin_ingest_webhook`, `rpc_create_pm_schedule`, and others.
 
 Use `@supabase/supabase-js` in your backend with server-side credentials for tenant-admin or system operations. Use end-user JWTs when acting on behalf of a specific user.
 

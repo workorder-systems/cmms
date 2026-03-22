@@ -4637,6 +4637,64 @@ export type Database = {
         }
         Relationships: []
       }
+      v_plugin_delivery_queue_recent: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          event_type: string | null
+          id: string | null
+          last_error: string | null
+          plugin_installation_id: string | null
+          plugin_key: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_delivery_queue_plugin_installation_id_fkey"
+            columns: ["plugin_installation_id"]
+            isOneToOne: false
+            referencedRelation: "v_plugin_installations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plugin_delivery_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "plugin_delivery_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "plugin_delivery_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "plugin_delivery_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plugin_delivery_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       v_plugin_installations: {
         Row: {
           config: Json | null
@@ -4694,6 +4752,65 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_tenants_overview"
             referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      v_plugin_webhook_subscriptions: {
+        Row: {
+          changed_fields_allowlist: string[] | null
+          created_at: string | null
+          id: string | null
+          include_payload: boolean | null
+          operations: string[] | null
+          plugin_installation_id: string | null
+          plugin_key: string | null
+          table_name: string | null
+          table_schema: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_installations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "plugin_installations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "plugin_installations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "plugin_installations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plugin_installations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "plugin_webhook_subscriptions_plugin_installation_id_fkey"
+            columns: ["plugin_installation_id"]
+            isOneToOne: false
+            referencedRelation: "v_plugin_installations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -8786,6 +8903,10 @@ export type Database = {
         Args: { p_meter_id: string; p_tenant_id: string }
         Returns: undefined
       }
+      rpc_delete_plugin_webhook_subscription: {
+        Args: { p_subscription_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       rpc_delete_pm_schedule: {
         Args: { p_pm_schedule_id: string; p_tenant_id: string }
         Returns: undefined
@@ -8894,6 +9015,19 @@ export type Database = {
           p_updated_after?: string
         }
         Returns: Json
+      }
+      rpc_plugin_ingest_webhook: {
+        Args: {
+          p_installation_id: string
+          p_payload: Json
+          p_plugin_key: string
+          p_signature: string
+        }
+        Returns: Json
+      }
+      rpc_process_plugin_deliveries: {
+        Args: { p_batch_size?: number }
+        Returns: number
       }
       rpc_receive_purchase_order: {
         Args: { p_lines: Json; p_po_id: string; p_tenant_id: string }
@@ -9278,6 +9412,18 @@ export type Database = {
       rpc_update_work_order_attachment_metadata: {
         Args: { p_attachment_id: string; p_kind?: string; p_label?: string }
         Returns: undefined
+      }
+      rpc_upsert_plugin_webhook_subscription: {
+        Args: {
+          p_changed_fields_allowlist?: string[]
+          p_include_payload?: boolean
+          p_installation_id: string
+          p_operations: string[]
+          p_table_name: string
+          p_table_schema: string
+          p_tenant_id: string
+        }
+        Returns: string
       }
       rpc_validate_schedule: {
         Args: {

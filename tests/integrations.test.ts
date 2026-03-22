@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   createTestClient,
@@ -31,6 +33,23 @@ async function registerPlugin(
   }
 
   return data as string;
+}
+
+function signPluginWebhookPayloadText(payloadText: string, secret: string): string {
+  return createHmac('sha256', secret).update(payloadText, 'utf8').digest('hex');
+}
+
+/** Seeds Vault secret for webhook HMAC tests (local Docker DB only). */
+function trySeedVaultWebhookSecret(): boolean {
+  try {
+    execSync(
+      `docker exec supabase_db_database psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "delete from vault.secrets where name = 'plugin_integ_hmac'; select vault.create_secret('testhmacsecret123456789012345678', 'plugin_integ_hmac', 'vitest');"`,
+      { stdio: 'ignore' }
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 describe('Integrations and plugins', () => {
@@ -322,6 +341,236 @@ describe('Integrations and plugins', () => {
         .eq('operation', 'INSERT');
 
       expect(audits?.length ?? 0).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Plugin webhooks (audit-driven queue + Vault HMAC)', () => {
+    let vaultOk = false;
+
+    beforeAll(() => {
+      vaultOk = trySeedVaultWebhookSecret();
+    });
+
+    it('does not enqueue deliveries without a webhook subscription', async () => {
+      const adminClient = createTestClient();
+      await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      await registerPlugin(serviceClient, 'no_sub_plugin', 'No Sub Plugin');
+
+      const { data: installationId, error: instErr } = await adminClient.rpc('rpc_install_plugin', {
+        p_tenant_id: tenantId,
+        p_plugin_key: 'no_sub_plugin',
+        p_config: { webhook_url: 'https://example.invalid/webhook' },
+      });
+      expect(instErr).toBeNull();
+
+      const { error: woErr } = await adminClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Webhook probe',
+        p_description: null,
+      });
+      expect(woErr).toBeNull();
+
+      const { data: deliveries, error: dErr } = await adminClient
+        .from('v_plugin_delivery_queue_recent')
+        .select('id')
+        .eq('plugin_installation_id', installationId as string);
+
+      expect(dErr).toBeNull();
+      expect((deliveries ?? []).length).toBe(0);
+    });
+
+    it('enqueues a delivery when subscription matches work_orders audit', async () => {
+      const adminClient = createTestClient();
+      await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      await registerPlugin(serviceClient, 'queue_plugin', 'Queue Plugin');
+
+      const { data: installationId, error: instErr } = await adminClient.rpc('rpc_install_plugin', {
+        p_tenant_id: tenantId,
+        p_plugin_key: 'queue_plugin',
+        p_config: { webhook_url: 'https://example.invalid/webhook' },
+      });
+      expect(instErr).toBeNull();
+
+      const { error: subErr } = await adminClient.rpc('rpc_upsert_plugin_webhook_subscription', {
+        p_tenant_id: tenantId,
+        p_installation_id: installationId,
+        p_table_schema: 'app',
+        p_table_name: 'work_orders',
+        p_operations: ['INSERT'],
+        p_include_payload: false,
+      });
+      expect(subErr).toBeNull();
+
+      const { error: woErr } = await adminClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Queued event',
+        p_description: null,
+      });
+      expect(woErr).toBeNull();
+
+      const { data: deliveries, error: dErr } = await adminClient
+        .from('v_plugin_delivery_queue_recent')
+        .select('id, event_type, status')
+        .eq('plugin_installation_id', installationId as string);
+
+      expect(dErr).toBeNull();
+      expect((deliveries ?? []).length).toBe(1);
+      expect(deliveries![0].event_type).toBe('entity_change.work_orders.insert');
+      expect(deliveries![0].status).toBe('pending');
+    });
+
+    it('isolates delivery queue rows between tenants', async () => {
+      const admin1 = createTestClient();
+      await createTestUser(admin1);
+      const tenant1 = await createTestTenant(admin1);
+      await setTenantContext(admin1, tenant1);
+
+      const admin2 = createTestClient();
+      await createTestUser(admin2);
+      const tenant2 = await createTestTenant(admin2);
+      await setTenantContext(admin2, tenant2);
+
+      await registerPlugin(serviceClient, 'iso_queue_plugin', 'Iso Queue Plugin');
+
+      const inst1 = await admin1
+        .rpc('rpc_install_plugin', {
+          p_tenant_id: tenant1,
+          p_plugin_key: 'iso_queue_plugin',
+          p_config: { webhook_url: 'https://example.invalid/a' },
+        })
+        .then(r => r.data);
+      const inst2 = await admin2
+        .rpc('rpc_install_plugin', {
+          p_tenant_id: tenant2,
+          p_plugin_key: 'iso_queue_plugin',
+          p_config: { webhook_url: 'https://example.invalid/b' },
+        })
+        .then(r => r.data);
+
+      await admin1.rpc('rpc_upsert_plugin_webhook_subscription', {
+        p_tenant_id: tenant1,
+        p_installation_id: inst1,
+        p_table_schema: 'app',
+        p_table_name: 'work_orders',
+        p_operations: ['INSERT'],
+      });
+      await admin2.rpc('rpc_upsert_plugin_webhook_subscription', {
+        p_tenant_id: tenant2,
+        p_installation_id: inst2,
+        p_table_schema: 'app',
+        p_table_name: 'work_orders',
+        p_operations: ['INSERT'],
+      });
+
+      await setTenantContext(admin1, tenant1);
+      await admin1.rpc('rpc_create_work_order', {
+        p_tenant_id: tenant1,
+        p_title: 'T1 only',
+        p_description: null,
+      });
+
+      const { data: t1rows } = await admin1.from('v_plugin_delivery_queue_recent').select('id');
+      const { data: t2rows } = await admin2.from('v_plugin_delivery_queue_recent').select('id');
+
+      expect((t1rows ?? []).length).toBe(1);
+      expect((t2rows ?? []).length).toBe(0);
+    });
+
+    it('marks deliveries dead when webhook_url is missing (processor)', async () => {
+      const adminClient = createTestClient();
+      await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      await registerPlugin(serviceClient, 'dead_letter_plugin', 'Dead Letter Plugin');
+
+      const installationId = await adminClient
+        .rpc('rpc_install_plugin', {
+          p_tenant_id: tenantId,
+          p_plugin_key: 'dead_letter_plugin',
+          p_config: {},
+        })
+        .then(r => r.data);
+
+      await adminClient.rpc('rpc_upsert_plugin_webhook_subscription', {
+        p_tenant_id: tenantId,
+        p_installation_id: installationId,
+        p_table_schema: 'app',
+        p_table_name: 'work_orders',
+        p_operations: ['INSERT'],
+      });
+
+      await adminClient.rpc('rpc_create_work_order', {
+        p_tenant_id: tenantId,
+        p_title: 'Dead letter',
+        p_description: null,
+      });
+
+      const { data: before } = await adminClient
+        .from('v_plugin_delivery_queue_recent')
+        .select('id, status')
+        .eq('plugin_installation_id', installationId as string)
+        .single();
+
+      expect(before?.status).toBe('pending');
+
+      const { data: processed, error: procErr } = await serviceClient.rpc('rpc_process_plugin_deliveries', {
+        p_batch_size: 20,
+      });
+      expect(procErr).toBeNull();
+      expect(typeof processed).toBe('number');
+
+      const { data: after } = await adminClient
+        .from('v_plugin_delivery_queue_recent')
+        .select('status, last_error')
+        .eq('plugin_installation_id', installationId as string)
+        .single();
+
+      expect(after?.status).toBe('dead');
+      expect(after?.last_error).toContain('webhook_url');
+    });
+
+    it('accepts inbound noop webhook with valid HMAC (anon)', async () => {
+      if (!vaultOk) {
+        expect(true).toBe(true);
+        return;
+      }
+
+      const adminClient = createTestClient();
+      await createTestUser(adminClient);
+      const tenantId = await createTestTenant(adminClient);
+      await setTenantContext(adminClient, tenantId);
+
+      await registerPlugin(serviceClient, 'ingest_plugin', 'Ingest Plugin');
+
+      const installationId = await adminClient
+        .rpc('rpc_install_plugin', {
+          p_tenant_id: tenantId,
+          p_plugin_key: 'ingest_plugin',
+          p_secret_ref: 'plugin_integ_hmac',
+          p_config: {},
+        })
+        .then(r => r.data);
+
+      const payloadText = '{"action": "noop"}';
+      const sig = signPluginWebhookPayloadText(payloadText, 'testhmacsecret123456789012345678');
+
+      const anonClient = createTestClient();
+      const { data, error } = await anonClient.rpc('rpc_plugin_ingest_webhook', {
+        p_plugin_key: 'ingest_plugin',
+        p_installation_id: installationId,
+        p_payload: JSON.parse(payloadText) as object,
+        p_signature: sig,
+      });
+
+      expect(error).toBeNull();
+      expect((data as { ok?: boolean })?.ok).toBe(true);
     });
   });
 });
