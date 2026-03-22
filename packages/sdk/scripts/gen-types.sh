@@ -3,7 +3,7 @@
 # Run from repo root with Supabase running: npm run supabase:start then npm run gen-types
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 OUTPUT="$SCRIPT_DIR/../src/database.types.ts"
 
 SUPABASE_DIR="$REPO_ROOT/apps/supabase"

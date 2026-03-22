@@ -248,11 +248,15 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
+          document_type_key: string | null
+          effective_date: string | null
           file_id: string | null
           filename: string | null
           id: string | null
+          is_controlled: boolean | null
           kind: string | null
           label: string | null
+          revision_label: string | null
           storage_path: string | null
           tenant_id: string | null
           updated_at: string | null
@@ -2059,7 +2063,21 @@ export type Database = {
             foreignKeyName: "incidents_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "incidents_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -2285,7 +2303,21 @@ export type Database = {
             foreignKeyName: "inspection_runs_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_runs_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "inspection_runs_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -2660,12 +2692,16 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
+          document_type_key: string | null
+          effective_date: string | null
           file_id: string | null
           filename: string | null
           id: string | null
+          is_controlled: boolean | null
           kind: string | null
           label: string | null
           location_id: string | null
+          revision_label: string | null
           storage_path: string | null
           tenant_id: string | null
           updated_at: string | null
@@ -3513,7 +3549,21 @@ export type Database = {
             foreignKeyName: "work_order_attachments_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_attachments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_attachments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -3617,7 +3667,21 @@ export type Database = {
             foreignKeyName: "work_order_check_ins_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_check_ins_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_check_ins_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -3715,7 +3779,21 @@ export type Database = {
             foreignKeyName: "work_order_notes_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_notes_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_notes_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -3831,7 +3909,21 @@ export type Database = {
             foreignKeyName: "work_order_time_entries_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_time_entries_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_time_entries_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -3882,6 +3974,202 @@ export type Database = {
           tenant_id?: string | null
           title?: string | null
           updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "v_mobile_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_site_summary"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "work_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_mobile_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "work_orders_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_rollup"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      v_my_notifications: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          event_key: string | null
+          id: string | null
+          payload: Json | null
+          read_at: string | null
+          tenant_id: string | null
+          title: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          event_key?: string | null
+          id?: string | null
+          payload?: Json | null
+          read_at?: string | null
+          tenant_id?: string | null
+          title?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          event_key?: string | null
+          id?: string | null
+          payload?: Json | null
+          read_at?: string | null
+          tenant_id?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      v_my_work_order_requests: {
+        Row: {
+          asset_id: string | null
+          created_at: string | null
+          due_date: string | null
+          id: string | null
+          location_id: string | null
+          priority: string | null
+          status: string | null
+          tenant_id: string | null
+          title: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string | null
+          location_id?: string | null
+          priority?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          title?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string | null
+          location_id?: string | null
+          priority?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          title?: string | null
         }
         Relationships: [
           {
@@ -4307,7 +4595,21 @@ export type Database = {
             foreignKeyName: "part_reservations_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_reservations_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "part_reservations_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -4435,7 +4737,21 @@ export type Database = {
             foreignKeyName: "part_usage_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "part_usage_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "part_usage_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -4953,7 +5269,21 @@ export type Database = {
             foreignKeyName: "pm_history_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_history_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "pm_history_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -5033,7 +5363,21 @@ export type Database = {
             foreignKeyName: "pm_schedules_last_work_order_id_fkey"
             columns: ["last_work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_schedules_last_work_order_id_fkey"
+            columns: ["last_work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "pm_schedules_last_work_order_id_fkey"
+            columns: ["last_work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -5832,7 +6176,21 @@ export type Database = {
             foreignKeyName: "schedule_blocks_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -5988,7 +6346,21 @@ export type Database = {
             foreignKeyName: "schedule_blocks_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -6144,7 +6516,21 @@ export type Database = {
             foreignKeyName: "schedule_blocks_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -6300,7 +6686,21 @@ export type Database = {
             foreignKeyName: "schedule_blocks_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -6456,7 +6856,21 @@ export type Database = {
             foreignKeyName: "schedule_blocks_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -6465,6 +6879,122 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_work_orders"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_shift_handovers: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string | null
+          from_user_id: string | null
+          id: string | null
+          location_id: string | null
+          shift_ended_at: string | null
+          shift_started_at: string | null
+          status: string | null
+          summary: string | null
+          tenant_id: string | null
+          to_user_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string | null
+          from_user_id?: string | null
+          id?: string | null
+          location_id?: string | null
+          shift_ended_at?: string | null
+          shift_started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          tenant_id?: string | null
+          to_user_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string | null
+          from_user_id?: string | null
+          id?: string | null
+          location_id?: string | null
+          shift_ended_at?: string | null
+          shift_started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          tenant_id?: string | null
+          to_user_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_handovers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_site_summary"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_mobile_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_rollup"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_handovers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -7668,6 +8198,209 @@ export type Database = {
         }
         Relationships: []
       }
+      v_tool_checkouts: {
+        Row: {
+          checked_out_at: string | null
+          checked_out_to_user_id: string | null
+          created_at: string | null
+          due_at: string | null
+          id: string | null
+          notes: string | null
+          returned_at: string | null
+          tenant_id: string | null
+          tool_id: string | null
+          updated_at: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          checked_out_at?: string | null
+          checked_out_to_user_id?: string | null
+          created_at?: string | null
+          due_at?: string | null
+          id?: string | null
+          notes?: string | null
+          returned_at?: string | null
+          tenant_id?: string | null
+          tool_id?: string | null
+          updated_at?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          checked_out_at?: string | null
+          checked_out_to_user_id?: string | null
+          created_at?: string | null
+          due_at?: string | null
+          id?: string | null
+          notes?: string | null
+          returned_at?: string | null
+          tenant_id?: string | null
+          tool_id?: string | null
+          updated_at?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_checkouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "v_tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_open_work_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_overdue_work_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_mobile_work_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "tool_checkouts_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_tools: {
+        Row: {
+          asset_tag: string | null
+          created_at: string | null
+          id: string | null
+          name: string | null
+          serial_number: string | null
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          asset_tag?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          serial_number?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          asset_tag?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          serial_number?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tools_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tools_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tools_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "tools_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tools_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       v_upcoming_pms: {
         Row: {
           asset_id: string | null
@@ -7896,7 +8629,21 @@ export type Database = {
             foreignKeyName: "work_order_assignments_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_assignments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_assignments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -7915,11 +8662,15 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
+          document_type_key: string | null
+          effective_date: string | null
           file_id: string | null
           filename: string | null
           id: string | null
+          is_controlled: boolean | null
           kind: string | null
           label: string | null
+          revision_label: string | null
           storage_path: string | null
           tenant_id: string | null
           updated_at: string | null
@@ -7986,7 +8737,21 @@ export type Database = {
             foreignKeyName: "work_order_attachments_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_attachments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_attachments_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -8125,7 +8890,21 @@ export type Database = {
             foreignKeyName: "work_order_time_entries_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_time_entries_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_time_entries_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -8134,6 +8913,84 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_work_orders"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_work_order_sla_status: {
+        Row: {
+          acknowledged_at: string | null
+          priority: string | null
+          resolution_sla_breached: boolean | null
+          response_sla_breached: boolean | null
+          sla_resolution_breached_at: string | null
+          sla_resolution_due_at: string | null
+          sla_response_breached_at: string | null
+          sla_response_due_at: string | null
+          status: string | null
+          tenant_id: string | null
+          work_order_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          priority?: string | null
+          resolution_sla_breached?: never
+          response_sla_breached?: never
+          sla_resolution_breached_at?: string | null
+          sla_resolution_due_at?: string | null
+          sla_response_breached_at?: string | null
+          sla_response_due_at?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          work_order_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          priority?: string | null
+          resolution_sla_breached?: never
+          response_sla_breached?: never
+          sla_resolution_breached_at?: string | null
+          sla_resolution_due_at?: string | null
+          sla_response_breached_at?: string | null
+          sla_response_due_at?: string | null
+          status?: string | null
+          tenant_id?: string | null
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "mv_tenant_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_dashboard_metrics"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_portfolio_overview"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenants_overview"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -8214,7 +9071,21 @@ export type Database = {
             foreignKeyName: "work_order_time_entries_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
+            referencedRelation: "v_my_work_order_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_time_entries_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
             referencedRelation: "v_work_order_costs"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_time_entries_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "v_work_order_sla_status"
             referencedColumns: ["work_order_id"]
           },
           {
@@ -8228,6 +9099,7 @@ export type Database = {
       }
       v_work_orders: {
         Row: {
+          acknowledged_at: string | null
           asset_id: string | null
           assigned_to: string | null
           assigned_to_name: string | null
@@ -8242,9 +9114,15 @@ export type Database = {
           location_id: string | null
           maintenance_type: string | null
           pm_schedule_id: string | null
+          primary_supplier_id: string | null
           priority: string | null
           project_id: string | null
+          requested_by: string | null
           resolution: string | null
+          sla_resolution_breached_at: string | null
+          sla_resolution_due_at: string | null
+          sla_response_breached_at: string | null
+          sla_response_due_at: string | null
           status: string | null
           tenant_id: string | null
           title: string | null
@@ -8327,6 +9205,13 @@ export type Database = {
             columns: ["pm_schedule_id"]
             isOneToOne: false
             referencedRelation: "v_upcoming_pms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_primary_supplier_id_fkey"
+            columns: ["primary_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "v_suppliers"
             referencedColumns: ["id"]
           },
           {
@@ -8433,6 +9318,24 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: undefined
       }
+      rpc_acknowledge_shift_handover: {
+        Args: { p_handover_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
+      rpc_acknowledge_work_order: {
+        Args: { p_tenant_id: string; p_work_order_id: string }
+        Returns: undefined
+      }
+      rpc_add_shift_handover_item: {
+        Args: {
+          p_body: string
+          p_handover_id: string
+          p_priority?: string
+          p_tenant_id: string
+          p_work_order_id?: string
+        }
+        Returns: string
+      }
       rpc_add_work_order_note: {
         Args: {
           p_body: string
@@ -8479,6 +9382,14 @@ export type Database = {
         Args: { p_role_key: string; p_tenant_id: string; p_user_id: string }
         Returns: undefined
       }
+      rpc_assign_work_order: {
+        Args: {
+          p_assigned_to: string
+          p_tenant_id: string
+          p_work_order_id: string
+        }
+        Returns: undefined
+      }
       rpc_bulk_import_assets: {
         Args: { p_rows: Json; p_tenant_id: string }
         Returns: Json
@@ -8509,6 +9420,17 @@ export type Database = {
           shift_type: string
           start_at: string
         }[]
+      }
+      rpc_checkout_tool: {
+        Args: {
+          p_checked_out_to_user_id: string
+          p_due_at?: string
+          p_notes?: string
+          p_tenant_id: string
+          p_tool_id: string
+          p_work_order_id?: string
+        }
+        Returns: string
       }
       rpc_clear_tenant_context: { Args: never; Returns: undefined }
       rpc_close_incident: {
@@ -8810,6 +9732,17 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_create_shift_handover: {
+        Args: {
+          p_location_id: string
+          p_shift_ended_at: string
+          p_shift_started_at: string
+          p_summary?: string
+          p_tenant_id: string
+          p_to_user_id: string
+        }
+        Returns: string
+      }
       rpc_create_space: {
         Args: {
           p_area_sqft?: number
@@ -8853,8 +9786,12 @@ export type Database = {
           p_contact_name?: string
           p_email?: string
           p_external_id?: string
+          p_insurance_expires_at?: string
           p_name: string
           p_phone?: string
+          p_supplies_labor?: boolean
+          p_supplies_parts?: boolean
+          p_tax_id?: string
           p_tenant_id: string
         }
         Returns: string
@@ -8878,6 +9815,19 @@ export type Database = {
           p_pm_schedule_id?: string
           p_priority?: string
           p_project_id?: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: string
+      }
+      rpc_create_work_order_request: {
+        Args: {
+          p_asset_id?: string
+          p_description?: string
+          p_due_date?: string
+          p_location_id?: string
+          p_maintenance_type?: string
+          p_priority?: string
           p_tenant_id: string
           p_title: string
         }
@@ -8989,6 +9939,16 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_list_my_notifications: {
+        Args: { p_limit?: number; p_tenant_id: string }
+        Returns: unknown[]
+        SetofOptions: {
+          from: "*"
+          to: "notifications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       rpc_list_tenant_api_keys: {
         Args: { p_tenant_id: string }
         Returns: Json[]
@@ -9006,6 +9966,10 @@ export type Database = {
           p_work_order_id: string
         }
         Returns: string
+      }
+      rpc_mark_notifications_read: {
+        Args: { p_notification_ids: string[]; p_tenant_id: string }
+        Returns: undefined
       }
       rpc_mobile_sync: {
         Args: {
@@ -9025,12 +9989,25 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_process_due_notifications: { Args: never; Returns: undefined }
       rpc_process_plugin_deliveries: {
         Args: { p_batch_size?: number }
         Returns: number
       }
       rpc_receive_purchase_order: {
         Args: { p_lines: Json; p_po_id: string; p_tenant_id: string }
+        Returns: string
+      }
+      rpc_record_asset_downtime: {
+        Args: {
+          p_asset_id: string
+          p_ended_at?: string
+          p_linked_work_order_id?: string
+          p_notes?: string
+          p_reason_key: string
+          p_started_at?: string
+          p_tenant_id: string
+        }
         Returns: string
       }
       rpc_record_meter_reading: {
@@ -9088,6 +10065,10 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_return_tool: {
+        Args: { p_checkout_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       rpc_revoke_permission_from_role: {
         Args: {
           p_permission_key: string
@@ -9133,6 +10114,14 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: undefined
       }
+      rpc_set_work_order_primary_supplier: {
+        Args: {
+          p_primary_supplier_id: string
+          p_tenant_id: string
+          p_work_order_id: string
+        }
+        Returns: undefined
+      }
       rpc_start_work_order: {
         Args: {
           p_accuracy_metres?: number
@@ -9156,6 +10145,10 @@ export type Database = {
           p_tenant_id: string
           p_work_order_id: string
         }
+        Returns: undefined
+      }
+      rpc_submit_shift_handover: {
+        Args: { p_handover_id: string; p_tenant_id: string }
         Returns: undefined
       }
       rpc_tenant_api_key_touch: {
@@ -9402,15 +10395,42 @@ export type Database = {
           p_contact_name?: string
           p_email?: string
           p_external_id?: string
+          p_insurance_expires_at?: string
           p_name?: string
           p_phone?: string
           p_supplier_id: string
+          p_supplies_labor?: boolean
+          p_supplies_parts?: boolean
+          p_tax_id?: string
           p_tenant_id: string
         }
         Returns: undefined
       }
       rpc_update_work_order_attachment_metadata: {
         Args: { p_attachment_id: string; p_kind?: string; p_label?: string }
+        Returns: undefined
+      }
+      rpc_upsert_asset_warranty: {
+        Args: {
+          p_asset_id: string
+          p_coverage_summary?: string
+          p_expires_on?: string
+          p_external_reference?: string
+          p_is_active?: boolean
+          p_starts_on?: string
+          p_supplier_id?: string
+          p_tenant_id: string
+          p_warranty_id?: string
+          p_warranty_type?: string
+        }
+        Returns: string
+      }
+      rpc_upsert_notification_preference: {
+        Args: {
+          p_channel_in_app: boolean
+          p_event_key: string
+          p_tenant_id: string
+        }
         Returns: undefined
       }
       rpc_upsert_plugin_webhook_subscription: {
@@ -9422,6 +10442,31 @@ export type Database = {
           p_table_name: string
           p_table_schema: string
           p_tenant_id: string
+        }
+        Returns: string
+      }
+      rpc_upsert_work_order_sla_rule: {
+        Args: {
+          p_is_active?: boolean
+          p_maintenance_type_key?: string
+          p_priority_key: string
+          p_resolution_interval?: string
+          p_response_interval?: string
+          p_rule_id?: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      rpc_upsert_work_order_vendor_cost: {
+        Args: {
+          p_amount_cents?: number
+          p_description?: string
+          p_invoice_reference?: string
+          p_supplier_id?: string
+          p_tenant_id: string
+          p_vendor_cost_id?: string
+          p_vendor_name?: string
+          p_work_order_id: string
         }
         Returns: string
       }
