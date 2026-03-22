@@ -18,6 +18,23 @@ The API is **multi-tenant**. Work orders, assets, locations, and similar resourc
 
 Scoped views and RPCs read **`tenant_id`** from the JWT. Call **`client.setTenant(tenantId)`** (which invokes **`rpc_set_tenant_context`**), then **refresh the session** so the new claim is issued. Without that, many queries return empty results or RPCs may error.
 
+```mermaid
+sequenceDiagram
+  participant App as Your app
+  participant SDK as SDK
+  participant Auth as Supabase Auth
+  participant API as PostgREST
+  App->>SDK: setTenant(tenantId)
+  SDK->>API: rpc_set_tenant_context
+  API-->>SDK: ok
+  App->>SDK: getSession then setSession
+  SDK->>Auth: refresh JWT
+  Auth-->>SDK: JWT includes tenant_id
+  App->>SDK: e.g. workOrders.list()
+  SDK->>API: request with JWT
+  API-->>App: rows for that tenant
+```
+
 ## Set tenant context
 
 Call `setTenant(tenantId)` with a tenant the user is a member of. Then refresh the session so the JWT includes the new context (e.g. fetch the session and set it again).

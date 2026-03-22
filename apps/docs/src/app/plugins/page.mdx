@@ -19,6 +19,15 @@ export const sections = [
 
 Lists the catalog of available plugins (`v_plugins`) and tenant plugin installations (`v_plugin_installations`). Install, update, and uninstall plugins for a tenant. **Outbound webhooks** are driven by `audit.entity_changes` when you add allowlisted subscriptions; deliveries are processed in-database via `pg_net` and `pg_cron` (see [How to build a plugin](/plugins/how-to-build) and [Building plugins](/plugins-building)). **Installing and managing installations and subscriptions requires `tenant.admin` permission.** Set tenant context before listing or managing installations. {{ className: 'lead' }}
 
+```mermaid
+flowchart LR
+  DB[(Tenant data change)] --> AUD[audit.entity_changes]
+  AUD --> Q[plugin delivery queue]
+  Q --> CRON[pg_cron + rpc_process_plugin_deliveries]
+  CRON --> NET[pg_net HTTP]
+  NET --> EP[Subscriber webhook_url]
+```
+
 ## List plugins (catalog)
 
 List all available plugins (from `v_plugins`). No tenant context required.

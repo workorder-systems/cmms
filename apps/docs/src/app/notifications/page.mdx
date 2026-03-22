@@ -95,3 +95,10 @@ await client.supabase.rpc('rpc_upsert_notification_preference', {
 ## Background processing
 
 **`rpc_process_due_notifications`** is intended for **trusted server** contexts (for example Supabase **pg_cron** or an Edge Function using the **service role**). It is not called from end-user clients. Your deployment wires when and how due notifications are materialized.
+
+```mermaid
+flowchart LR
+  SCH[Scheduler e.g. pg_cron] --> RPC[rpc_process_due_notifications]
+  RPC --> DB[(Notifications rows)]
+  DB --> UI[Clients read v_my_notifications]
+```

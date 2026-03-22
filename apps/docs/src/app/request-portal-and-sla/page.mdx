@@ -20,6 +20,14 @@ These features are what make the platform feel like a **real CMMS** to requestor
 
 Use **`@workorder-systems/sdk`** with tenant context and a refreshed session (JWT with `tenant_id`) like other tenant-scoped APIs.
 
+```mermaid
+flowchart LR
+  R[Requestor] --> P[createRequest RPC]
+  P --> WO[Work order + SLA due times]
+  WO --> ACK[Acknowledge / assign / complete]
+  WO --> V[SLA status views]
+```
+
 ## Permissions and roles
 
 Key permissions (see migration `cmms_core_suppliers_portal_sla`):

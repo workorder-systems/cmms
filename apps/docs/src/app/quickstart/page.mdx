@@ -93,6 +93,15 @@ const workOrders = await client.workOrders.list()
 
 </CodeGroup>
 
+Tenant-scoped calls need **both** a signed-in user and a JWT that includes **`tenant_id`** after `setTenant` and session refresh:
+
+```mermaid
+flowchart TD
+  A[Sign in] --> B[setTenant]
+  B --> C[Refresh session JWT]
+  C --> D[Tenant-scoped SDK calls]
+```
+
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/tenant-context" variant="text" arrow="right">
     <>Tenant context</>

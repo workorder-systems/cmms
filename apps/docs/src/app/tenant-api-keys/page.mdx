@@ -23,6 +23,14 @@ Tenant API keys are **long-lived secrets scoped to one tenant**. They are intend
 
 Managing keys requires the **`tenant.admin`** permission (same pattern as other tenant-scoped admin RPCs).
 
+```mermaid
+flowchart LR
+  DEV[Device or backend] --> HDR[Bearer or X-API-Key]
+  HDR --> EF[ingest-meter-reading Edge Function]
+  EF --> RPC[rpc_record_meter_reading_automated]
+  RPC --> DB[(Meter readings)]
+```
+
 ## SDK: create, list, revoke
 
 Use a **signed-in** Supabase client (user with tenant admin). Pass the tenant UUID explicitly on each call.

@@ -18,6 +18,15 @@ The SDK uses **Supabase Auth**. There is no separate API-key header per request:
 - **Client:** Built with the project URL and **anon** key. The anon key is public by design; **RLS** and RPC checks enforce what each user can do.
 - **Session:** Users sign in with **`client.supabase.auth`** (password, OAuth, magic link, etc.). All **`client.tenants`**, **`client.workOrders`**, and other resources share that same client and session.
 
+```mermaid
+flowchart LR
+  U[User] --> SA[Supabase Auth]
+  SA --> JWT[Session JWT on client]
+  JWT --> R[SDK resources]
+  R --> API[Supabase API]
+  API --> RLS[RLS and RPC checks]
+```
+
 ## Sign in
 
 Use your URL and anon key from [Project Settings → API](https://supabase.com/dashboard):

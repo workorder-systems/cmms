@@ -34,6 +34,19 @@ export const sections = [
 2. Install **`@workorder-systems/sdk`** and **`@supabase/supabase-js`**, then call **`createDbClient(url, anonKey)`**.
 3. Sign users in with **Supabase Auth**. For tenant-scoped data, set tenant context and refresh the session so the JWT includes **`tenant_id`**.
 
+```mermaid
+flowchart TB
+  subgraph app[Your app]
+    SDK["@workorder-systems/sdk"]
+  end
+  subgraph project[Supabase project]
+    API[PostgREST]
+    PG[(Postgres + RLS)]
+    API --- PG
+  end
+  SDK --> API
+```
+
 <Guides />
 
 <Resources />

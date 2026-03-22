@@ -23,6 +23,16 @@ The Work Order Systems API uses **RBAC** (role-based access control) and **ABAC*
 
 Permissions are enforced inside RPCs (e.g. `authz.validate_permission`). The SDK exposes a dedicated `authorization` resource (`client.authorization`) for permission, role, and scope operations; you can still use the raw Supabase client for advanced queries when needed.
 
+```mermaid
+flowchart TB
+  REQ[JWT-authenticated request] --> RLS[RLS tenant boundary]
+  RLS --> PATH{Write or sensitive read?}
+  PATH -->|Often via RPC| RPC[RPC handler]
+  RPC --> RBAC[validate_permission RBAC]
+  RPC --> ABAC[check_abac_scope when applicable]
+  PATH -->|Simple view select| VIEWS[Scoped views]
+```
+
 ## RBAC: roles and permissions
 
 - **Roles** are per-tenant (`cfg.tenant_roles`). New tenants get default roles: `admin`, `member`, `technician`, `manager`.

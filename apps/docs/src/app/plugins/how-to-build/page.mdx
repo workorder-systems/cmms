@@ -36,6 +36,15 @@ At a high level:
 3. Optional **subscriptions** so specific `audit.entity_changes` rows enqueue **outbound** HTTPS POSTs to your URL.
 4. Your **service**: verify signatures, stay idempotent, then call **views/RPCs** or talk to external systems (SAP, Slack, etc.).
 
+```mermaid
+flowchart TB
+  CAT[Catalog row] --> INS[Tenant installation]
+  INS --> SUB[Change subscriptions]
+  SUB --> OUT[Outbound signed webhooks]
+  OUT --> REC[Your receiver]
+  REC --> IN[Inbound RPCs or external APIs]
+```
+
 ## Prerequisites
 
 - **Supabase project** with this schema (or compatible deployment): Auth, Vault, `pg_net`, scheduled `rpc_process_plugin_deliveries` (e.g. `pg_cron`).
