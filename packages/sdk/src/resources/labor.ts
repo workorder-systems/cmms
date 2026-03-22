@@ -211,6 +211,52 @@ export interface GeneratedShiftRow {
   label: string | null;
 }
 
+/** Params for rpc_create_crew. */
+export interface CreateCrewParams {
+  tenantId: string;
+  name: string;
+  description?: string | null;
+}
+
+/** Params for rpc_update_crew. */
+export interface UpdateCrewParams {
+  tenantId: string;
+  crewId: string;
+  name?: string | null;
+  description?: string | null;
+  leadTechnicianId?: string | null;
+  clearLeadTechnician?: boolean;
+}
+
+/** Params for rpc_create_technician. */
+export interface CreateTechnicianParams {
+  tenantId: string;
+  userId: string;
+  employeeNumber?: string | null;
+  defaultCrewId?: string | null;
+  departmentId?: string | null;
+}
+
+/** Params for rpc_update_technician. */
+export interface UpdateTechnicianParams {
+  tenantId: string;
+  technicianId: string;
+  employeeNumber?: string | null;
+  defaultCrewId?: string | null;
+  departmentId?: string | null;
+  isActive?: boolean | null;
+  clearDefaultCrew?: boolean;
+  clearDepartment?: boolean;
+}
+
+/** Params for rpc_add_crew_member. */
+export interface AddCrewMemberParams {
+  tenantId: string;
+  crewId: string;
+  technicianId: string;
+  role?: string | null;
+}
+
 const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(
     supabase
@@ -367,6 +413,82 @@ export function createLaborResource(supabase: SupabaseClient<Database>) {
       const { data, error } = await supabase.from('v_technician_capacity').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as TechnicianCapacityRow[];
+    },
+
+    /** Create a crew. Requires labor.crew.manage. Returns crew id. */
+    async createCrew(params: CreateCrewParams): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_create_crew', {
+        p_tenant_id: params.tenantId,
+        p_name: params.name,
+        p_description: params.description ?? null,
+      });
+    },
+
+    /** Update a crew. Requires labor.crew.manage. */
+    async updateCrew(params: UpdateCrewParams): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_update_crew', {
+        p_tenant_id: params.tenantId,
+        p_crew_id: params.crewId,
+        p_name: params.name ?? null,
+        p_description: params.description ?? null,
+        p_lead_technician_id: params.leadTechnicianId ?? null,
+        p_clear_lead_technician: params.clearLeadTechnician ?? false,
+      });
+    },
+
+    /** Delete a crew. Requires labor.crew.manage. */
+    async deleteCrew(tenantId: string, crewId: string): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_delete_crew', {
+        p_tenant_id: tenantId,
+        p_crew_id: crewId,
+      });
+    },
+
+    /**
+     * Create a technician for a tenant member. Requires labor.technician.manage.
+     * Returns technician id.
+     */
+    async createTechnician(params: CreateTechnicianParams): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_create_technician', {
+        p_tenant_id: params.tenantId,
+        p_user_id: params.userId,
+        p_employee_number: params.employeeNumber ?? null,
+        p_default_crew_id: params.defaultCrewId ?? null,
+        p_department_id: params.departmentId ?? null,
+      });
+    },
+
+    /** Update a technician. Requires labor.technician.manage. */
+    async updateTechnician(params: UpdateTechnicianParams): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_update_technician', {
+        p_tenant_id: params.tenantId,
+        p_technician_id: params.technicianId,
+        p_employee_number: params.employeeNumber ?? null,
+        p_default_crew_id: params.defaultCrewId ?? null,
+        p_department_id: params.departmentId ?? null,
+        p_is_active: params.isActive ?? null,
+        p_clear_default_crew: params.clearDefaultCrew ?? false,
+        p_clear_department: params.clearDepartment ?? false,
+      });
+    },
+
+    /** Add or reactivate a crew member. Requires labor.crew.manage. Returns crew_members row id. */
+    async addCrewMember(params: AddCrewMemberParams): Promise<number> {
+      return callRpc<number>(rpc(supabase), 'rpc_add_crew_member', {
+        p_tenant_id: params.tenantId,
+        p_crew_id: params.crewId,
+        p_technician_id: params.technicianId,
+        p_role: params.role ?? null,
+      });
+    },
+
+    /** End active crew membership (sets left_at). Requires labor.crew.manage. */
+    async removeCrewMember(tenantId: string, crewId: string, technicianId: string): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_remove_crew_member', {
+        p_tenant_id: tenantId,
+        p_crew_id: crewId,
+        p_technician_id: technicianId,
+      });
     },
 
     /** Check for overlapping shifts for a technician. Returns conflicting shifts. Use excludeShiftId when updating a shift. */

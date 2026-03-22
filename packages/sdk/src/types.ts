@@ -80,15 +80,15 @@ export type DbClient = {
   audit: AuditResource;
   /** Tenant API keys: create, list, revoke. For IoT / machine access (e.g. ingest-meter-reading Edge Function). */
   tenantApiKeys: TenantApiKeysResource;
-  /** Labor: technicians, crews, skills, certifications, availability, shifts, assignments, labor actuals, capacity, and scheduling RPCs. */
+  /** Labor: technicians, crews (including create/update/delete and membership), skills, certifications, availability, shifts, assignments, labor actuals, capacity, and scheduling RPCs. */
   labor: LaborResource;
   /** Scheduling: schedule blocks, views by technician/crew/asset/location, schedule/update/validate/unschedule RPCs. */
   scheduling: SchedulingResource;
   /** Costs and lifecycle: work order costs, roll-ups by asset/location/department/project, lifecycle alerts, TCO. */
   costs: CostsResource;
-  /** Projects: list and get by id (read-only from v_projects). For cost roll-up by project. */
+  /** Projects: list, get, create, update, delete (v_projects + RPCs). For cost roll-up by project. */
   projects: ProjectsResource;
-  /** Parts and inventory: catalog, suppliers, stock, reservations, usage, and purchasing (POs, receipts). */
+  /** Parts and inventory: catalog, suppliers, stock, reservations, usage, and purchasing (requisitions, POs, receipts). */
   partsInventory: PartsInventoryResource;
   /** Safety and compliance: inspection templates, schedules, runs, incidents, and corrective actions. Audit-ready for regulated industries. */
   safetyCompliance: SafetyComplianceResource;

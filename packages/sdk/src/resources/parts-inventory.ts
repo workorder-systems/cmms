@@ -223,6 +223,32 @@ export interface CreatePurchaseOrderParams {
   lines?: CreatePurchaseOrderLine[];
 }
 
+/** Params for create purchase requisition RPC (draft). */
+export interface CreatePurchaseRequisitionParams {
+  tenantId: string;
+  dueDate?: string | null;
+  notes?: string | null;
+}
+
+/** Params for add purchase requisition line RPC. */
+export interface AddPurchaseRequisitionLineParams {
+  tenantId: string;
+  purchaseRequisitionId: string;
+  partId: string;
+  quantity: number;
+  estimatedUnitCost?: number | null;
+  notes?: string | null;
+}
+
+/** Params for update purchase requisition line RPC. */
+export interface UpdatePurchaseRequisitionLineParams {
+  tenantId: string;
+  lineId: string;
+  quantity?: number | null;
+  estimatedUnitCost?: number | null;
+  notes?: string | null;
+}
+
 /** Params for create part RPC. */
 export interface CreatePartParams {
   tenantId: string;
@@ -391,6 +417,54 @@ export function createPartsInventoryResource(supabase: SupabaseClient<Database>)
       const { data, error } = await supabase.from('v_open_requisitions').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as OpenRequisitionRow[];
+    },
+
+    /** Create a draft purchase requisition. Requires purchase_requisition.create. Returns requisition id. */
+    async createPurchaseRequisition(params: CreatePurchaseRequisitionParams): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_create_purchase_requisition', {
+        p_tenant_id: params.tenantId,
+        p_due_date: params.dueDate ?? null,
+        p_notes: params.notes ?? null,
+      });
+    },
+
+    /** Add a line to a draft requisition. Requires purchase_requisition.edit. Returns line id. */
+    async addPurchaseRequisitionLine(params: AddPurchaseRequisitionLineParams): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_add_purchase_requisition_line', {
+        p_tenant_id: params.tenantId,
+        p_purchase_requisition_id: params.purchaseRequisitionId,
+        p_part_id: params.partId,
+        p_quantity: params.quantity,
+        p_estimated_unit_cost: params.estimatedUnitCost ?? null,
+        p_notes: params.notes ?? null,
+      });
+    },
+
+    /** Update a requisition line (draft only). Requires purchase_requisition.edit. */
+    async updatePurchaseRequisitionLine(params: UpdatePurchaseRequisitionLineParams): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_update_purchase_requisition_line', {
+        p_tenant_id: params.tenantId,
+        p_line_id: params.lineId,
+        p_quantity: params.quantity ?? null,
+        p_estimated_unit_cost: params.estimatedUnitCost ?? null,
+        p_notes: params.notes ?? null,
+      });
+    },
+
+    /** Remove a line from a draft requisition. Requires purchase_requisition.edit. */
+    async removePurchaseRequisitionLine(tenantId: string, lineId: string): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_remove_purchase_requisition_line', {
+        p_tenant_id: tenantId,
+        p_line_id: lineId,
+      });
+    },
+
+    /** Delete a draft requisition (and lines). Requires purchase_requisition.edit. */
+    async deletePurchaseRequisition(tenantId: string, purchaseRequisitionId: string): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_delete_purchase_requisition', {
+        p_tenant_id: tenantId,
+        p_purchase_requisition_id: purchaseRequisitionId,
+      });
     },
 
     /** Open purchase orders (v_open_purchase_orders). */

@@ -1,19 +1,20 @@
 export const metadata = {
   title: 'Projects',
   description:
-    'List and get projects for the tenant (read-only). Link work orders to projects for cost roll-up.',
+    'List, create, update, and delete projects. Link work orders to projects for cost roll-up.',
 }
 
 export const sections = [
   { title: 'Overview', id: 'overview' },
   { title: 'List projects', id: 'list-projects' },
   { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Create, update, delete', id: 'mutations' },
   { title: 'Work orders and cost roll-up', id: 'work-orders-and-costs' },
 ]
 
 # Projects
 
-Projects group work for reporting and **cost roll-up**. The SDK exposes **read-only** access to `v_projects` (`list`, `getById`). There are no create/update/delete RPCs on the public API yet—manage project rows via service-role or internal tooling until those RPCs exist. {{ className: 'lead' }}
+Projects group work for reporting and **cost roll-up**. The SDK exposes `v_projects` for reads and **public RPCs** for create, update, and delete (permission `project.manage`). {{ className: 'lead' }}
 
 ## Overview
 
@@ -37,6 +38,36 @@ const projects = await client.projects.list()
 ```ts
 const project = await client.projects.getById('uuid-of-project')
 // Returns ProjectRow | null
+```
+
+</CodeGroup>
+
+## Create, update, delete
+
+Requires **`project.manage`** (typically granted to the tenant **admin** role). Optional `code` must be unique per tenant when set.
+
+<CodeGroup title="client.projects.create / update / delete">
+
+```ts
+await client.setTenant(tenantId)
+
+const projectId = await client.projects.create({
+  tenantId,
+  name: 'Building A retrofit',
+  code: 'RETRO-A',
+  description: 'HVAC and controls',
+})
+
+await client.projects.update({
+  tenantId,
+  projectId,
+  name: 'Building A retrofit — phase 2',
+  code: null, // omit from update by passing null where supported
+  description: null,
+})
+
+await client.projects.delete(tenantId, projectId)
+// Work orders with this project_id are left in place; FK sets project_id to null on delete.
 ```
 
 </CodeGroup>

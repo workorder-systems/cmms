@@ -9,6 +9,7 @@ export const sections = [
   { title: 'Suppliers and inventory locations', id: 'suppliers-locations' },
   { title: 'Reservations and usage', id: 'reservations-usage' },
   { title: 'Purchasing', id: 'purchasing' },
+  { title: 'Requisition RPCs (draft)', id: 'requisition-rpcs' },
   { title: 'RPCs (create/update)', id: 'rpcs' },
 ]
 
@@ -25,10 +26,10 @@ The `client.partsInventory` resource provides:
 - **Inventory locations** – hierarchy (warehouse, aisle, shelf, bin); stock levels per part per bin
 - **Reservations** – parts reserved for work orders; list by work order
 - **Part usage** – parts issued/consumed on work orders; list by work order
-- **Purchasing** – open requisitions, open POs, PO receipt status; receive PO and create PO via RPCs
-- **RPCs** – reserve parts, issue parts to work order, receive PO, create PO, create/update part, create/update supplier
+- **Purchasing** – open requisitions, open POs, PO receipt status; draft requisition + line CRUD via RPCs; receive PO and create PO via RPCs
+- **RPCs** – reserve parts, issue parts to work order, receive PO, create PO, create/update part, create/update supplier, requisition create/lines/delete (draft-only)
 
-All data is tenant-scoped. Permissions (e.g. `part.create`, `inventory.usage.record`, `purchase_order.receive`) are enforced by the RPCs.
+All data is tenant-scoped. Permissions (e.g. `part.create`, `inventory.usage.record`, `purchase_requisition.create`, `purchase_requisition.edit`, `purchase_order.receive`) are enforced by the RPCs.
 
 ## Parts and stock
 
@@ -158,6 +159,47 @@ const pos = await client.partsInventory.listOpenPurchaseOrders()
 const all = await client.partsInventory.listPurchaseOrderReceiptStatus()
 const forPo = await client.partsInventory.listPurchaseOrderReceiptStatusByPoId('uuid-of-po')
 // Returns PurchaseOrderReceiptStatusRow[]: purchase_order_line_id, quantity_ordered, quantity_received, quantity_balance, part_number
+```
+
+</CodeGroup>
+
+## Requisition RPCs (draft)
+
+Create a **draft** requisition, add or update lines, remove lines, or delete the whole requisition. **Line changes and delete are allowed only while status is `draft`.** Submitting or approving requisitions for workflow is not covered here (no public submit RPC in this wave).
+
+- **`purchase_requisition.create`** – `createPurchaseRequisition`
+- **`purchase_requisition.edit`** – `addPurchaseRequisitionLine`, `updatePurchaseRequisitionLine`, `removePurchaseRequisitionLine`, `deletePurchaseRequisition`
+
+<CodeGroup title="Draft requisition and lines">
+
+```ts
+await client.setTenant(tenantId)
+
+const reqId = await client.partsInventory.createPurchaseRequisition({
+  tenantId,
+  dueDate: '2025-04-01',
+  notes: 'Stock for PM season',
+})
+
+const lineId = await client.partsInventory.addPurchaseRequisitionLine({
+  tenantId,
+  purchaseRequisitionId: reqId,
+  partId: 'uuid-of-part',
+  quantity: 4,
+  estimatedUnitCost: 25.0,
+  notes: null,
+})
+
+await client.partsInventory.updatePurchaseRequisitionLine({
+  tenantId,
+  lineId,
+  quantity: 6,
+  estimatedUnitCost: null,
+  notes: null,
+})
+
+await client.partsInventory.removePurchaseRequisitionLine(tenantId, lineId)
+await client.partsInventory.deletePurchaseRequisition(tenantId, reqId)
 ```
 
 </CodeGroup>

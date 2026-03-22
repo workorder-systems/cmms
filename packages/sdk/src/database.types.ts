@@ -9341,6 +9341,26 @@ export type Database = {
         Args: { p_tenant_id: string; p_work_order_id: string }
         Returns: undefined
       }
+      rpc_add_crew_member: {
+        Args: {
+          p_crew_id: string
+          p_role?: string
+          p_technician_id: string
+          p_tenant_id: string
+        }
+        Returns: number
+      }
+      rpc_add_purchase_requisition_line: {
+        Args: {
+          p_estimated_unit_cost?: number
+          p_notes?: string
+          p_part_id: string
+          p_purchase_requisition_id: string
+          p_quantity: number
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       rpc_add_shift_handover_item: {
         Args: {
           p_body: string
@@ -9541,6 +9561,10 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_create_crew: {
+        Args: { p_description?: string; p_name: string; p_tenant_id: string }
+        Returns: string
+      }
       rpc_create_department: {
         Args: {
           p_code?: string
@@ -9734,6 +9758,15 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_create_project: {
+        Args: {
+          p_code?: string
+          p_description?: string
+          p_name: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       rpc_create_purchase_order: {
         Args: {
           p_expected_delivery_date?: string
@@ -9745,6 +9778,10 @@ export type Database = {
           p_supplier_id: string
           p_tenant_id: string
         }
+        Returns: string
+      }
+      rpc_create_purchase_requisition: {
+        Args: { p_due_date?: string; p_notes?: string; p_tenant_id: string }
         Returns: string
       }
       rpc_create_shift_handover: {
@@ -9811,6 +9848,16 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_create_technician: {
+        Args: {
+          p_default_crew_id?: string
+          p_department_id?: string
+          p_employee_number?: string
+          p_tenant_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       rpc_create_tenant: {
         Args: { p_name: string; p_slug: string }
         Returns: string
@@ -9862,6 +9909,10 @@ export type Database = {
         Args: { p_asset_id: string; p_tenant_id: string }
         Returns: undefined
       }
+      rpc_delete_crew: {
+        Args: { p_crew_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       rpc_delete_department: {
         Args: { p_department_id: string; p_tenant_id: string }
         Returns: undefined
@@ -9884,6 +9935,14 @@ export type Database = {
       }
       rpc_delete_pm_schedule: {
         Args: { p_pm_schedule_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
+      rpc_delete_project: {
+        Args: { p_project_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
+      rpc_delete_purchase_requisition: {
+        Args: { p_purchase_requisition_id: string; p_tenant_id: string }
         Returns: undefined
       }
       rpc_delete_space: {
@@ -10016,6 +10075,10 @@ export type Database = {
         Returns: Json
       }
       rpc_process_due_notifications: { Args: never; Returns: undefined }
+      rpc_process_due_pm_generation: {
+        Args: { p_limit?: number }
+        Returns: number
+      }
       rpc_process_plugin_deliveries: {
         Args: { p_batch_size?: number }
         Returns: number
@@ -10078,8 +10141,20 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_remove_crew_member: {
+        Args: {
+          p_crew_id: string
+          p_technician_id: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
       rpc_remove_member_from_tenant: {
         Args: { p_tenant_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      rpc_remove_purchase_requisition_line: {
+        Args: { p_line_id: string; p_tenant_id: string }
         Returns: undefined
       }
       rpc_reserve_parts: {
@@ -10211,6 +10286,17 @@ export type Database = {
           p_location_id?: string
           p_name?: string
           p_status?: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      rpc_update_crew: {
+        Args: {
+          p_clear_lead_technician?: boolean
+          p_crew_id: string
+          p_description?: string
+          p_lead_technician_id?: string
+          p_name?: string
           p_tenant_id: string
         }
         Returns: undefined
@@ -10403,6 +10489,26 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_update_project: {
+        Args: {
+          p_code?: string
+          p_description?: string
+          p_name?: string
+          p_project_id: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      rpc_update_purchase_requisition_line: {
+        Args: {
+          p_estimated_unit_cost?: number
+          p_line_id: string
+          p_notes?: string
+          p_quantity?: number
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
       rpc_update_schedule_block: {
         Args: {
           p_asset_id?: string
@@ -10441,6 +10547,19 @@ export type Database = {
           p_supplies_labor?: boolean
           p_supplies_parts?: boolean
           p_tax_id?: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      rpc_update_technician: {
+        Args: {
+          p_clear_default_crew?: boolean
+          p_clear_department?: boolean
+          p_default_crew_id?: string
+          p_department_id?: string
+          p_employee_number?: string
+          p_is_active?: boolean
+          p_technician_id: string
           p_tenant_id: string
         }
         Returns: undefined
