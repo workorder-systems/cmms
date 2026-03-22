@@ -8,17 +8,19 @@ export const sections = [
   { title: 'Overview', id: 'overview' },
   { title: 'List projects', id: 'list-projects' },
   { title: 'Get by ID', id: 'get-by-id' },
-  { title: 'Create, update, delete', id: 'mutations' },
+  { title: 'Create project', id: 'create-project' },
+  { title: 'Update project', id: 'update-project' },
+  { title: 'Delete project', id: 'delete-project' },
   { title: 'Work orders and cost roll-up', id: 'work-orders-and-costs' },
 ]
 
 # Projects
 
-Projects group work for reporting and **cost roll-up**. The SDK exposes `v_projects` for reads and **public RPCs** for create, update, and delete (permission `project.manage`). {{ className: 'lead' }}
+Projects group work for reporting and **cost roll-up**. The SDK exposes **`v_projects`** for reads and **`client.projects.create`**, **`update`**, and **`delete`** (via public RPCs; permission **`project.manage`**, usually on **admin**). {{ className: 'lead' }}
 
 ## Overview
 
-Set **tenant context** before calling these methods. Rows include `id`, `tenant_id`, `name`, `code`, `description`, `created_at`, and `updated_at`.
+Set **tenant context** before calling these methods. Rows include **`id`**, **`tenant_id`**, **`name`**, optional **`code`** (unique per tenant when set), **`description`**, **`created_at`**, and **`updated_at`**.
 
 ## List projects
 
@@ -42,11 +44,11 @@ const project = await client.projects.getById('uuid-of-project')
 
 </CodeGroup>
 
-## Create, update, delete
+## Create project
 
-Requires **`project.manage`** (typically granted to the tenant **admin** role). Optional `code` must be unique per tenant when set.
+Creates a project and returns the new **UUID**. Requires **`project.manage`**. **`name`** is required; **`code`** and **`description`** are optional.
 
-<CodeGroup title="client.projects.create / update / delete">
+<CodeGroup title="client.projects.create(params)">
 
 ```ts
 await client.setTenant(tenantId)
@@ -54,20 +56,40 @@ await client.setTenant(tenantId)
 const projectId = await client.projects.create({
   tenantId,
   name: 'Building A retrofit',
-  code: 'RETRO-A',
+  code: 'RETRO-A', // optional; must be unique per tenant if set
   description: 'HVAC and controls',
 })
+// Returns string (project UUID)
+```
 
+</CodeGroup>
+
+## Update project
+
+Partial updates: pass **`null`** for fields you do not want to change (per RPC contract). Requires **`project.manage`**.
+
+<CodeGroup title="client.projects.update(params)">
+
+```ts
 await client.projects.update({
   tenantId,
   projectId,
   name: 'Building A retrofit — phase 2',
-  code: null, // omit from update by passing null where supported
+  code: null,
   description: null,
 })
+```
 
+</CodeGroup>
+
+## Delete project
+
+Removes the project row. Work orders that referenced it keep **`project_id`** cleared (FK behavior), not deleted. Requires **`project.manage`**.
+
+<CodeGroup title="client.projects.delete(tenantId, projectId)">
+
+```ts
 await client.projects.delete(tenantId, projectId)
-// Work orders with this project_id are left in place; FK sets project_id to null on delete.
 ```
 
 </CodeGroup>

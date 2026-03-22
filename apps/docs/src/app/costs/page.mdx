@@ -25,7 +25,7 @@ The `client.costs` resource and [`client.projects`](/projects) support:
 - **Cost roll-ups** – by asset, location, department, or project (views and RPC with optional date filter)
 - **Lifecycle alerts** – assets with warranty, end-of-life, contract, or planned replacement due within a window
 - **Asset TCO** – total cost of ownership for a single asset (optional date range)
-- **Projects** – list and get by ID (read-only); see the [Projects](/projects) page; use `projectId` when creating work orders for cost roll-up by project
+- **Projects** – list/get via `client.projects`; **create, update, delete** via `client.projects.create` / `update` / `delete` on the [Projects](/projects) page (`project.manage`); use **`projectId`** on work orders for roll-up
 
 Labor cost comes from `work_order_time_entries` (e.g. `labor_cost_cents`). Parts and vendor costs are stored in `work_order_parts` and `work_order_vendor_costs` (see database migrations).
 
@@ -162,18 +162,27 @@ const tco = await client.costs.assetTotalCostOfOwnership({
 
 ## Projects
 
-Projects group work orders for **cost roll-up**. The SDK exposes **read-only** `client.projects.list()` and `getById()` against `v_projects`. Full reference, row shape, and write-path notes are on the [Projects](/projects) page.
+Projects group work orders for **cost roll-up**. From this app you typically **read** roll-ups with **`client.costs.listProjectCosts()`** or **`client.costs.costRollup({ groupBy: 'project', ... })`**.
 
-When creating a work order, pass `projectId` so its costs appear in project roll-ups.
+**CRUD on project rows** (not read-only): use **`client.projects`** — see [Projects → Create project](/projects#create-project) for **`client.projects.create`**, plus update and delete on the same page. That requires **`project.manage`**.
 
-<CodeGroup title="Work order with project">
+When creating a work order, pass **`projectId`** so its costs appear in project roll-ups.
+
+<CodeGroup title="Create a project, then attach a work order">
 
 ```ts
+await client.setTenant(tenantId)
+const projectId = await client.projects.create({
+  tenantId,
+  name: 'Pump station upgrade',
+  code: 'PSU-1',
+})
+
 await client.workOrders.create({
-  tenantId: 'uuid-of-tenant',
+  tenantId,
   title: 'Overhaul pump P-101',
-  projectId: 'uuid-of-project',
-  // ... other params
+  projectId,
+  priority: 'medium',
 })
 ```
 
