@@ -271,6 +271,7 @@ export const navigation: Array<NavGroup> = [
     title: 'Places & assets',
     links: [
       { title: 'Locations', href: '/locations' },
+      { title: 'Map zones', href: '/map-zones' },
       { title: 'Spaces', href: '/spaces' },
       { title: 'Assets', href: '/assets' },
       { title: 'Asset downtime', href: '/asset-downtime' },
@@ -289,6 +290,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Dashboard', href: '/dashboard' },
       { title: 'Analytics reporting', href: '/analytics' },
       { title: 'Costs & lifecycle', href: '/costs' },
+      { title: 'Projects', href: '/projects' },
       { title: 'Notifications', href: '/notifications' },
       { title: 'Audit', href: '/audit' },
       { title: 'Safety & compliance', href: '/safety-compliance' },

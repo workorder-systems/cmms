@@ -1,0 +1,68 @@
+export const metadata = {
+  title: 'Projects',
+  description:
+    'List and get projects for the tenant (read-only). Link work orders to projects for cost roll-up.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'List projects', id: 'list-projects' },
+  { title: 'Get by ID', id: 'get-by-id' },
+  { title: 'Work orders and cost roll-up', id: 'work-orders-and-costs' },
+]
+
+# Projects
+
+Projects group work for reporting and **cost roll-up**. The SDK exposes **read-only** access to `v_projects` (`list`, `getById`). There are no create/update/delete RPCs on the public API yet—manage project rows via service-role or internal tooling until those RPCs exist. {{ className: 'lead' }}
+
+## Overview
+
+Set **tenant context** before calling these methods. Rows include `id`, `tenant_id`, `name`, `code`, `description`, `created_at`, and `updated_at`.
+
+## List projects
+
+<CodeGroup title="client.projects.list()">
+
+```ts
+const projects = await client.projects.list()
+// Returns ProjectRow[]
+```
+
+</CodeGroup>
+
+## Get by ID
+
+<CodeGroup title="client.projects.getById(id)">
+
+```ts
+const project = await client.projects.getById('uuid-of-project')
+// Returns ProjectRow | null
+```
+
+</CodeGroup>
+
+## Work orders and cost roll-up
+
+Pass **`projectId`** when creating a work order so labor, parts, and vendor costs roll up under that project. Use **`client.costs.costRollup()`** with `groupBy: 'project'` for aggregates.
+
+<CodeGroup title="Work order linked to a project">
+
+```ts
+await client.workOrders.create({
+  tenantId: 'uuid-of-tenant',
+  title: 'Overhaul pump P-101',
+  projectId: 'uuid-of-project',
+  // ...priority, status, etc.
+})
+```
+
+</CodeGroup>
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/costs" variant="text" arrow="right">
+    <>Costs & lifecycle</>
+  </Button>
+  <Button href="/work-orders" variant="text" arrow="right">
+    <>Work orders</>
+  </Button>
+</div>

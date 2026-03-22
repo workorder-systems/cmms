@@ -19,13 +19,13 @@ Work order costs (labor, parts, vendor), roll-ups by asset, location, department
 
 ## Overview
 
-The `client.costs` resource and `client.projects` resource support:
+The `client.costs` resource and [`client.projects`](/projects) support:
 
 - **Work order costs** – labor (from time entries), parts, and vendor costs per work order
 - **Cost roll-ups** – by asset, location, department, or project (views and RPC with optional date filter)
 - **Lifecycle alerts** – assets with warranty, end-of-life, contract, or planned replacement due within a window
 - **Asset TCO** – total cost of ownership for a single asset (optional date range)
-- **Projects** – list and get by ID (read-only); use `projectId` when creating work orders for cost roll-up by project
+- **Projects** – list and get by ID (read-only); see the [Projects](/projects) page; use `projectId` when creating work orders for cost roll-up by project
 
 Labor cost comes from `work_order_time_entries` (e.g. `labor_cost_cents`). Parts and vendor costs are stored in `work_order_parts` and `work_order_vendor_costs` (see database migrations).
 
@@ -162,27 +162,9 @@ const tco = await client.costs.assetTotalCostOfOwnership({
 
 ## Projects
 
-Projects are used to group work orders for cost roll-up. The SDK exposes read-only list and get by ID from `v_projects`. Create/update/delete projects via the database or future RPCs.
+Projects group work orders for **cost roll-up**. The SDK exposes **read-only** `client.projects.list()` and `getById()` against `v_projects`. Full reference, row shape, and write-path notes are on the [Projects](/projects) page.
 
-<CodeGroup title="client.projects.list()">
-
-```ts
-const projects = await client.projects.list()
-// Returns ProjectRow[]: id, tenant_id, name, code, description, created_at, updated_at
-```
-
-</CodeGroup>
-
-<CodeGroup title="client.projects.getById(id)">
-
-```ts
-const project = await client.projects.getById('uuid-of-project')
-// Returns ProjectRow | null
-```
-
-</CodeGroup>
-
-When creating a work order, pass `projectId` to link it to a project so it appears in project cost roll-ups.
+When creating a work order, pass `projectId` so its costs appear in project roll-ups.
 
 <CodeGroup title="Work order with project">
 
@@ -198,6 +180,9 @@ await client.workOrders.create({
 </CodeGroup>
 
 <div className="not-prose flex flex-wrap gap-3">
+  <Button href="/projects" variant="text" arrow="right">
+    <>Projects</>
+  </Button>
   <Button href="/assets" variant="text" arrow="right">
     <>Assets (lifecycle fields)</>
   </Button>

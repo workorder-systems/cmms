@@ -8,9 +8,10 @@ export const sections = [
   { title: 'Get by ID', id: 'get-by-id' },
   { title: 'Create location', id: 'create-location' },
   { title: 'Update location', id: 'update-location' },
-  { title: 'Delete location', id: 'delete-location' },
   { title: 'Bulk import', id: 'bulk-import' },
   { title: 'Hierarchy and portfolio views', id: 'hierarchy-portfolio-views' },
+  { title: 'Map zones', id: 'map-zones' },
+  { title: 'Delete location', id: 'delete-location' },
 ]
 
 # Locations
@@ -170,6 +171,10 @@ const { data } = await client.supabase.from('v_portfolio_overview').select('*')
 ```
 
 </CodeGroup>
+
+## Map zones
+
+Saved **GeoJSON** shapes on the locations map (optional link to a location) are managed with **`client.mapZones`**. See [Map zones](/map-zones).
 
 ## Delete location
 

@@ -145,6 +145,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         pattern: { y: 22, squares: [[0, 1]] },
       },
       {
+        href: '/map-zones',
+        name: 'Map zones',
+        description: 'GeoJSON shapes on the map; list, create, update, delete.',
+        icon: ShapesIcon,
+        pattern: { y: 14, squares: [[0, 1], [1, 3]] },
+      },
+      {
         href: '/spaces',
         name: 'Spaces',
         description: 'List, create, update, delete spaces by location.',
@@ -209,6 +216,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         description: 'Work order, asset, location costs; lifecycle alerts and TCO.',
         icon: DocumentIcon,
         pattern: { y: 18, squares: [[0, 1], [1, 3]] },
+      },
+      {
+        href: '/projects',
+        name: 'Projects',
+        description: 'Read-only list/get; link work orders for project cost roll-up.',
+        icon: FolderIcon,
+        pattern: { y: 10, squares: [[0, 2], [1, 4]] },
       },
       {
         href: '/notifications',
