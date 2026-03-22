@@ -37,14 +37,16 @@
 
 <br />
 
-<table border="0" cellspacing="0" cellpadding="10">
-  <tr>
-    <td align="center" width="25%"><a href="GETTING_STARTED.md"><b>Setup</b></a></td>
-    <td align="center" width="25%"><a href="docs/PROJECT.md"><b>Vision &amp; adoption</b></a></td>
-    <td align="center" width="25%"><a href="CONTRIBUTING.md"><b>Contributing</b></a></td>
-    <td align="center" width="25%"><a href="SECURITY.md"><b>Security</b></a></td>
-  </tr>
-</table>
+<p>
+  <a href="GETTING_STARTED.md"><strong>Setup</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/PROJECT.md">Vision &amp; adoption</a>
+  <br />
+  <br />
+  <a href="CONTRIBUTING.md">Contributing</a>
+  &nbsp;·&nbsp;
+  <a href="SECURITY.md">Security</a>
+</p>
 
 <br />
 
