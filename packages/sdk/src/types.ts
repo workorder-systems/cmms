@@ -23,6 +23,7 @@ import type { SafetyComplianceResource } from './resources/safety-compliance.js'
 import type { MobileFieldResource } from './resources/mobile-field.js';
 import type { MapZonesResource } from './resources/map-zones.js';
 import type { FieldOperationsResource } from './resources/field-operations.js';
+import type { IntegrationsResource } from './resources/integrations.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -98,4 +99,6 @@ export type DbClient = {
   mapZones: MapZonesResource;
   /** Tools (read), checkouts/returns, shift handover logbook. */
   fieldOps: FieldOperationsResource;
+  /** ERP-style external id mappings and outbound integration event queue (`integration.manage`). */
+  integrations: IntegrationsResource;
 };

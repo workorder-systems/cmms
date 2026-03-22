@@ -23,7 +23,7 @@ The `client.scheduling` resource provides:
 - **Views** – List schedule blocks for the current tenant, optionally filtered by technician, crew, asset, or location. Use for calendar/board UIs; filter by date range in the client.
 - **Schedule** – Create or replace a schedule block for a work order (assign to a technician or crew, set start/end time).
 - **Update** – Change a block’s time, technician/crew, or location/asset (reassign or move on the board).
-- **Validate** – Check a candidate slot for shift conflicts, schedule block conflicts, and SLA (due date). Returns a list of issues (warning/error/info).
+- **Validate** – Check a candidate slot for shift conflicts, other schedule blocks, **weekly availability patterns and date overrides**, **SLA** (`due_date` plus `sla_response_due_at` / `sla_resolution_due_at` when set), **asset required skills** vs the technician’s skills (when the work order has an asset with `asset_required_skills`), and **crew** validation (aggregates checks for up to 50 active members). Pattern times use each row’s `timezone`, or **UTC** when null.
 - **Unschedule** – Remove the schedule block for a work order (by block id or work order id). Assignments are left as-is; only the slot is removed.
 
 One block per work order is assumed: scheduling again for the same work order replaces the existing block.
@@ -134,7 +134,7 @@ await client.scheduling.updateScheduleBlock({
 
 ## Validate schedule
 
-Check a candidate slot for conflicts and SLA. Pass technician (and optionally work order and exclude block id when updating). Returns a list of issues: conflict, sla, priority, or input errors.
+Check a candidate slot before scheduling. Pass **technician** or **crew** (crew runs the same checks for each active member, up to 50). Optionally pass **work order** id for SLA fields, priority, and **skill gaps** (work order’s asset must have rows in `asset_required_skills`; technicians need matching `technician_skills`). Returns multiple rows when several checks apply.
 
 <CodeGroup title="client.scheduling.validateSchedule(params)">
 
@@ -152,15 +152,15 @@ const issues = await client.scheduling.validateSchedule({
 </CodeGroup>
 
 <Properties>
-  <Property name="technicianId">Optional. Technician UUID. Validation runs for technician only (crew can be extended later).</Property>
-  <Property name="crewId">Optional. Crew UUID. Currently no conflict/availability checks for crew-only.</Property>
+  <Property name="technicianId">Optional. Technician UUID.</Property>
+  <Property name="crewId">Optional. Crew UUID. Validates each active member; issue rows use `check_type` suffix `_member`.</Property>
   <Property name="startAt">Optional. Candidate slot start.</Property>
   <Property name="endAt">Optional. Candidate slot end.</Property>
-  <Property name="workOrderId">Optional. Work order for SLA (due_date) and priority.</Property>
+  <Property name="workOrderId">Optional. Work order for SLA (`due_date`, `sla_*_due_at`), priority, and asset skill gaps.</Property>
   <Property name="excludeBlockId">Optional. When updating a block, pass its id to avoid self-conflict.</Property>
 </Properties>
 
-Severity values: `error`, `warning`, `info`. Check types: `conflict`, `sla`, `priority`, `input`.
+Severity values: `error`, `warning`, `info`, `breach`. Check types include: `conflict`, `availability`, `skill`, `sla`, `priority`, `input`, `crew`, and `*_member` (crew aggregation).
 
 ## Unschedule work order
 

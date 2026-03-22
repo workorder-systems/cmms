@@ -97,6 +97,8 @@ Product-level split (keeps schema changes disciplined):
 | **Plugin** | Optional behavior on top of existing modules; **avoid** new schema surface unless the module itself evolves. |
 | **Integration** | Connects to external systems; **secrets stay outside Postgres**. **int** holds references and integration metadata only. |
 
+**ERP-style touchpoints (public API):** **`int.integration_external_ids`** stores `(entity_type, entity_id, system_key, external_id)` per tenant; clients use **`rpc_upsert_integration_external_id`** / **`rpc_delete_integration_external_id`** (permission **`integration.manage`**, default on admin). **`int.outbound_integration_events`** is an append-only queue filled via **`rpc_enqueue_integration_event`** for downstream workers (Edge Functions, service role). Reads use **`v_integration_external_ids`** and **`v_outbound_integration_events`**.
+
 ---
 
 ## Naming conventions

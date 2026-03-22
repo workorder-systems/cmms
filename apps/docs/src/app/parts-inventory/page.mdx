@@ -7,6 +7,7 @@ export const sections = [
   { title: 'Overview', id: 'overview' },
   { title: 'Parts and stock', id: 'parts-stock' },
   { title: 'Suppliers and inventory locations', id: 'suppliers-locations' },
+  { title: 'Supplier contracts and vendor metrics', id: 'supplier-contracts' },
   { title: 'Reservations and usage', id: 'reservations-usage' },
   { title: 'Purchasing', id: 'purchasing' },
   { title: 'Requisition RPCs (draft)', id: 'requisition-rpcs' },
@@ -28,6 +29,7 @@ The `client.partsInventory` resource provides:
 - **Part usage** – parts issued/consumed on work orders; list by work order
 - **Purchasing** – open requisitions, open POs, PO receipt status; draft requisition + line CRUD via RPCs; receive PO and create PO via RPCs
 - **RPCs** – reserve parts, issue parts to work order, receive PO, create PO, create/update part, create/update supplier, requisition create/lines/delete (draft-only)
+- **Supplier contracts** – create/update contracts and rate lines (`supplier.edit`); read `v_supplier_contracts`, `v_supplier_contract_rates`; vendor roll-ups `v_vendor_spend_by_supplier`, `v_work_order_counts_by_primary_supplier`
 
 All data is tenant-scoped. Permissions (e.g. `part.create`, `inventory.usage.record`, `purchase_requisition.create`, `purchase_requisition.edit`, `purchase_order.receive`) are enforced by the RPCs.
 
@@ -103,6 +105,41 @@ const locations = await client.partsInventory.listInventoryLocations()
 ```ts
 const levels = await client.partsInventory.listStockLevels()
 // Returns StockLevelRow[]: part_id, inventory_location_id, quantity, updated_at
+```
+
+</CodeGroup>
+
+## Supplier contracts and vendor metrics
+
+Commercial agreements and optional rate lines are stored per supplier. Reporting views aggregate **work order vendor cost** lines and **primary supplier** assignment counts.
+
+Requires **`supplier.edit`** for `createSupplierContract`, `updateSupplierContract`, `addSupplierContractRate`.
+
+<CodeGroup title="Contracts, rates, roll-ups">
+
+```ts
+await client.setTenant(tenantId)
+
+const contractId = await client.partsInventory.createSupplierContract({
+  tenantId,
+  supplierId,
+  effectiveStart: '2025-01-01',
+  contractNumber: 'CTR-100',
+  terms: 'Net 30',
+})
+
+await client.partsInventory.addSupplierContractRate({
+  tenantId,
+  contractId,
+  rateType: 'hourly_labor',
+  amountCents: 12500,
+  uom: 'hour',
+})
+
+const contracts = await client.partsInventory.listSupplierContracts()
+const rates = await client.partsInventory.listSupplierContractRates(contractId)
+const spend = await client.partsInventory.listVendorSpendBySupplier()
+const byPrimary = await client.partsInventory.listWorkOrderCountsByPrimarySupplier()
 ```
 
 </CodeGroup>

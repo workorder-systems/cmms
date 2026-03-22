@@ -25,6 +25,7 @@ describe('SDK', () => {
       expect(sdk.tenants).toBeDefined();
       expect(sdk.workOrders).toBeDefined();
       expect(sdk.fieldOps).toBeDefined();
+      expect(sdk.integrations).toBeDefined();
       expect(typeof sdk.setTenant).toBe('function');
       expect(typeof sdk.clearTenant).toBe('function');
     });
@@ -171,6 +172,76 @@ describe('SDK', () => {
       await withAuthenticatedTenant(sdk);
       const rows = await sdk.workOrders.listSlaStatus();
       expect(Array.isArray(rows)).toBe(true);
+    });
+
+    it('listSlaOpenQueue, comms, maintenance request convert', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const open = await sdk.workOrders.listSlaOpenQueue();
+      expect(Array.isArray(open)).toBe(true);
+
+      const woId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK comms WO',
+        priority: 'medium',
+      });
+      const commsId = await sdk.workOrders.addCommsEvent({
+        tenantId,
+        workOrderId: woId,
+        body: 'SDK comms',
+      });
+      expect(typeof commsId).toBe('string');
+      const thread = await sdk.workOrders.listComms(woId);
+      expect(thread.some((r) => r.body === 'SDK comms')).toBe(true);
+
+      const reqId = await sdk.workOrders.createMaintenanceRequest({
+        tenantId,
+        title: 'SDK MR',
+        status: 'submitted',
+      });
+      const convertedWo = await sdk.workOrders.convertMaintenanceRequestToWorkOrder(tenantId, reqId);
+      expect(typeof convertedWo).toBe('string');
+      const reqs = await sdk.workOrders.listMaintenanceRequests();
+      expect(reqs.some((r) => r.id === reqId && r.status === 'converted')).toBe(true);
+    });
+  });
+
+  describe('integrations resource', () => {
+    it('upsertExternalId and listExternalIds', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const woId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK integration WO',
+        priority: 'low',
+      });
+      const id = await sdk.integrations.upsertExternalId({
+        tenantId,
+        entityType: 'work_order',
+        entityId: woId,
+        systemKey: 'sdk_test',
+        externalId: 'X-1',
+      });
+      expect(typeof id).toBe('string');
+      const rows = await sdk.integrations.listExternalIds();
+      expect(rows.some((r) => r.external_id === 'X-1')).toBe(true);
+    });
+  });
+
+  describe('partsInventory contracts', () => {
+    it('createSupplierContract and listSupplierContracts', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const supplierId = await sdk.partsInventory.createSupplier({
+        tenantId,
+        name: 'SDK Supplier Ctr',
+      });
+      const cid = await sdk.partsInventory.createSupplierContract({
+        tenantId,
+        supplierId,
+        effectiveStart: '2025-06-01',
+        contractNumber: 'SDK-C1',
+      });
+      expect(typeof cid).toBe('string');
+      const list = await sdk.partsInventory.listSupplierContracts();
+      expect(list.some((c) => c.id === cid)).toBe(true);
     });
   });
 

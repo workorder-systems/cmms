@@ -1,0 +1,68 @@
+export const metadata = {
+  title: 'Integrations (ERP mappings)',
+  description:
+    'External system keys per entity and an outbound integration event queue; gated on integration.manage.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'External IDs', id: 'external-ids' },
+  { title: 'Outbound events', id: 'outbound-events' },
+]
+
+# Integrations (ERP mappings)
+
+Lightweight **mapping and outbound intent** for ERP/HRIS-style sync: store third-party identifiers on core entities and enqueue **append-only** events for workers (Edge Functions, batch jobs) to process. Secrets and connector credentials **do not** live in Postgres. {{ className: 'lead' }}
+
+Use **`client.integrations`** from **`@workorder-systems/sdk`**. All writes require permission **`integration.manage`** (granted to the default **admin** role). Set tenant context and refresh the session before calling views or RPCs.
+
+## Overview
+
+| Object | Purpose |
+|--------|---------|
+| **`v_integration_external_ids`** | Read tenant mappings (`entity_type`, `entity_id`, `system_key`, `external_id`, `metadata`). |
+| **`v_outbound_integration_events`** | Read recent queued events (`event_type`, `payload`, optional `entity_type` / `entity_id`). |
+| **`rpc_upsert_integration_external_id`** | Create or update one mapping. |
+| **`rpc_delete_integration_external_id`** | Remove a mapping for a given `system_key`. |
+| **`rpc_enqueue_integration_event`** | Append an outbound event for async delivery. |
+
+Underlying tables live in schema **`int`**; only these public views and RPCs are meant for app clients.
+
+## External IDs
+
+<CodeGroup title="client.integrations.upsertExternalId / listExternalIds()">
+
+```ts
+await client.setTenant(tenantId)
+// refresh JWT if needed, then:
+const mapId = await client.integrations.upsertExternalId({
+  tenantId,
+  entityType: 'work_order',
+  entityId: workOrderId,
+  systemKey: 'sap',
+  externalId: 'WO-9001',
+  metadata: { lastSyncedAt: new Date().toISOString() },
+})
+const rows = await client.integrations.listExternalIds()
+```
+
+</CodeGroup>
+
+## Outbound events
+
+<CodeGroup title="client.integrations.enqueueEvent / listOutboundEvents()">
+
+```ts
+await client.integrations.enqueueEvent({
+  tenantId,
+  eventType: 'work_order.status_changed',
+  payload: { workOrderId, status: 'completed' },
+  entityType: 'work_order',
+  entityId: workOrderId,
+})
+const recent = await client.integrations.listOutboundEvents(50)
+```
+
+</CodeGroup>
+
+Consumers typically poll or drain the queue with **service role** in a trusted environment; the authenticated RPC path is for **explicit** enqueue from the app when a human or workflow step should record sync intent.

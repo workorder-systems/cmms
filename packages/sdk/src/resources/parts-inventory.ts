@@ -74,6 +74,31 @@ export interface SupplierRow {
   updated_at: string;
 }
 
+/** Supplier contract (v_supplier_contracts). */
+export type SupplierContractRow = Database['public']['Views']['v_supplier_contracts'] extends { Row: infer R }
+  ? R
+  : Record<string, unknown>;
+
+/** Contract rate line (v_supplier_contract_rates). */
+export type SupplierContractRateRow = Database['public']['Views']['v_supplier_contract_rates'] extends {
+  Row: infer R;
+}
+  ? R
+  : Record<string, unknown>;
+
+/** Aggregated vendor costs by supplier (v_vendor_spend_by_supplier). */
+export type VendorSpendBySupplierRow = Database['public']['Views']['v_vendor_spend_by_supplier'] extends {
+  Row: infer R;
+}
+  ? R
+  : Record<string, unknown>;
+
+/** Work order counts by primary supplier (v_work_order_counts_by_primary_supplier). */
+export type WorkOrderCountsByPrimarySupplierRow =
+  Database['public']['Views']['v_work_order_counts_by_primary_supplier'] extends { Row: infer R }
+    ? R
+    : Record<string, unknown>;
+
 /** Inventory location row (v_inventory_locations). */
 export interface InventoryLocationRow {
   id: string;
@@ -304,6 +329,38 @@ export interface UpdateSupplierParams {
   email?: string | null;
   phone?: string | null;
   addressLine?: string | null;
+}
+
+/** Create a supplier contract. Requires `supplier.edit`. Returns contract id. */
+export interface CreateSupplierContractParams {
+  tenantId: string;
+  supplierId: string;
+  /** ISO date `yyyy-mm-dd`. */
+  effectiveStart: string;
+  effectiveEnd?: string | null;
+  contractNumber?: string | null;
+  terms?: string | null;
+  isActive?: boolean | null;
+}
+
+/** Update a supplier contract. Requires `supplier.edit`. */
+export interface UpdateSupplierContractParams {
+  tenantId: string;
+  contractId: string;
+  effectiveStart?: string | null;
+  effectiveEnd?: string | null;
+  contractNumber?: string | null;
+  terms?: string | null;
+  isActive?: boolean | null;
+}
+
+/** Add a rate line to a contract. Requires `supplier.edit`. Returns rate row id. */
+export interface AddSupplierContractRateParams {
+  tenantId: string;
+  contractId: string;
+  rateType: string;
+  amountCents: number;
+  uom?: string | null;
 }
 
 const rpc = (supabase: SupabaseClient<Database>) =>
@@ -608,6 +665,73 @@ export function createPartsInventoryResource(supabase: SupabaseClient<Database>)
         p_email: params.email ?? null,
         p_phone: params.phone ?? null,
         p_address_line: params.addressLine ?? null,
+      });
+    },
+
+    /** List supplier contracts (`v_supplier_contracts`). */
+    async listSupplierContracts(): Promise<SupplierContractRow[]> {
+      const { data, error } = await supabase.from('v_supplier_contracts').select('*');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as SupplierContractRow[];
+    },
+
+    /** Contract rates for the tenant (`v_supplier_contract_rates`), optionally filtered by contract. */
+    async listSupplierContractRates(contractId?: string): Promise<SupplierContractRateRow[]> {
+      let q = supabase.from('v_supplier_contract_rates').select('*');
+      if (contractId) q = q.eq('contract_id', contractId);
+      const { data, error } = await q;
+      if (error) throw normalizeError(error);
+      return (data ?? []) as SupplierContractRateRow[];
+    },
+
+    /** Vendor spend roll-up from work order vendor cost lines (`v_vendor_spend_by_supplier`). */
+    async listVendorSpendBySupplier(): Promise<VendorSpendBySupplierRow[]> {
+      const { data, error } = await supabase.from('v_vendor_spend_by_supplier').select('*');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as VendorSpendBySupplierRow[];
+    },
+
+    /** Work order counts by primary supplier assignment (`v_work_order_counts_by_primary_supplier`). */
+    async listWorkOrderCountsByPrimarySupplier(): Promise<WorkOrderCountsByPrimarySupplierRow[]> {
+      const { data, error } = await supabase.from('v_work_order_counts_by_primary_supplier').select('*');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderCountsByPrimarySupplierRow[];
+    },
+
+    /** Create a supplier contract. Returns contract id. */
+    async createSupplierContract(params: CreateSupplierContractParams): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_create_supplier_contract', {
+        p_tenant_id: params.tenantId,
+        p_supplier_id: params.supplierId,
+        p_effective_start: params.effectiveStart,
+        p_effective_end: params.effectiveEnd ?? null,
+        p_contract_number: params.contractNumber ?? null,
+        p_terms: params.terms ?? null,
+        p_is_active: params.isActive ?? null,
+      });
+    },
+
+    /** Update a supplier contract. */
+    async updateSupplierContract(params: UpdateSupplierContractParams): Promise<void> {
+      return callRpc<void>(rpc(supabase), 'rpc_update_supplier_contract', {
+        p_tenant_id: params.tenantId,
+        p_contract_id: params.contractId,
+        p_effective_start: params.effectiveStart ?? null,
+        p_effective_end: params.effectiveEnd ?? null,
+        p_contract_number: params.contractNumber ?? null,
+        p_terms: params.terms ?? null,
+        p_is_active: params.isActive ?? null,
+      });
+    },
+
+    /** Add a rate line to a contract. Returns rate id. */
+    async addSupplierContractRate(params: AddSupplierContractRateParams): Promise<number> {
+      return callRpc<number>(rpc(supabase), 'rpc_add_supplier_contract_rate', {
+        p_tenant_id: params.tenantId,
+        p_contract_id: params.contractId,
+        p_rate_type: params.rateType,
+        p_amount_cents: params.amountCents,
+        p_uom: params.uom ?? null,
       });
     },
   };

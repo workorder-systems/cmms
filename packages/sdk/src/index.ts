@@ -24,8 +24,14 @@ export type {
   WorkOrderAttachmentRow,
   MyWorkOrderRequestRow,
   WorkOrderSlaStatusRow,
+  WorkOrderCommsRow,
+  WorkOrderSlaOpenRow,
+  MaintenanceRequestRow,
+  MyMaintenanceRequestRow,
   CreateWorkOrderParams,
   CreateWorkOrderRequestParams,
+  CreateMaintenanceRequestParams,
+  AddWorkOrderCommsEventParams,
   AcknowledgeWorkOrderParams,
   UpsertWorkOrderSlaRuleParams,
   TransitionStatusParams,
@@ -34,6 +40,13 @@ export type {
   UpdateAttachmentMetadataParams,
   WorkOrdersResource,
 } from './resources/work-orders.js';
+export type {
+  IntegrationExternalIdRow,
+  OutboundIntegrationEventRow,
+  UpsertIntegrationExternalIdParams,
+  EnqueueIntegrationEventParams,
+  IntegrationsResource,
+} from './resources/integrations.js';
 export type {
   WorkOrderCostRow,
   AssetCostRow,
@@ -225,6 +238,10 @@ export type {
   StockByLocationRow,
   PartRow,
   SupplierRow,
+  SupplierContractRow,
+  SupplierContractRateRow,
+  VendorSpendBySupplierRow,
+  WorkOrderCountsByPrimarySupplierRow,
   InventoryLocationRow,
   StockLevelRow,
   PartReservationRow,
@@ -242,6 +259,9 @@ export type {
   UpdatePartParams,
   CreateSupplierParams,
   UpdateSupplierParams,
+  CreateSupplierContractParams,
+  UpdateSupplierContractParams,
+  AddSupplierContractRateParams,
   PartsInventoryResource,
 } from './resources/parts-inventory.js';
 export type {

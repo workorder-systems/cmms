@@ -8,10 +8,13 @@ export const sections = [
   { title: 'Permissions and roles', id: 'permissions' },
   { title: 'Submit a request (portal)', id: 'portal-submit' },
   { title: 'List my requests', id: 'portal-list' },
+  { title: 'Maintenance requests (pre-WO)', id: 'maintenance-requests' },
+  { title: 'Communication log', id: 'comms-log' },
   { title: 'SLA rules (admin)', id: 'sla-rules' },
   { title: 'SLA on work orders', id: 'sla-on-work-orders' },
   { title: 'Acknowledge (first response)', id: 'acknowledge' },
   { title: 'SLA status for dashboards', id: 'sla-status' },
+  { title: 'Coordinator SLA queue', id: 'sla-open-queue' },
 ]
 
 # Request portal and SLA
@@ -23,7 +26,8 @@ Use **`@workorder-systems/sdk`** with tenant context and a refreshed session (JW
 ```mermaid
 flowchart LR
   R[Requestor] --> P[createRequest RPC]
-  P --> WO[Work order + SLA due times]
+  P --> MR[maintenance_request submitted]
+  MR --> WO[Work order + SLA due times]
   WO --> ACK[Acknowledge / assign / complete]
   WO --> V[SLA status views]
 ```
@@ -44,7 +48,7 @@ The default **requestor** role is suited to portal users; **admin** / **manager*
 
 ## Submit a request (portal)
 
-Creates a work order with **`requested_by`** set to the signed-in user. Location and asset are validated against **ABAC** scopes (`user_can_request_work_order_at_locations`). Rate limited.
+Inserts a **`maintenance_requests`** row (status **submitted**), then **converts** it to a work order in the same RPC. The returned UUID is still the **work order** id (backward compatible). **`requested_by`** is the signed-in user. Location and asset are validated against **ABAC** scopes (`user_can_request_work_order_at_locations`). Rate limited.
 
 <CodeGroup title="client.workOrders.createRequest(params)">
 
@@ -91,6 +95,44 @@ const mine = await client.workOrders.listMyRequests()
 </CodeGroup>
 
 Staff still use **`client.workOrders.list()`** from `v_work_orders` (RLS varies by role; requestors only see their own rows in the full list).
+
+## Maintenance requests (pre-WO)
+
+For a **two-step** flow (request row first, work order when staff is ready), use **`rpc_create_maintenance_request`**. Use **`draft`** to capture intent without portal ABAC on locations (tenant/asset checks still apply); only **`submitted`** rows can be converted. Staff run **`rpc_convert_maintenance_request_to_work_order`** (**`workorder.edit`**). The usual portal button keeps using **`createRequest`**, which submits and converts in one step.
+
+<CodeGroup title="client.workOrders.createMaintenanceRequest / convertMaintenanceRequestToWorkOrder">
+
+```ts
+const requestId = await client.workOrders.createMaintenanceRequest({
+  tenantId,
+  title: 'HVAC noise in lobby',
+  status: 'submitted',
+})
+const workOrderId = await client.workOrders.convertMaintenanceRequestToWorkOrder(tenantId, requestId)
+
+const allReqs = await client.workOrders.listMaintenanceRequests()
+const mine = await client.workOrders.listMyMaintenanceRequests()
+```
+
+</CodeGroup>
+
+## Communication log
+
+Append read-only communication events on a work order (**`v_work_order_comms`**) for coordinator and portal audit trails. **Requester**, **assignee**, or **`workorder.edit`** may append via **`rpc_add_work_order_comms_event`**.
+
+<CodeGroup title="client.workOrders.addCommsEvent / listComms">
+
+```ts
+await client.workOrders.addCommsEvent({
+  tenantId,
+  workOrderId,
+  body: 'Called tenant — awaiting access.',
+  channel: 'phone',
+})
+const thread = await client.workOrders.listComms(workOrderId)
+```
+
+</CodeGroup>
 
 ## SLA rules (admin)
 
@@ -151,6 +193,19 @@ const all = await client.workOrders.listSlaStatus()
 
 const one = await client.workOrders.getSlaStatus(workOrderId)
 // WorkOrderSlaStatusRow | null
+```
+
+</CodeGroup>
+
+## Coordinator SLA queue
+
+**`v_work_orders_sla_open`** lists **non-final** work orders that have SLA due times—useful for dispatch triage (minutes remaining, breach flags).
+
+<CodeGroup title="client.workOrders.listSlaOpenQueue()">
+
+```ts
+const open = await client.workOrders.listSlaOpenQueue()
+// WorkOrderSlaOpenRow[]
 ```
 
 </CodeGroup>

@@ -97,6 +97,25 @@ export type WorkOrderSlaStatusRow = Database['public']['Views']['v_work_order_sl
   ? R
   : Record<string, unknown>;
 
+/** Row from v_work_order_comms (communication audit log). */
+export type WorkOrderCommsRow = Database['public']['Views']['v_work_order_comms'] extends { Row: infer R }
+  ? R
+  : Record<string, unknown>;
+
+/** Row from v_work_orders_sla_open (non-final WOs with SLA deadlines). */
+export type WorkOrderSlaOpenRow = Database['public']['Views']['v_work_orders_sla_open'] extends { Row: infer R }
+  ? R
+  : Record<string, unknown>;
+
+/** Log a communication event on a work order. Requester, assignee, or `workorder.edit`. */
+export interface AddWorkOrderCommsEventParams {
+  tenantId: string;
+  workOrderId: string;
+  body: string;
+  channel?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
 /** Portal: create a work order as the signed-in user (`requested_by` = caller). Requires `workorder.request.create` and location/asset ABAC where applicable. */
 export interface CreateWorkOrderRequestParams {
   tenantId: string;
@@ -107,6 +126,32 @@ export interface CreateWorkOrderRequestParams {
   locationId?: string | null;
   assetId?: string | null;
   dueDate?: string | null;
+}
+
+/** Row from v_maintenance_requests. */
+export type MaintenanceRequestRow = Database['public']['Views']['v_maintenance_requests'] extends { Row: infer R }
+  ? R
+  : Record<string, unknown>;
+
+/** Row from v_my_maintenance_requests (portal). */
+export type MyMaintenanceRequestRow = Database['public']['Views']['v_my_maintenance_requests'] extends {
+  Row: infer R;
+}
+  ? R
+  : Record<string, unknown>;
+
+/** Create a maintenance request without auto-converting to a work order (`rpc_create_maintenance_request`). */
+export interface CreateMaintenanceRequestParams {
+  tenantId: string;
+  title: string;
+  description?: string | null;
+  priority?: string;
+  maintenanceType?: string | null;
+  locationId?: string | null;
+  assetId?: string | null;
+  dueDate?: string | null;
+  /** `draft` skips portal ABAC until submit/convert flows; `submitted` enforces ABAC. */
+  status?: 'draft' | 'submitted';
 }
 
 /** Satisfy response SLA tracking by setting `acknowledged_at`. Requires `workorder.acknowledge`. */
@@ -266,11 +311,81 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
       return (data ?? []) as MyWorkOrderRequestRow[];
     },
 
+    /** Maintenance requests for the tenant (`v_maintenance_requests`). */
+    async listMaintenanceRequests(): Promise<MaintenanceRequestRow[]> {
+      const { data, error } = await supabase.from('v_maintenance_requests').select('*').order('created_at', {
+        ascending: false,
+      });
+      if (error) throw normalizeError(error);
+      return (data ?? []) as MaintenanceRequestRow[];
+    },
+
+    /** Portal: maintenance requests created by the current user (`v_my_maintenance_requests`). */
+    async listMyMaintenanceRequests(): Promise<MyMaintenanceRequestRow[]> {
+      const { data, error } = await supabase.from('v_my_maintenance_requests').select('*').order('created_at', {
+        ascending: false,
+      });
+      if (error) throw normalizeError(error);
+      return (data ?? []) as MyMaintenanceRequestRow[];
+    },
+
+    /** Create a maintenance request row only (draft or submitted). Returns request id. */
+    async createMaintenanceRequest(params: CreateMaintenanceRequestParams): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_create_maintenance_request', {
+        p_tenant_id: params.tenantId,
+        p_title: params.title,
+        p_description: params.description ?? null,
+        p_priority: params.priority ?? 'medium',
+        p_maintenance_type: params.maintenanceType ?? null,
+        p_location_id: params.locationId ?? null,
+        p_asset_id: params.assetId ?? null,
+        p_due_date: params.dueDate ?? null,
+        p_status: params.status ?? 'submitted',
+      });
+    },
+
+    /** Convert a submitted maintenance request to a work order (`rpc_convert_maintenance_request_to_work_order`). Requires `workorder.edit`. */
+    async convertMaintenanceRequestToWorkOrder(tenantId: string, requestId: string): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_convert_maintenance_request_to_work_order', {
+        p_tenant_id: tenantId,
+        p_request_id: requestId,
+      });
+    },
+
     /** SLA dashboard: all work orders in the tenant with breach flags (`v_work_order_sla_status`). */
     async listSlaStatus(): Promise<WorkOrderSlaStatusRow[]> {
       const { data, error } = await supabase.from('v_work_order_sla_status').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as WorkOrderSlaStatusRow[];
+    },
+
+    /** Coordinator queue: non-final work orders that have SLA due times (`v_work_orders_sla_open`). */
+    async listSlaOpenQueue(): Promise<WorkOrderSlaOpenRow[]> {
+      const { data, error } = await supabase.from('v_work_orders_sla_open').select('*');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderSlaOpenRow[];
+    },
+
+    /** Communication events for a work order (`v_work_order_comms`). */
+    async listComms(workOrderId: string): Promise<WorkOrderCommsRow[]> {
+      const { data, error } = await supabase
+        .from('v_work_order_comms')
+        .select('*')
+        .eq('work_order_id', workOrderId)
+        .order('created_at', { ascending: true });
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderCommsRow[];
+    },
+
+    /** Append a communication event (`rpc_add_work_order_comms_event`). */
+    async addCommsEvent(params: AddWorkOrderCommsEventParams): Promise<string> {
+      return callRpc<string>(rpc(supabase), 'rpc_add_work_order_comms_event', {
+        p_tenant_id: params.tenantId,
+        p_work_order_id: params.workOrderId,
+        p_body: params.body,
+        p_channel: params.channel ?? null,
+        p_metadata: params.metadata ?? null,
+      });
     },
 
     /** SLA status for a single work order, or null if not visible. */
