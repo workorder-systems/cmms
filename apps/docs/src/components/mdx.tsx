@@ -3,11 +3,13 @@ import Link from 'next/link'
 
 import { Feedback } from '@/components/Feedback'
 import { Heading } from '@/components/Heading'
+import { Mermaid } from '@/components/Mermaid'
 import { Prose } from '@/components/Prose'
 
 export const a = Link
 export { Button } from '@/components/Button'
 export { Code as code, CodeGroup, Pre as pre } from '@/components/Code'
+export { Mermaid }
 
 export function wrapper({ children }: { children: React.ReactNode }) {
   return (

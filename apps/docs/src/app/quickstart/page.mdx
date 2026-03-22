@@ -5,6 +5,7 @@ export const metadata = {
 
 export const sections = [
   { title: 'Install the SDK', id: 'install-sdk' },
+  { title: 'How the pieces connect', id: 'how-it-connects' },
   { title: 'Create a client and call the API', id: 'first-request' },
   { title: 'Next steps', id: 'next-steps' },
 ]
@@ -34,6 +35,21 @@ The SDK exposes **resources** (`tenants`, `workOrders`, `assets`, …) and helpe
     <>Installation details</>
   </Button>
 </div>
+
+## How the pieces connect
+
+Your code talks to **PostgREST** (views + RPCs). **Postgres** and **RLS** enforce tenant safety under the hood.
+
+```mermaid
+flowchart LR
+  App[Your app] --> SDK["@workorder-systems/sdk"]
+  SDK --> API[Supabase API]
+  API --> DB[(Postgres + RLS)]
+```
+
+<Note>
+  **Mermaid** is enabled site-wide: use a fenced code block with the <code>mermaid</code> language tag, or the exported <code>Mermaid</code> component with a <code>chart</code> string prop.
+</Note>
 
 ## Create a client and call the API
 

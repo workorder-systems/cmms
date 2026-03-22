@@ -29,7 +29,16 @@ function rehypeShiki() {
         let codeNode = node.children[0]
         let textNode = codeNode.children[0]
 
+        if (!textNode || textNode.type !== 'text') {
+          return
+        }
+
         node.properties.code = textNode.value
+
+        // Mermaid diagrams are rendered client-side; skip Shiki so MDX passes plain source to <Pre>.
+        if (node.properties.language === 'mermaid') {
+          return
+        }
 
         if (node.properties.language) {
           let tokens = highlighter.codeToThemedTokens(
