@@ -190,8 +190,8 @@ Attachments use **Supabase Storage** and a **database trigger**: there is no RPC
 
 | Action | SDK / API |
 |--------|-----------|
-| Create attachment | `client.supabase.storage.from('attachments').upload(path, file, opts)` — path: `tenant_id/work_order_id/uuid_filename`; trigger creates records. |
-| List attachments | `client.workOrders.listAttachments(workOrderId)` — returns `WorkOrderAttachmentRow[]` with `id`, `bucket_id`, `storage_path`, `filename`, `label`, `kind`, etc. |
+| Create attachment | `client.supabase.storage.from('attachments').upload(path, file, opts)`. Path: `tenant_id/work_order_id/uuid_filename`; trigger creates records. |
+| List attachments | `client.workOrders.listAttachments(workOrderId)`. Returns `WorkOrderAttachmentRow[]` with `id`, `bucket_id`, `storage_path`, `filename`, `label`, `kind`, etc. |
 | Get file URL | `client.supabase.storage.from(row.bucket_id).createSignedUrl(row.storage_path, expiresIn)`. |
 | Update label/kind | `client.workOrders.updateAttachmentMetadata({ attachmentId, label?, kind? })`. |
 
@@ -273,7 +273,7 @@ const { data, error } = await client.supabase.storage
   .createSignedUrl(row.storage_path, 3600)  // 3600 seconds = 1 hour
 
 if (error) throw error
-// data.signedUrl — use for display or download
+// data.signedUrl: use for display or download
 ```
 
 </CodeGroup>

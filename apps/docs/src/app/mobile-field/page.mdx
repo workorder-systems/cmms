@@ -26,12 +26,12 @@ The database and SDK support mobile-first field workflows for technicians:
 
 | Capability | SDK / API |
 |------------|-----------|
-| **Offline sync** | `client.mobile.sync(params)` — single JSON payload of work orders, assets, locations, time entries, attachments, check-ins, notes. Use `updatedAfter` for incremental sync; optional `technicianId` to filter work orders. |
-| **Start job** | `client.mobile.startWorkOrder(params)` — transition to `in_progress` and create a check-in; optional GPS. Returns check-in id. |
-| **Stop job** | `client.mobile.stopWorkOrder(params)` — optionally log time, add note, complete work order with cause/resolution, and set completed-at GPS. |
-| **Add note** | `client.mobile.addNote(params)` — add a note to a work order; optional GPS. Returns note id. |
-| **Register attachment** | `client.mobile.registerWorkOrderAttachment(params)` — register an existing file (e.g. after resumable upload) as a work order attachment. Returns attachment id. |
-| **Mobile views** | `client.mobile.listMobileWorkOrders()`, `listMobileAssets()`, `listMobileLocations()`, etc. — minimal columns for offline use. |
+| **Offline sync** | `client.mobile.sync(params)`. Single JSON payload of work orders, assets, locations, time entries, attachments, check-ins, notes. Use `updatedAfter` for incremental sync; optional `technicianId` to filter work orders. |
+| **Start job** | `client.mobile.startWorkOrder(params)`. Transition to `in_progress` and create a check-in; optional GPS. Returns check-in id. |
+| **Stop job** | `client.mobile.stopWorkOrder(params)`. Optionally log time, add note, complete work order with cause/resolution, and set completed-at GPS. |
+| **Add note** | `client.mobile.addNote(params)`. Add a note to a work order; optional GPS. Returns note id. |
+| **Register attachment** | `client.mobile.registerWorkOrderAttachment(params)`. Register an existing file (e.g. after resumable upload) as a work order attachment. Returns attachment id. |
+| **Mobile views** | `client.mobile.listMobileWorkOrders()`, `listMobileAssets()`, `listMobileLocations()`, etc. Minimal columns for offline use. |
 
 Attachments (photos, documents, signatures, scans) are supported for **work orders**, **assets**, and **locations**. Work order attachments can be created by uploading to Storage (trigger creates the link) or by registering an existing file with `registerWorkOrderAttachment`. Asset and location attachments use Storage paths `tenant_id/asset/asset_id/filename` and `tenant_id/location/location_id/filename`.
 

@@ -4,22 +4,20 @@ export const metadata = {
 }
 
 export const sections = [
-  { title: 'Install the SDK', id: 'choose-your-client' },
-  { title: 'Create a client and make your first request', id: 'making-your-first-request' },
-  { title: 'Next steps', id: 'whats-next' },
+  { title: 'Install the SDK', id: 'install-sdk' },
+  { title: 'Create a client and call the API', id: 'first-request' },
+  { title: 'Next steps', id: 'next-steps' },
 ]
 
 # Quickstart
 
-Get the SDK running and make your first API calls in a few minutes. {{ className: 'lead' }}
+Install the client, wire in your Supabase URL and anon key, then call a resource. Most flows need **Auth** and **tenant context** for tenant-scoped data. This page shows the minimal path. {{ className: 'lead' }}
 
 <Note>
-  You need a Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). For tenant-scoped data, sign in with Supabase Auth and set tenant context.
+  Grab the **URL** and **anon key** under [Project Settings → API](https://supabase.com/dashboard). Tenant-scoped lists require a signed-in user and **`client.setTenant(...)`** plus a session refresh. See [Tenant context](/tenant-context).
 </Note>
 
-## 1. Install the SDK
-
-Install the SDK and its peer dependency:
+## Install the SDK
 
 <CodeGroup>
 
@@ -29,19 +27,19 @@ npm install @workorder-systems/db @supabase/supabase-js
 
 </CodeGroup>
 
-The SDK wraps the Supabase client and exposes domain resources: tenants, work orders, assets, locations, departments, meters, and tenant context helpers.
+The SDK exposes **resources** (`tenants`, `workOrders`, `assets`, …) and helpers for tenant context on top of a typed **`client.supabase`**.
 
 <div className="not-prose flex flex-wrap gap-3">
   <Button href="/installation" variant="text" arrow="right">
-    <>View installation</>
+    <>Installation details</>
   </Button>
 </div>
 
-## 2. Create a client and make your first request
+## Create a client and call the API
 
-Create a client with your Supabase URL and anon key. You can list tenants (no tenant context needed). For work orders and other tenant-scoped data, sign in and set tenant context first.
+**Listing tenants** (after sign-in) does not require tenant context. **Work orders and most domain APIs** do: set tenant and refresh the session first.
 
-<CodeGroup title="Create client and list tenants">
+<CodeGroup title="Client + list tenants (after auth)">
 
 ```ts
 import { createDbClient } from '@workorder-systems/db'
@@ -51,26 +49,28 @@ const client = createDbClient(
   process.env.SUPABASE_ANON_KEY!
 )
 
-// List tenants the current user is a member of (requires auth)
 const tenants = await client.tenants.list()
 ```
 
 </CodeGroup>
 
-For tenant-scoped resources (work orders, assets, and so on), sign in and set tenant context:
-
-<CodeGroup title="Sign in and list work orders">
+<CodeGroup title="Tenant-scoped: sign in, set tenant, list work orders">
 
 ```ts
-// Sign in (e.g. in your app after login)
-const { data } = await client.supabase.auth.signInWithPassword({
+await client.supabase.auth.signInWithPassword({
   email: 'user@example.com',
   password: 'password',
 })
 
-// Set tenant context, then refresh session so JWT carries tenant_id
 await client.setTenant(tenantId)
-// In a real app you would refresh the session here (getSession → setSession)
+
+const { data: session } = await client.supabase.auth.getSession()
+if (session.session) {
+  await client.supabase.auth.setSession({
+    access_token: session.session.access_token,
+    refresh_token: session.session.refresh_token,
+  })
+}
 
 const workOrders = await client.workOrders.list()
 ```
@@ -82,13 +82,13 @@ const workOrders = await client.workOrders.list()
     <>Tenant context</>
   </Button>
   <Button href="/work-orders" variant="text" arrow="right">
-    <>Work orders API</>
+    <>Work orders</>
   </Button>
 </div>
 
 ## Next steps
 
-- [Installation](/installation) — Package details, edge runtimes, and browser usage
-- [Authentication](/authentication) — Sign in with Supabase Auth
-- [Tenant context](/tenant-context) — Set and clear tenant context
-- [Errors](/errors) — Handle SdkError and common codes
+- [Installation](/installation): peers, edge runtimes, env vars
+- [Authentication](/authentication): Supabase Auth and the SDK session
+- [Tenant context](/tenant-context): when and how to set **`tenant_id`**
+- [Errors](/errors): **`SdkError`** and common codes

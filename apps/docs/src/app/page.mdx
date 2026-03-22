@@ -5,7 +5,7 @@ import { HeroPattern } from '@/components/HeroPattern'
 export const metadata = {
   title: 'API Documentation',
   description:
-    'Work Order Systems API and SDK. Supabase-backed views and RPCs, @workorder-systems/db client.',
+    'Work Order Systems API and SDK: Supabase views, RPCs, and the @workorder-systems/db client.',
 }
 
 export const sections = [
@@ -17,7 +17,7 @@ export const sections = [
 
 # API Documentation
 
-Build your app on the Work Order Systems API. Reads use public views; writes use RPCs. The `@workorder-systems/db` client gives you a type-safe API for tenants, work orders, assets, labor, reporting, and more. {{ className: 'lead' }}
+This API is **Supabase-backed**: reads go through public views, writes through RPCs. The **`@workorder-systems/db`** package wraps that surface with TypeScript types for tenants, work orders, assets, labor, reporting, and the rest of the domain. {{ className: 'lead' }}
 
 <div className="not-prose mt-6 mb-16 flex flex-wrap gap-3">
   <Button href="/quickstart" arrow="right">
@@ -30,13 +30,9 @@ Build your app on the Work Order Systems API. Reads use public views; writes use
 
 ## Getting started {{ anchor: false }}
 
-You need your Supabase project URL and anon key from the [Supabase dashboard](https://supabase.com/dashboard) (Project Settings → API). Install the SDK, create a client, then sign in with Supabase Auth. For tenant-scoped data, set tenant context and refresh your session. {{ className: 'lead' }}
-
-<div className="not-prose flex flex-wrap gap-3">
-  <Button href="/installation" variant="text" arrow="right">
-    <>Get URL and anon key</>
-  </Button>
-</div>
+1. Copy your **project URL** and **anon key** from the [dashboard](https://supabase.com/dashboard) → **Project Settings → API**.
+2. Install **`@workorder-systems/db`** and **`@supabase/supabase-js`**, then call **`createDbClient(url, anonKey)`**.
+3. Sign users in with **Supabase Auth**. For tenant-scoped data, set tenant context and refresh the session so the JWT includes **`tenant_id`**.
 
 <Guides />
 

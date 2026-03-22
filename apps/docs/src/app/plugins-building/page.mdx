@@ -13,7 +13,7 @@ export const sections = [
 
 # Building plugins
 
-Build an optional extension or integration on top of the Work Order Systems API. Plugins are separate services or UIs that call the public API—they don't change the database schema. {{ className: 'lead' }}
+Build an optional extension or integration on top of the Work Order Systems API. Plugins are separate services or UIs that call the public API; they do not change the database schema. {{ className: 'lead' }}
 
 ## What is a plugin?
 
@@ -25,10 +25,10 @@ Your plugin runs as its own app or service (serverless function, worker, backend
 
 ## Plugin lifecycle
 
-1. **Define your plugin** — key, name, description, and whether it's an integration.
-2. **Register it in the catalog** — call `rpc_register_plugin` from a trusted backend (never from the browser or with the anon key).
-3. **Expose UI** — let tenant admins install and configure the plugin (e.g. with `client.plugins` from their browser or your admin app).
-4. **Run plugin logic** — in your service, use the public views and RPCs to read and write data.
+1. **Define your plugin**: key, name, description, and whether it's an integration.
+2. **Register it in the catalog**: call `rpc_register_plugin` from a trusted backend (never from the browser or with the anon key).
+3. **Expose UI**: let tenant admins install and configure the plugin (e.g. with `client.plugins` from their browser or your admin app).
+4. **Run plugin logic**: in your service, use the public views and RPCs to read and write data.
 
 ## Register plugin in the catalog
 
@@ -100,7 +100,7 @@ Use `@supabase/supabase-js` in your backend with server-side credentials for ten
 
 ## Next steps
 
-- [Plugins](/plugins) — List and manage plugins
-- [Work orders](/work-orders) — Work order API reference
-- [Authentication](/authentication) — Sign in with Supabase Auth
+- [Plugins](/plugins): list and manage plugins
+- [Work orders](/work-orders): work order API reference
+- [Authentication](/authentication): sign in with Supabase Auth
 
