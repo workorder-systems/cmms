@@ -5,7 +5,7 @@ import { HeroPattern } from '@/components/HeroPattern'
 export const metadata = {
   title: 'API Documentation',
   description:
-    'Work Order Systems API and SDK: Supabase views, RPCs, and the @workorder-systems/db client.',
+    'Work Order Systems API and SDK: Supabase views, RPCs, and the @workorder-systems/sdk client.',
 }
 
 export const sections = [
@@ -17,7 +17,7 @@ export const sections = [
 
 # API Documentation
 
-This API is **Supabase-backed**: reads go through public views, writes through RPCs. The **`@workorder-systems/db`** package wraps that surface with TypeScript types for tenants, work orders, assets, labor, reporting, and the rest of the domain. {{ className: 'lead' }}
+This API is **Supabase-backed**: reads go through public views, writes through RPCs. The **`@workorder-systems/sdk`** package wraps that surface with TypeScript types for tenants, work orders, assets, labor, reporting, and the rest of the domain. {{ className: 'lead' }}
 
 <div className="not-prose mt-6 mb-16 flex flex-wrap gap-3">
   <Button href="/quickstart" arrow="right">
@@ -31,7 +31,7 @@ This API is **Supabase-backed**: reads go through public views, writes through R
 ## Getting started {{ anchor: false }}
 
 1. Copy your **project URL** and **anon key** from the [dashboard](https://supabase.com/dashboard) → **Project Settings → API**.
-2. Install **`@workorder-systems/db`** and **`@supabase/supabase-js`**, then call **`createDbClient(url, anonKey)`**.
+2. Install **`@workorder-systems/sdk`** and **`@supabase/supabase-js`**, then call **`createDbClient(url, anonKey)`**.
 3. Sign users in with **Supabase Auth**. For tenant-scoped data, set tenant context and refresh the session so the JWT includes **`tenant_id`**.
 
 <Guides />

@@ -259,7 +259,9 @@ export const navigation: Array<NavGroup> = [
     title: 'Work orders & dispatch',
     links: [
       { title: 'Work orders', href: '/work-orders' },
+      { title: 'Request portal and SLA', href: '/request-portal-and-sla' },
       { title: 'Scheduling & dispatch', href: '/scheduling' },
+      { title: 'Mobile field', href: '/mobile-field' },
     ],
   },
   {
@@ -268,6 +270,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Locations', href: '/locations' },
       { title: 'Spaces', href: '/spaces' },
       { title: 'Assets', href: '/assets' },
+      { title: 'Asset downtime', href: '/asset-downtime' },
     ],
   },
   {
@@ -283,6 +286,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Dashboard', href: '/dashboard' },
       { title: 'Analytics reporting', href: '/analytics' },
       { title: 'Costs & lifecycle', href: '/costs' },
+      { title: 'Notifications', href: '/notifications' },
       { title: 'Audit', href: '/audit' },
       { title: 'Safety & compliance', href: '/safety-compliance' },
     ],

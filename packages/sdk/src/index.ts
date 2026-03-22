@@ -22,7 +22,12 @@ export type {
 export type {
   WorkOrderRow,
   WorkOrderAttachmentRow,
+  MyWorkOrderRequestRow,
+  WorkOrderSlaStatusRow,
   CreateWorkOrderParams,
+  CreateWorkOrderRequestParams,
+  AcknowledgeWorkOrderParams,
+  UpsertWorkOrderSlaRuleParams,
   TransitionStatusParams,
   CompleteWorkOrderParams,
   LogTimeParams,
@@ -48,6 +53,7 @@ export type {
   AssetRow,
   CreateAssetParams,
   UpdateAssetParams,
+  RecordAssetDowntimeParams,
   AssetsResource,
 } from './resources/assets.js';
 export type {

@@ -131,6 +131,63 @@ describe('SDK', () => {
       expect((wo as { id: string }).id).toBe(woId);
       expect((wo as { title: string }).title).toBe('SDK Get WO');
     });
+
+    it('createRequest and listMyRequests (portal)', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const id = await sdk.workOrders.createRequest({
+        tenantId,
+        title: 'SDK portal request',
+        priority: 'medium',
+      });
+      const mine = await sdk.workOrders.listMyRequests();
+      expect(mine.some((r) => r.id === id)).toBe(true);
+    });
+
+    it('upsertSlaRule (maintenance-specific), getSlaStatus, and acknowledge', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      await sdk.workOrders.upsertSlaRule({
+        tenantId,
+        priorityKey: 'medium',
+        maintenanceTypeKey: 'corrective',
+        responseInterval: '15 minutes',
+        resolutionInterval: '2 hours',
+      });
+      const woId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK SLA WO',
+        priority: 'medium',
+        maintenanceType: 'corrective',
+      });
+      const sla = await sdk.workOrders.getSlaStatus(woId);
+      expect(sla).not.toBeNull();
+      expect(sla?.sla_response_due_at).toBeTruthy();
+      await sdk.workOrders.acknowledge({ tenantId, workOrderId: woId });
+      const after = await sdk.workOrders.getSlaStatus(woId);
+      expect(after?.acknowledged_at).toBeTruthy();
+    });
+
+    it('listSlaStatus returns an array', async () => {
+      await withAuthenticatedTenant(sdk);
+      const rows = await sdk.workOrders.listSlaStatus();
+      expect(Array.isArray(rows)).toBe(true);
+    });
+  });
+
+  describe('assets resource', () => {
+    it('recordDowntime returns event UUID', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK downtime asset',
+      });
+      const eventId = await sdk.assets.recordDowntime({
+        tenantId,
+        assetId,
+        reasonKey: 'breakdown',
+      });
+      expect(typeof eventId).toBe('string');
+      expect(eventId.length).toBeGreaterThan(10);
+    });
   });
 
   // Postgres/API errors are normalized to SdkError with code, message, details, hint preserved.

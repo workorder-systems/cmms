@@ -83,11 +83,58 @@ export interface UpdateAttachmentMetadataParams {
   kind?: string | null;
 }
 
+/** Row from v_my_work_order_requests (portal: work orders submitted by the current user). */
+export type MyWorkOrderRequestRow = Database['public']['Views']['v_my_work_order_requests'] extends {
+  Row: infer R;
+}
+  ? R
+  : Record<string, unknown>;
+
+/** Row from v_work_order_sla_status (response/resolution breach flags and due times). */
+export type WorkOrderSlaStatusRow = Database['public']['Views']['v_work_order_sla_status'] extends {
+  Row: infer R;
+}
+  ? R
+  : Record<string, unknown>;
+
+/** Portal: create a work order as the signed-in user (`requested_by` = caller). Requires `workorder.request.create` and location/asset ABAC where applicable. */
+export interface CreateWorkOrderRequestParams {
+  tenantId: string;
+  title: string;
+  description?: string | null;
+  priority?: string;
+  maintenanceType?: string | null;
+  locationId?: string | null;
+  assetId?: string | null;
+  dueDate?: string | null;
+}
+
+/** Satisfy response SLA tracking by setting `acknowledged_at`. Requires `workorder.acknowledge`. */
+export interface AcknowledgeWorkOrderParams {
+  tenantId: string;
+  workOrderId: string;
+}
+
+/** Create or update an SLA rule for priority (and optional maintenance type). Requires `tenant.sla.manage`. Intervals are Postgres `interval` text, e.g. `1 hour`, `2 days`. */
+export interface UpsertWorkOrderSlaRuleParams {
+  tenantId: string;
+  priorityKey: string;
+  /** When set, this rule applies only for this maintenance type; otherwise it is the generic rule for the priority. */
+  maintenanceTypeKey?: string | null;
+  /** Required when `ruleId` is null (create). */
+  responseInterval?: string | null;
+  /** Required when `ruleId` is null (create). */
+  resolutionInterval?: string | null;
+  isActive?: boolean | null;
+  /** When set, updates this rule id instead of inserting. */
+  ruleId?: string | null;
+}
+
 const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(supabase);
 
 /**
- * Work orders resource: list, get, create, transition status, complete, log time, add attachment.
+ * Work orders resource: list, get, create, portal requests, SLA views/RPCs, transition status, complete, log time, attachments.
  * Set tenant context (client.setTenant) before tenant-scoped operations.
  */
 export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
@@ -194,6 +241,68 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
         .eq('work_order_id', workOrderId);
       if (error) throw normalizeError(error);
       return (data ?? []) as WorkOrderAttachmentRow[];
+    },
+
+    /** Portal: submit a request (same as end-user CMMS request form). Returns new work order UUID. */
+    async createRequest(params: CreateWorkOrderRequestParams): Promise<string> {
+      return callRpc(rpc(supabase), 'rpc_create_work_order_request', {
+        p_tenant_id: params.tenantId,
+        p_title: params.title,
+        p_description: params.description ?? null,
+        p_priority: params.priority ?? 'medium',
+        p_maintenance_type: params.maintenanceType ?? null,
+        p_location_id: params.locationId ?? null,
+        p_asset_id: params.assetId ?? null,
+        p_due_date: params.dueDate ?? null,
+      });
+    },
+
+    /** Portal: list work orders the current user submitted (`v_my_work_order_requests`). Requires `workorder.request.view.own`. */
+    async listMyRequests(): Promise<MyWorkOrderRequestRow[]> {
+      const { data, error } = await supabase.from('v_my_work_order_requests').select('*').order('created_at', {
+        ascending: false,
+      });
+      if (error) throw normalizeError(error);
+      return (data ?? []) as MyWorkOrderRequestRow[];
+    },
+
+    /** SLA dashboard: all work orders in the tenant with breach flags (`v_work_order_sla_status`). */
+    async listSlaStatus(): Promise<WorkOrderSlaStatusRow[]> {
+      const { data, error } = await supabase.from('v_work_order_sla_status').select('*');
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderSlaStatusRow[];
+    },
+
+    /** SLA status for a single work order, or null if not visible. */
+    async getSlaStatus(workOrderId: string): Promise<WorkOrderSlaStatusRow | null> {
+      const { data, error } = await supabase
+        .from('v_work_order_sla_status')
+        .select('*')
+        .eq('work_order_id', workOrderId)
+        .maybeSingle();
+      if (error) throw normalizeError(error);
+      return data as WorkOrderSlaStatusRow | null;
+    },
+
+    /** First response / acknowledgment for SLA. */
+    async acknowledge(params: AcknowledgeWorkOrderParams): Promise<void> {
+      await callRpc(rpc(supabase), 'rpc_acknowledge_work_order', {
+        p_tenant_id: params.tenantId,
+        p_work_order_id: params.workOrderId,
+      });
+    },
+
+    /** Admin: create or update SLA rule for priority (+ optional maintenance type). Returns rule UUID. */
+    async upsertSlaRule(params: UpsertWorkOrderSlaRuleParams): Promise<string> {
+      return callRpc(rpc(supabase), 'rpc_upsert_work_order_sla_rule', {
+        p_tenant_id: params.tenantId,
+        p_priority_key: params.priorityKey,
+        p_maintenance_type_key: params.maintenanceTypeKey ?? null,
+        p_response_interval: params.responseInterval ?? null,
+        p_resolution_interval: params.resolutionInterval ?? null,
+        p_is_active: params.isActive ?? null,
+        p_rule_id: params.ruleId ?? null,
+      });
     },
   };
 }

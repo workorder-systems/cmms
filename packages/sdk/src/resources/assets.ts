@@ -48,6 +48,17 @@ export interface BulkImportAssetsParams {
   rows: BulkImportAssetRow[];
 }
 
+/** Record an asset downtime event (availability / AI-friendly timeline). Requires `downtime.record`. Use a `reason_key` from the tenant downtime catalog (defaults include `breakdown`, `planned_maintenance`, `no_demand`, `other`). */
+export interface RecordAssetDowntimeParams {
+  tenantId: string;
+  assetId: string;
+  reasonKey: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  linkedWorkOrderId?: string | null;
+  notes?: string | null;
+}
+
 const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(supabase);
 
@@ -101,6 +112,19 @@ export function createAssetsResource(supabase: SupabaseClient<Database>) {
         created_ids: data.created_ids ?? [],
         errors: data.errors ?? [],
       };
+    },
+
+    /** Insert a downtime event row. Returns the event UUID. */
+    async recordDowntime(params: RecordAssetDowntimeParams): Promise<string> {
+      return callRpc(rpc(supabase), 'rpc_record_asset_downtime', {
+        p_tenant_id: params.tenantId,
+        p_asset_id: params.assetId,
+        p_reason_key: params.reasonKey,
+        p_started_at: params.startedAt ?? null,
+        p_ended_at: params.endedAt ?? null,
+        p_linked_work_order_id: params.linkedWorkOrderId ?? null,
+        p_notes: params.notes ?? null,
+      });
     },
   };
 }

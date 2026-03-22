@@ -21,6 +21,7 @@ import { ListIcon } from '@/components/icons/ListIcon'
 import { CalendarIcon } from '@/components/icons/CalendarIcon'
 import { DocumentIcon } from '@/components/icons/DocumentIcon'
 import { ClipboardIcon } from '@/components/icons/ClipboardIcon'
+import { BellIcon } from '@/components/icons/BellIcon'
 import { CartIcon } from '@/components/icons/CartIcon'
 import { ShapesIcon } from '@/components/icons/ShapesIcon'
 
@@ -89,6 +90,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         pattern: { y: -6, squares: [[-1, 2], [1, 3]] },
       },
       {
+        href: '/request-portal-and-sla',
+        name: 'Request portal and SLA',
+        description: 'Submit requests, SLA rules, acknowledgment, breach views.',
+        icon: ClipboardIcon,
+        pattern: { y: 10, squares: [[0, 1], [1, 3]] },
+      },
+      {
         href: '/scheduling',
         name: 'Scheduling & dispatch',
         description: 'Schedule blocks, assign work orders, validate and unschedule.',
@@ -127,6 +135,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         description: 'List, create, update, and delete assets.',
         icon: PackageIcon,
         pattern: { y: 32, squares: [[0, 2], [1, 4]] },
+      },
+      {
+        href: '/asset-downtime',
+        name: 'Asset downtime',
+        description: 'Downtime events for availability metrics and reporting.',
+        icon: CogIcon,
+        pattern: { y: 20, squares: [[0, 1], [1, 3]] },
       },
     ],
   },
@@ -172,6 +187,13 @@ const resourceCategories: Array<{ title: string; resources: Array<Resource> }> =
         description: 'Work order, asset, location costs; lifecycle alerts and TCO.',
         icon: DocumentIcon,
         pattern: { y: 18, squares: [[0, 1], [1, 3]] },
+      },
+      {
+        href: '/notifications',
+        name: 'Notifications',
+        description: 'In-app feed, mark read, and per-event preferences (typed Supabase client).',
+        icon: BellIcon,
+        pattern: { y: 14, squares: [[0, 1], [1, 3]] },
       },
       {
         href: '/audit',

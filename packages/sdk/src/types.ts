@@ -53,9 +53,9 @@ export type DbClient = {
   clearTenant(): Promise<void>;
   /** Tenants: list, create, invite, assign role. */
   tenants: TenantsResource;
-  /** Work orders: list, get, create, transition status, complete, log time, list/update attachments. */
+  /** Work orders: list, get, create, portal requests, SLA views/RPCs, transition, complete, log time, attachments. */
   workOrders: WorkOrdersResource;
-  /** Assets: list, get, create, update, delete. */
+  /** Assets: list, get, create, update, delete, bulk import, record downtime. */
   assets: AssetsResource;
   /** Locations: list, get, create, update, delete. */
   locations: LocationsResource;

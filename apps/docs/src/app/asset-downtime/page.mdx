@@ -1,0 +1,82 @@
+export const metadata = {
+  title: 'Asset downtime',
+  description:
+    'Record asset downtime events for availability metrics, MTBF/MTTR-style reporting, and structured timelines for analytics or AI.',
+}
+
+export const sections = [
+  { title: 'Why record downtime', id: 'why' },
+  { title: 'Permissions', id: 'permissions' },
+  { title: 'Record an event', id: 'record' },
+  { title: 'Reason keys', id: 'reason-keys' },
+  { title: 'Reporting schema', id: 'reporting' },
+]
+
+# Asset downtime
+
+**Downtime events** are append-friendly facts: which asset stopped producing value, why, when it started and (optionally) ended, and optional link to a **work order**. They are low ceremony to implement and unlock **availability** and reliability metrics that feed dashboards and future automation cleanly. {{ className: 'lead' }}
+
+## Why record downtime
+
+- Gives a **canonical timeline** per asset (open vs closed intervals).
+- Correlates outages with **corrective work** via `linked_work_order_id`.
+- Aggregates in the **`reporting`** schema for monthly rollups (BI / warehouse).
+
+## Permissions
+
+| Permission | Purpose |
+|------------|---------|
+| `downtime.record` | Insert events via RPC |
+| `downtime.view` | Read events (direct table access in `app`; typical apps use reporting views or service-side queries) |
+
+Tenant **admin** includes these by default.
+
+## Record an event
+
+<CodeGroup title="client.assets.recordDowntime(params)">
+
+```ts
+import { createDbClient } from '@workorder-systems/sdk'
+
+const client = createDbClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+
+await client.setTenant(tenantId)
+// Refresh JWT if needed
+
+const eventId = await client.assets.recordDowntime({
+  tenantId,
+  assetId,
+  reasonKey: 'breakdown',
+  startedAt: null, // defaults to now
+  endedAt: null, // omit or set when closing the event
+  linkedWorkOrderId: workOrderIdOrNull,
+  notes: 'Bearing failure',
+})
+// Returns UUID of app.asset_downtime_events row
+```
+
+</CodeGroup>
+
+## Reason keys
+
+Each tenant has rows in **`cfg.downtime_reasons`**. New tenants get defaults, including:
+
+- `breakdown`
+- `planned_maintenance`
+- `no_demand`
+- `other`
+
+Keys must match `^[a-z0-9_]+$`. Configure additional reasons per tenant in your admin UI (insert/update on `cfg.downtime_reasons` with appropriate RLS — catalog is tenant-scoped).
+
+## Reporting schema
+
+Monthly aggregates are exposed in **`reporting.v_asset_downtime_monthly`** (PostgREST **`reporting`** schema in this project). The generated SDK **`Database`** type currently covers **`public`** only; use `client.supabase` with a second client or schema option if you query **`reporting`** from the app, or consume that view from BI tools.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+  <Button href="/analytics" variant="text" arrow="right">
+    <>Analytics reporting</>
+  </Button>
+</div>

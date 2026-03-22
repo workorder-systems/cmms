@@ -150,7 +150,7 @@ const attachmentId = await client.mobile.registerWorkOrderAttachment({
 
 </CodeGroup>
 
-For the standard flow (upload to Storage path `tenant_id/work_order_id/filename`), the trigger creates the file and attachment automatically; use `client.workOrders.listAttachments(workOrderId)` to get the new row. Use `registerWorkOrderAttachment` only when you have an existing file id (e.g. after a resumable upload that wrote to Storage and created `app.files` separately).
+For the standard flow (upload to Storage path `tenant_id/work_order/{work_order_id}/filename`), the trigger creates the file and attachment automatically; use `client.workOrders.listAttachments(workOrderId)` to get the new row. Use `registerWorkOrderAttachment` only when you have an existing file id (e.g. after a resumable upload that wrote to Storage and created `app.files` separately).
 
 ## Mobile views
 

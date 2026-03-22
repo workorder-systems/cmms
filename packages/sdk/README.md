@@ -42,19 +42,32 @@ const id = await client.workOrders.create({
 
 ## Resources
 
-| Resource      | Reads              | Writes                                                                 |
-|---------------|--------------------|------------------------------------------------------------------------|
-| `tenants`     | `list()`, `getById()` | `create()`, `inviteUser()`, `assignRole()`                            |
-| `workOrders`  | `list()`, `getById()`, `listAttachments(workOrderId)` | `create()` (incl. `projectId`), `transitionStatus()`, `complete()`, `logTime()`, `updateAttachmentMetadata()` |
-| `assets`      | `list()`, `getById()` | `create()`, `update()`, `delete()`. Assets include lifecycle fields (commissioned_at, end_of_life_estimate, warranty_expires_at, etc.). |
-| `locations`   | `list()`, `getById()` | `create()`, `update()`, `delete()`                                    |
-| `departments` | `list()`, `getById()` | `create()`, `update()`, `delete()`                                   |
-| `meters`      | `list()`, `getReadings()` | `create()`, `update()`, `recordReading()`, `delete()`              |
-| `plugins`     | `list()`, `getById()`, `listInstallations()` | `install()`, `updateInstallation()`, `uninstall()` (tenant.admin) |
-| `costs`       | `listWorkOrderCosts()`, `listAssetCosts()`, `listLocationCosts()`, `listDepartmentCosts()`, `listProjectCosts()`, `listLifecycleAlerts()` | Use `costRollup()`, `assetLifecycleAlerts()`, `assetTotalCostOfOwnership()` for RPC-based reporting. |
-| `projects`    | `list()`, `getById()` | — (read-only from v_projects) |
+| Resource | Reads | Writes |
+|----------|-------|--------|
+| `tenants` | `list()`, `getById()` | `create()`, `inviteUser()`, `assignRole()`, `removeMember()` |
+| `workOrders` | `list()`, `getById()`, `listAttachments(workOrderId)`, `listMyRequests()`, `listSlaStatus()`, `getSlaStatus(workOrderId)` | `create()`, `createRequest()` (portal), `acknowledge()`, `upsertSlaRule()`, `transitionStatus()`, `complete()`, `logTime()`, `updateAttachmentMetadata()` |
+| `assets` | `list()`, `getById()` | `create()`, `update()`, `delete()`, `bulkImport()`, `recordDowntime()` (`downtime.record`) |
+| `locations` | `list()`, `getById()` | `create()`, `update()`, `delete()`, `bulkImport()` |
+| `spaces` | `list()`, `getById()` | `create()`, `update()`, `delete()` |
+| `departments` | `list()`, `getById()` | `create()`, `update()`, `delete()` |
+| `meters` | `list()`, `getReadings()` | `create()`, `update()`, `recordReading()`, `delete()` |
+| `plugins` | `list()`, `getById()`, `listInstallations()`, webhook helpers | `install()`, `updateInstallation()`, `uninstall()`, webhook subscription upsert/delete (tenant.admin where required) |
+| `authorization` | permissions, roles, scopes, profiles | assign/revoke permission, grant/revoke scope, `hasPermission()`, `getUserPermissions()` |
+| `catalogs` | statuses, priorities, maintenance types, transitions, workflow graph | create/update catalog entries and transitions (per RLS) |
+| `pm` | templates, schedules, due/overdue/upcoming/history | create/update templates and schedules, generate due PMs, manual trigger, dependencies |
+| `dashboard` | metrics, MTTR, open/overdue WO, summaries, site rollups | read-only views |
+| `audit` | entity changes, permission changes, retention config | read-only |
+| `tenantApiKeys` | `list()` | `create()`, `revoke()` |
+| `labor` | technicians, crews, skills, shifts, assignments, capacity, conflicts | create/update technicians and related entities; scheduling helpers |
+| `scheduling` | schedule blocks, validation issues | `scheduleWorkOrder()`, `updateScheduleBlock()`, `validateSchedule()`, unschedule |
+| `costs` | WO/asset/location/department/project costs, lifecycle alerts | `costRollup()`, `assetLifecycleAlerts()`, `assetTotalCostOfOwnership()` |
+| `projects` | `list()`, `getById()` | — (read-only) |
+| `partsInventory` | parts, stock, suppliers, reservations, POs | reserve/issue parts, receive PO, create parts/suppliers/POs (see resource types) |
+| `safetyCompliance` | inspections, incidents, history/report views | create/update templates, runs, incidents, actions |
+| `mobile` | `sync()`, mobile list views | `startWorkOrder()`, `stopWorkOrder()`, `addWorkOrderNote()`, `registerWorkOrderAttachment()` |
+| `mapZones` | `list()`, `getById()` | `create()`, `update()`, `delete()` |
 
-For **PM** (templates, schedules, due/overdue pms), **permissions** (grant, revoke, hasPermission), **workflow** (status/priority/maintenance type catalogs), **audit**, and **dashboard** views, use `client.supabase.from('v_*')` and `client.supabase.rpc('rpc_*', params)` until dedicated resource methods are added. All public views and RPCs are typed via the SDK’s `Database` type.
+**Not wrapped as a resource yet (fully typed on `client.supabase`):** in-app **notifications** — query `v_my_notifications` or call `rpc_list_my_notifications`, `rpc_mark_notifications_read`, `rpc_upsert_notification_preference`. Server automation uses `rpc_process_due_notifications` (service role / scheduled jobs). See the docs site **Notifications** page.
 
 All resource methods throw `SdkError` (with `code`, `message`, `details`, `hint`) on failure. Success returns typed data.
 
@@ -86,8 +99,8 @@ const client = createDbClient(url, anonKey, {
 Types are generated from the local Supabase **public** schema. From the repo root with Supabase running:
 
 ```bash
-npm run supabase:start
-npm run gen-types
+pnpm supabase:start
+pnpm gen-types
 ```
 
 CI runs `gen-types` after `supabase start` and builds the SDK so committed types stay in sync with migrations.

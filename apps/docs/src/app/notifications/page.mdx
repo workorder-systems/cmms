@@ -1,0 +1,97 @@
+export const metadata = {
+  title: 'Notifications',
+  description:
+    'In-app notifications: list unread items, mark read, and per-event preferences via views and RPCs.',
+}
+
+export const sections = [
+  { title: 'List notifications', id: 'list-notifications' },
+  { title: 'Mark as read', id: 'mark-read' },
+  { title: 'Preferences', id: 'preferences' },
+  { title: 'Background processing', id: 'background-processing' },
+]
+
+# Notifications
+
+Per-user, per-tenant **in-app notifications** (title, body, optional entity link, payload). There is no dedicated SDK resource class yet; use **`client.supabase`** — all views and RPCs are typed on the SDK **`Database`** type. Set **tenant context** and refresh the session before tenant-scoped calls, same as other APIs. {{ className: 'lead' }}
+
+<Note>
+  Prefer **`v_my_notifications`** for reads when you want standard PostgREST filtering and pagination. **`rpc_list_my_notifications`** returns the same underlying rows with an explicit **`p_tenant_id`** for callers that keep tenant id in app state.
+</Note>
+
+## List notifications
+
+<CodeGroup title="Query v_my_notifications">
+
+```ts
+import { createDbClient } from '@workorder-systems/sdk'
+
+const client = createDbClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+)
+
+await client.setTenant(tenantId)
+const { data: session } = await client.supabase.auth.getSession()
+if (session.session) {
+  await client.supabase.auth.setSession({
+    access_token: session.session.access_token,
+    refresh_token: session.session.refresh_token,
+  })
+}
+
+const { data: rows, error } = await client.supabase
+  .from('v_my_notifications')
+  .select('*')
+  .is('read_at', null)
+  .order('created_at', { ascending: false })
+  .limit(50)
+```
+
+</CodeGroup>
+
+<CodeGroup title="rpc_list_my_notifications">
+
+```ts
+const { data, error } = await client.supabase.rpc('rpc_list_my_notifications', {
+  p_tenant_id: tenantId,
+  p_limit: 50,
+})
+```
+
+</CodeGroup>
+
+## Mark as read
+
+Pass one or more notification ids returned from the list above.
+
+<CodeGroup title="rpc_mark_notifications_read">
+
+```ts
+await client.supabase.rpc('rpc_mark_notifications_read', {
+  p_tenant_id: tenantId,
+  p_notification_ids: [notificationId],
+})
+```
+
+</CodeGroup>
+
+## Preferences
+
+Toggle **in-app** delivery for a given **`event_key`** (string defined by the backend for each notification type).
+
+<CodeGroup title="rpc_upsert_notification_preference">
+
+```ts
+await client.supabase.rpc('rpc_upsert_notification_preference', {
+  p_tenant_id: tenantId,
+  p_event_key: 'work_order.assigned',
+  p_channel_in_app: true,
+})
+```
+
+</CodeGroup>
+
+## Background processing
+
+**`rpc_process_due_notifications`** is intended for **trusted server** contexts (for example Supabase **pg_cron** or an Edge Function using the **service role**). It is not called from end-user clients. Your deployment wires when and how due notifications are materialized.

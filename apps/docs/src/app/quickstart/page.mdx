@@ -22,7 +22,7 @@ Install the client, wire in your Supabase URL and anon key, then call a resource
 <CodeGroup>
 
 ```bash
-npm install @workorder-systems/db @supabase/supabase-js
+npm install @workorder-systems/sdk @supabase/supabase-js
 ```
 
 </CodeGroup>
@@ -42,7 +42,7 @@ The SDK exposes **resources** (`tenants`, `workOrders`, `assets`, …) and helpe
 <CodeGroup title="Client + list tenants (after auth)">
 
 ```ts
-import { createDbClient } from '@workorder-systems/db'
+import { createDbClient } from '@workorder-systems/sdk'
 
 const client = createDbClient(
   process.env.SUPABASE_URL!,

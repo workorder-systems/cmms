@@ -16,6 +16,10 @@ export const sections = [
 
 Lists and gets assets for the current tenant; create, update, delete. Set tenant context before calling these methods. {{ className: 'lead' }}
 
+<Note>
+  **Downtime / availability:** use **`client.assets.recordDowntime()`** for structured outage events — see [Asset downtime](/asset-downtime).
+</Note>
+
 ## List assets
 
 List all assets for the current tenant (from `v_assets`).

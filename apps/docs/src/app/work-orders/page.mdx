@@ -1,6 +1,7 @@
 export const metadata = {
   title: 'Work orders',
-  description: 'List, create, transition, complete, log time, list attachments, update attachment metadata.',
+  description:
+    'List, create, transition, complete, log time, attachments; portal requests and SLA are documented on a dedicated page.',
 }
 
 export const sections = [
@@ -20,6 +21,10 @@ export const sections = [
 # Work orders
 
 Lists and gets work orders for the current tenant; create, transition status, complete, log time; list attachments and update attachment metadata. Set tenant context before calling these methods. {{ className: 'lead' }}
+
+<Note>
+  **End-user CMMS flows:** request portal (submit and track my requests), SLA rules, acknowledgment, and breach views are covered in [Request portal and SLA](/request-portal-and-sla). **Asset downtime** (availability events) is under [Asset downtime](/asset-downtime).
+</Note>
 
 ## List work orders
 

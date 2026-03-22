@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Generate TypeScript types from the local Supabase public schema.
-# Run from repo root with Supabase running: npm run supabase:start then npm run gen-types
+# Run from repo root with Supabase running: pnpm supabase:start then pnpm gen-types
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
