@@ -1,6 +1,6 @@
 # @workorder-systems/sdk
 
-Type-safe domain SDK for the database public API. Exposes only **public views** (reads) and **RPCs** (writes). Works in browser, Node.js, and edge runtimes (Cloudflare Workers, Vercel Edge).
+The **typed bridge** to **WorkOrder Systems OSS**—the Postgres/Supabase **CMMS core** this repo is building to be the **default substrate** for maintenance software (see the [monorepo README](https://github.com/workorder-systems/db#vision)). Public **views** for reads, **RPCs** for writes, nothing hidden. Use it in the browser, Node.js, or edge runtimes (Cloudflare Workers, Vercel Edge) so your apps speak the same contract the database tests enforce.
 
 ## Install
 
@@ -92,7 +92,8 @@ const client = createDbClient(url, anonKey, {
 
 ## Versioning and API stability
 
-- **Semver**: Minor = new resources/methods (additive); Major = breaking renames or signature changes.
+- **Alpha:** Work Order Systems is **alpha** end-to-end; this package is **0.x** and tracks a database that **changes without a stability guarantee**. Pin a **commit** of the monorepo (or your own fork) if you need reproducible schema + SDK pairs.
+- **Semver (intent):** Minor = new resources/methods (additive); Major = breaking renames or signature changes.
 - **Backend versioning** (ADR 0008): When the database adds `rpc_*_v2` or `v_*_v2`, the SDK may expose versioned methods (e.g. `workOrders.createV2()`) and document migration from v1. Deprecated endpoints remain supported during the deprecation window.
 
 ## Regenerating types
@@ -105,3 +106,7 @@ pnpm gen-types
 ```
 
 CI runs `gen-types` after `supabase start` and builds the SDK so committed types stay in sync with migrations.
+
+## Open source
+
+`@workorder-systems/sdk` is developed in the **[workorder-systems/db](https://github.com/workorder-systems/db)** monorepo and licensed under **AGPL-3.0-or-later** together with the migrations and docs. See the repository **README** for project status, what is and is not included in that tree, and a short AGPL summary (not legal advice).

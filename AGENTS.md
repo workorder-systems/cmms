@@ -26,6 +26,7 @@ Use this as a default order of operations. Adjust when the user’s task is narr
 
 #### 1. Orient yourself
 
+- First-time local setup: **`GETTING_STARTED.md`** (Docker, Supabase CLI, env, test failures).
 - Read **`apps/supabase/README.md`** before changing schema, RLS, views, or RPCs.
 - For **new migrations**, follow project SQL/RLS conventions in **`.cursor/rules/migration.mdc`** (and **`CONTRIBUTING.md`** → Database changes).
 - For **tests**, read **`tests/README.md`** for what the suite covers and which helpers exist.

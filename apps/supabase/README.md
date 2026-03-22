@@ -189,4 +189,4 @@ This directory is the **Supabase CLI project** (`config.toml`, `migrations/`, `f
 
 ## License
 
-Migrations and SQL follow the repository license (**AGPL-3.0-or-later** unless a file header states otherwise).
+Migrations and SQL follow the repository license (**AGPL-3.0-or-later** unless a file header states otherwise). For **open-source status**, **alpha** expectations, and what this repo includes vs excludes, see the monorepo root **README** (sections *Where we are today* and *Open source and license*).
