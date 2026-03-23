@@ -21,7 +21,7 @@ pnpm test
 - Use feature branches and keep commits focused.
 - Open PRs against `main`.
 - Include tests when behavior changes.
-- Update docs when the API contract changes.
+- Update docs when the API contract changes (including [`apps/supabase/README.md`](apps/supabase/README.md), [`apps/oauth/README.md`](apps/oauth/README.md), and [`apps/mcp/README.md`](apps/mcp/README.md) when OAuth or MCP behavior shifts).
 
 ## Database changes
 When adding or changing schema:

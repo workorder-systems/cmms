@@ -1,6 +1,12 @@
 # mcp
 
-CMMS MCP server (workspace package **`mcp`**, sources under [`apps/mcp/`](./)): typed access via [`@workorder-systems/sdk`](../../packages/sdk/README.md), **Zod**-validated tool inputs, and **Supabase** user JWTs (same as the REST API).
+CMMS **Model Context Protocol** server (workspace package **`mcp`**, this folder): typed access via [`@workorder-systems/sdk`](../../packages/sdk/README.md), **Zod**-validated tool inputs, and **Supabase** user JWTs (same as the REST API).
+
+**How this fits the repo**
+
+- **Supabase Auth** is the OAuth 2.1 authorization server (tokens, JWKS). See [`apps/supabase/README.md`](../../apps/supabase/README.md) (**OAuth 2.1 server**).
+- The **consent UI** (`/oauth/consent`) lives in [`apps/oauth`](../../apps/oauth/README.md); `site_url` must match `config.toml`.
+- This MCP app speaks **Streamable HTTP** on **`/mcp`**, verifies Bearer JWTs, and serves **[RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728)** protected-resource metadata at **`/.well-known/oauth-protected-resource`** so **Cursor** / **`mcp-remote`** / **Claude Code** can run the browser OAuth flow against Supabase.
 
 ## Clients overview
 
@@ -9,7 +15,7 @@ CMMS MCP server (workspace package **`mcp`**, sources under [`apps/mcp/`](./)): 
 | **Cursor** | stdio → `mcp-remote` → HTTP MCP | `.cursor/mcp.json` `command` + `args` (no secrets) |
 | **Claude Code** | Native HTTP MCP (OAuth via `/mcp`) | Project [`.mcp.json`](../.mcp.json) or `claude mcp add --transport http` |
 | **Claude Code** (fallback) | stdio → `mcp-remote` | Same args as Cursor if native HTTP OAuth misbehaves |
-| **Any stdio host** | Direct stdio | Env tokens or `pnpm mcp:oauth-login` |
+| **Any stdio host** | Direct stdio | Env tokens or `pnpm --filter mcp mcp:oauth-login` |
 
 ---
 

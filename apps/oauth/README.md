@@ -6,6 +6,10 @@ Minimal **Next.js** UI for [Supabase OAuth 2.1 server](https://supabase.com/docs
 
 **MCP / Cursor vs `/demo`:** Supabase Auth can **auto-approve** on `GET /oauth/authorizations/:id` when the user **already has consent** for that OAuth client and scopes (same `client_id` as a previous `mcp-remote` registration). The consent app detects GoTrue’s **`{ "redirect_url": "..." }`** response and **redirects immediately** so you are not shown a stale form whose first **Allow** would fail with `authorization request cannot be processed`. **`/demo`** often uses a **new** dynamically registered client each time, so auto-approve is less likely than with a **reused** MCP client under `~/.mcp-auth/`.
 
+## Related: MCP server in this repo
+
+The **CMMS MCP** app ([`apps/mcp/README.md`](../mcp/README.md)) runs separately (default **`:3765`**, path **`/mcp`**). It uses the **same** Supabase project and OAuth discovery; end users sign in through Supabase / this consent UI, while MCP clients attach **Bearer** tokens to MCP requests. You do not need the consent app process running for MCP if Auth is already configured—only when a human must approve consent in the browser.
+
 ## Source layout
 
 | Module | Role |

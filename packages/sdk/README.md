@@ -91,6 +91,10 @@ const client = createDbClient(url, anonKey, {
 });
 ```
 
+## MCP (same monorepo)
+
+The **[`apps/mcp`](../../apps/mcp/README.md)** package uses this SDK over Supabase user JWTs for **Model Context Protocol** tools (AI assistants, Cursor, OAuth). It is developed in-repo only—not published to npm separately.
+
 ## Versioning and API stability
 
 - **Alpha:** Work Order Systems is **alpha** end-to-end; this package is **0.x** and tracks a database that **changes without a stability guarantee**. Pin a **commit** of the monorepo (or your own fork) if you need reproducible schema + SDK pairs.
