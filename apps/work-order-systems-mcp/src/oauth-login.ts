@@ -11,8 +11,9 @@
  */
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
 import { tryLoadMcpLocalEnv } from './load-local-env.js';
+import { requireEnv } from './env.js';
+import { openBrowser } from './open-browser.js';
 
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
 
@@ -31,24 +32,6 @@ function codeChallengeS256(verifier: string): string {
 
 function generateState(): string {
   return randomBytes(16).toString('hex');
-}
-
-function openBrowser(url: string): void {
-  const platform = process.platform;
-  const cmd =
-    platform === 'darwin' ? 'open' : platform === 'win32' ? 'cmd' : 'xdg-open';
-  const args = platform === 'win32' ? ['/c', 'start', '""', url] : [url];
-  const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
-  child.unref();
-}
-
-function requireEnv(name: string): string {
-  const v = process.env[name]?.trim();
-  if (!v) {
-    console.error(`Missing ${name}. Set it or use apps/work-order-systems-mcp/.env.local`);
-    process.exit(1);
-  }
-  return v;
 }
 
 type RegisterResponse = {

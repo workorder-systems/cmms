@@ -13,14 +13,9 @@ import { createUserDbClient } from './user-client.js';
 import { createWorkOrderSystemsMcpServer } from './tools.js';
 import { tryLoadMcpLocalEnv } from './load-local-env.js';
 import { oauthCallbackWrongServerHtml } from './oauth-callback-fallback.js';
-
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v?.trim()) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return v.trim();
-}
+import { requireEnv } from './env.js';
+import { buildMcpExpressAppOptions } from './http-app-options.js';
+import { MCP_PACKAGE_VERSION } from './server-version.js';
 
 function publicOriginFromRequest(req: express.Request): string {
   const explicit = process.env.WORKORDER_SYSTEMS_PUBLIC_ORIGIN?.replace(/\/$/, '');
@@ -47,7 +42,13 @@ async function main(): Promise<void> {
 
   const audience = process.env.SUPABASE_JWT_AUD?.trim();
 
-  const app = createMcpExpressApp({ host });
+  const app = createMcpExpressApp(buildMcpExpressAppOptions(host));
+  if (
+    process.env.WORKORDER_SYSTEMS_TRUST_PROXY === 'true' ||
+    process.env.WORKORDER_SYSTEMS_TRUST_PROXY === '1'
+  ) {
+    app.set('trust proxy', 1);
+  }
   app.use(
     cors({
       origin: true,
@@ -57,7 +58,12 @@ async function main(): Promise<void> {
   app.use(express.urlencoded({ extended: true }));
 
   app.get('/health', (_req, res) => {
-    res.status(200).json({ ok: true, service: 'work-order-systems-mcp' });
+    res.status(200).json({
+      ok: true,
+      service: 'work-order-systems-mcp',
+      version: MCP_PACKAGE_VERSION,
+      transport: 'streamable-http',
+    });
   });
 
   /*

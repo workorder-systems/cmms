@@ -7,15 +7,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createSessionDbClient, createUserDbClient } from './user-client.js';
 import { createWorkOrderSystemsMcpServer } from './tools.js';
 import { tryLoadMcpLocalEnv } from './load-local-env.js';
-
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v?.trim()) {
-    console.error(`Missing required environment variable: ${name}`);
-    process.exit(1);
-  }
-  return v.trim();
-}
+import { requireEnv } from './env.js';
 
 async function main(): Promise<void> {
   tryLoadMcpLocalEnv();

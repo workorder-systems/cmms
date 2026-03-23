@@ -1,10 +1,20 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { DbClient } from '@workorder-systems/sdk';
+import { MCP_SERVER_INSTRUCTIONS } from './mcp-instructions.js';
+import { MCP_PACKAGE_VERSION } from './server-version.js';
 import {
   setActiveTenantInputSchema,
   workOrdersCreateInputSchema,
   workOrdersGetInputSchema,
 } from './schemas.js';
+
+/** Hints for clients (MCP tool annotations are non-authoritative). */
+const toolAnn = {
+  readTenantData: { readOnlyHint: true, openWorldHint: true } satisfies ToolAnnotations,
+  writeTenantContext: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } satisfies ToolAnnotations,
+  writeWorkOrder: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } satisfies ToolAnnotations,
+} as const;
 
 function jsonResult(data: unknown) {
   return {
@@ -15,6 +25,28 @@ function jsonResult(data: unknown) {
       },
     ],
   };
+}
+
+function jsonToolError(message: string) {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({ error: message }, null, 2),
+      },
+    ],
+    isError: true as const,
+  };
+}
+
+async function jsonToolTry<T>(fn: () => Promise<T>) {
+  try {
+    const data = await fn();
+    return jsonResult(data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return jsonToolError(message);
+  }
 }
 
 export type RegisterToolsOptions = {
@@ -36,93 +68,109 @@ export function registerTools(
   server.registerTool(
     'tenants_list',
     {
+      title: 'List tenants',
       description:
         'List organizations (tenants) the signed-in user belongs to. Use set_active_tenant before tenant-scoped reads/writes.',
+      annotations: toolAnn.readTenantData,
     },
-    async () => {
-      const client = await getClient();
-      const rows = await client.tenants.list();
-      return jsonResult(rows);
-    }
+    async () =>
+      jsonToolTry(async () => {
+        const client = await getClient();
+        return client.tenants.list();
+      })
   );
 
   server.registerTool(
     'work_orders_list',
     {
+      title: 'List work orders',
       description:
         'List work orders for the active tenant (JWT tenant_id claim). Excludes draft by default. Call set_active_tenant first if needed, then refresh the OAuth session if views are empty.',
+      annotations: toolAnn.readTenantData,
     },
-    async () => {
-      const client = await getClient();
-      const rows = await client.workOrders.list();
-      return jsonResult(rows);
-    }
+    async () =>
+      jsonToolTry(async () => {
+        const client = await getClient();
+        return client.workOrders.list();
+      })
   );
 
   server.registerTool(
     'work_orders_get',
     {
+      title: 'Get work order',
       description: 'Fetch one work order by id within the active tenant context.',
-      inputSchema: workOrdersGetInputSchema.shape,
+      inputSchema: workOrdersGetInputSchema,
+      annotations: toolAnn.readTenantData,
     },
-    async (args) => {
-      const client = await getClient();
-      const row = await client.workOrders.getById(args.work_order_id);
-      return jsonResult(row);
-    }
+    async (args) =>
+      jsonToolTry(async () => {
+        const client = await getClient();
+        return client.workOrders.getById(args.work_order_id);
+      })
   );
 
   server.registerTool(
     'work_orders_create',
     {
+      title: 'Create work order',
       description: 'Create a work order in the given tenant via rpc_create_work_order (requires permissions).',
-      inputSchema: workOrdersCreateInputSchema.shape,
+      inputSchema: workOrdersCreateInputSchema,
+      annotations: toolAnn.writeWorkOrder,
     },
-    async (args) => {
-      const client = await getClient();
-      const id = await client.workOrders.create({
-        tenantId: args.tenant_id,
-        title: args.title,
-        description: args.description ?? null,
-        priority: args.priority,
-        maintenanceType: args.maintenance_type ?? null,
-        assignedTo: args.assigned_to ?? null,
-        locationId: args.location_id ?? null,
-        assetId: args.asset_id ?? null,
-        dueDate: args.due_date ?? null,
-        pmScheduleId: args.pm_schedule_id ?? null,
-        projectId: args.project_id ?? null,
-      });
-      return jsonResult({ work_order_id: id });
-    }
+    async (args) =>
+      jsonToolTry(async () => {
+        const client = await getClient();
+        const id = await client.workOrders.create({
+          tenantId: args.tenant_id,
+          title: args.title,
+          description: args.description ?? null,
+          priority: args.priority,
+          maintenanceType: args.maintenance_type ?? null,
+          assignedTo: args.assigned_to ?? null,
+          locationId: args.location_id ?? null,
+          assetId: args.asset_id ?? null,
+          dueDate: args.due_date ?? null,
+          pmScheduleId: args.pm_schedule_id ?? null,
+          projectId: args.project_id ?? null,
+        });
+        return { work_order_id: id };
+      })
   );
 
   server.registerTool(
     'set_active_tenant',
     {
+      title: 'Set active tenant',
       description:
         'Switch tenant context (rpc_set_tenant_context). Updates user metadata; tenant-scoped views read tenant_id from the JWT — refresh the OAuth access token after this when using HTTP MCP, or rely on stdio refresh when WORKORDER_SYSTEMS_REFRESH_TOKEN is set.',
-      inputSchema: setActiveTenantInputSchema.shape,
+      inputSchema: setActiveTenantInputSchema,
+      annotations: toolAnn.writeTenantContext,
     },
     async (args) => {
-      const client = await getClient();
-      await client.setTenant(args.tenant_id);
-      let refreshed = false;
-      if (options?.tryRefreshAccessTokenAfterSetTenant) {
-        try {
-          refreshed = await options.tryRefreshAccessTokenAfterSetTenant();
-        } catch {
-          refreshed = false;
+      try {
+        const client = await getClient();
+        await client.setTenant(args.tenant_id);
+        let refreshed = false;
+        if (options?.tryRefreshAccessTokenAfterSetTenant) {
+          try {
+            refreshed = await options.tryRefreshAccessTokenAfterSetTenant();
+          } catch {
+            refreshed = false;
+          }
         }
+        return jsonResult({
+          ok: true,
+          tenant_id: args.tenant_id,
+          access_token_refreshed: refreshed,
+          note: refreshed
+            ? 'Session refreshed; JWT should include tenant_id for subsequent tool calls.'
+            : 'If work_orders_list returns empty or errors, obtain a new access token (OAuth refresh) so JWT claims include tenant_id.',
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return jsonToolError(message);
       }
-      return jsonResult({
-        ok: true,
-        tenant_id: args.tenant_id,
-        access_token_refreshed: refreshed,
-        note: refreshed
-          ? 'Session refreshed; JWT should include tenant_id for subsequent tool calls.'
-          : 'If work_orders_list returns empty or errors, obtain a new access token (OAuth refresh) so JWT claims include tenant_id.',
-      });
     }
   );
 }
@@ -131,13 +179,18 @@ export function createWorkOrderSystemsMcpServer(
   getClient: () => Promise<DbClient>,
   toolOptions?: RegisterToolsOptions
 ): McpServer {
-  const server = new McpServer({
-    name: 'work-order-systems',
-    title: 'Work Order Systems',
-    version: '0.1.0',
-    description:
-      'CMMS work orders and tenants via Supabase (JWT). Call tenants_list, then set_active_tenant before tenant-scoped tools; refresh OAuth or session after switching tenant so the JWT includes tenant_id.',
-  });
+  const server = new McpServer(
+    {
+      name: 'work-order-systems',
+      title: 'Work Order Systems',
+      version: MCP_PACKAGE_VERSION,
+      description:
+        'CMMS work orders and tenants via Supabase (JWT). Call tenants_list, then set_active_tenant before tenant-scoped tools; refresh OAuth or session after switching tenant so the JWT includes tenant_id.',
+    },
+    {
+      instructions: MCP_SERVER_INSTRUCTIONS,
+    }
+  );
   registerTools(server, getClient, toolOptions);
   return server;
 }

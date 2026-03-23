@@ -11,7 +11,6 @@
  *   pnpm --filter work-order-systems-mcp mcp:oauth-call work_orders_get '{"work_order_id":"..."}'
  */
 import { randomInt } from 'node:crypto';
-import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { URL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -23,23 +22,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { tryLoadMcpLocalEnv } from './load-local-env.js';
 import { createAnonFetch, InMemoryOAuthClientProvider } from './in-memory-oauth-provider.js';
-
-function requireEnv(name: string): string {
-  const v = process.env[name]?.trim();
-  if (!v) {
-    console.error(`Missing ${name}`);
-    process.exit(1);
-  }
-  return v;
-}
-
-function openBrowser(url: string): void {
-  const platform = process.platform;
-  const cmd =
-    platform === 'darwin' ? 'open' : platform === 'win32' ? 'cmd' : 'xdg-open';
-  const args = platform === 'win32' ? ['/c', 'start', '""', url] : [url];
-  spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
-}
+import { requireEnv } from './env.js';
+import { openBrowser } from './open-browser.js';
 
 /**
  * Listen before `client.connect()` so a fast browser redirect is not dropped.

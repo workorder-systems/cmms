@@ -2,6 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { OAuthTokenVerifier } from '@modelcontextprotocol/sdk/server/auth/provider.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import { buildAuthV1Issuer } from './oauth-metadata.js';
 
 function jwksUrlForProject(supabaseUrl: string): URL {
   const base = supabaseUrl.replace(/\/$/, '');
@@ -19,7 +20,7 @@ export function createSupabaseJwtVerifier(options: {
   /** When set, added to AuthInfo for RFC 8707-aware clients. */
   resource?: URL;
 }): OAuthTokenVerifier {
-  const issuer = `${new URL(options.supabaseUrl.replace(/\/$/, '')).origin}/auth/v1`;
+  const issuer = buildAuthV1Issuer(options.supabaseUrl);
   const JWKS = createRemoteJWKSet(jwksUrlForProject(options.supabaseUrl));
 
   return {
