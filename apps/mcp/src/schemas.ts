@@ -28,3 +28,18 @@ export const workOrdersCreateInputSchema = z.object({
 export type SetActiveTenantInput = z.infer<typeof setActiveTenantInputSchema>;
 export type WorkOrdersGetInput = z.infer<typeof workOrdersGetInputSchema>;
 export type WorkOrdersCreateInput = z.infer<typeof workOrdersCreateInputSchema>;
+
+/** Generic SDK invoke: operation_id from sdk_catalog; args validated per operation. */
+export const sdkInvokeInputSchema = z.object({
+  operation_id: z
+    .string()
+    .min(1)
+    .describe('Operation id from sdk_catalog (e.g. work_orders.list, tenant_context.set).'),
+  args: z
+    .record(z.unknown())
+    .optional()
+    .default({})
+    .describe('Arguments object; use {} for parameterless operations.'),
+});
+
+export type SdkInvokeInput = z.infer<typeof sdkInvokeInputSchema>;

@@ -219,12 +219,23 @@ Prefer **user-level** Cursor MCP settings for secrets so they are not committed.
 
 ---
 
-## Tools (MVP)
+## Tools
+
+### Full SDK via `sdk_catalog` + `sdk_invoke`
+
+| Tool | Purpose |
+|------|---------|
+| `sdk_catalog` | Lists every supported `operation_id`, description, MCP hints, and JSON Schema for `args` (snake_case; mirrors `@workorder-systems/sdk` parameter names). |
+| `sdk_invoke` | `{ "operation_id": "<id>", "args": { ... } }` — calls the matching `DbClient` method. Use `args: {}` for parameterless operations. Raw `client.supabase` is **not** exposed. |
+
+Coverage is aligned with the SDK: tenant context (`tenant_context.set` / `tenant_context.clear`), all resource namespaces (`work_orders.*`, `parts_inventory.*`, `labor.*`, …), and the same RLS/JWT rules as the REST API.
+
+### Convenience tools (same SDK underneath)
 
 | Tool | Purpose |
 |------|---------|
 | `tenants_list` | Organizations for the current user |
-| `set_active_tenant` | `rpc_set_tenant_context` |
+| `set_active_tenant` | `rpc_set_tenant_context` (with optional refresh in stdio mode) |
 | `work_orders_list` | List WOs for JWT tenant context |
 | `work_orders_get` | Get one WO by id |
 | `work_orders_create` | Create WO via `rpc_create_work_order` |

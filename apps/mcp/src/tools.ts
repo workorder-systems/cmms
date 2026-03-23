@@ -1,8 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { DbClient } from '@workorder-systems/sdk';
+import { jsonResult, jsonToolError, jsonToolTry } from './json-tool-result.js';
 import { MCP_SERVER_INSTRUCTIONS } from './mcp-instructions.js';
 import { MCP_PACKAGE_VERSION } from './server-version.js';
+import { registerSdkInvokeTools } from './sdk-invoke/register-sdk-invoke.js';
 import {
   setActiveTenantInputSchema,
   workOrdersCreateInputSchema,
@@ -15,39 +17,6 @@ const toolAnn = {
   writeTenantContext: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } satisfies ToolAnnotations,
   writeWorkOrder: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } satisfies ToolAnnotations,
 } as const;
-
-function jsonResult(data: unknown) {
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(data, null, 2),
-      },
-    ],
-  };
-}
-
-function jsonToolError(message: string) {
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify({ error: message }, null, 2),
-      },
-    ],
-    isError: true as const,
-  };
-}
-
-async function jsonToolTry<T>(fn: () => Promise<T>) {
-  try {
-    const data = await fn();
-    return jsonResult(data);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return jsonToolError(message);
-  }
-}
 
 export type RegisterToolsOptions = {
   /**
@@ -65,6 +34,8 @@ export function registerTools(
   getClient: () => Promise<DbClient>,
   options?: RegisterToolsOptions
 ): void {
+  registerSdkInvokeTools(server, getClient);
+
   server.registerTool(
     'tenants_list',
     {
@@ -185,7 +156,7 @@ export function createWorkOrderSystemsMcpServer(
       title: 'MCP',
       version: MCP_PACKAGE_VERSION,
       description:
-        'CMMS work orders and tenants via Supabase (JWT). Call tenants_list, then set_active_tenant before tenant-scoped tools; refresh OAuth or session after switching tenant so the JWT includes tenant_id.',
+        'CMMS via Supabase JWT: use tenants_list and set_active_tenant, refresh OAuth token for tenant_id, then sdk_catalog + sdk_invoke for full @workorder-systems/sdk coverage (explicit work order tools remain for convenience).',
     },
     {
       instructions: MCP_SERVER_INSTRUCTIONS,
