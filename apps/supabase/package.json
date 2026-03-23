@@ -8,6 +8,7 @@
     "stop": "supabase stop",
     "status": "supabase status",
     "reset": "supabase db reset",
+    "oauth:register-demo": "bash scripts/register-demo-oauth-client.sh",
     "functions": "supabase functions serve --env-file ../../.env.local --no-verify-jwt"
   }
 }

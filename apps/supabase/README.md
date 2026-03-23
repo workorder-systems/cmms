@@ -85,6 +85,32 @@ For **authenticated application users**:
 - **`authz.get_current_tenant_id()`** reads JWT claims (and may fall back to a session setting for RPC internals). **Do not** treat **`app.current_tenant_id`** or similar session context as the primary security boundary—**RLS** must tie access to **`auth.uid()`** and membership.
 - Local **`enable_confirmations = false`** makes sign-up practical for dev; see `config.toml` for auth-related toggles.
 
+### OAuth 2.1 server (third-party / MCP clients)
+
+Supabase Auth can act as an **OAuth 2.1 / OIDC provider** for partners, MCP tools, and first-party native clients. Local settings live under **`[auth.oauth_server]`** in **`config.toml`** (`enabled`, **`authorization_url_path`**, **`allow_dynamic_registration`**). Hosted projects mirror this in the dashboard (**Authentication → OAuth Server**).
+
+**Consent URL:** **`site_url`** + **`authorization_url_path`** (this repo defaults to **`http://localhost:3005`** + **`/oauth/consent`**). The in-repo Next.js app **`apps/oauth`** uses **`next dev -p 3005`**; **`[auth].site_url`** in **`config.toml`** must match that origin (restart Supabase after changes). Include **`http://127.0.0.1:3005`** in **`additional_redirect_urls`** if you open the app via `127.0.0.1`.
+
+**Local discovery / endpoints** (API port **`[api].port`**, default **54321**):
+
+| Endpoint | URL |
+|----------|-----|
+| Authorization | `http://127.0.0.1:54321/auth/v1/oauth/authorize` |
+| Token | `http://127.0.0.1:54321/auth/v1/oauth/token` |
+| JWKS | `http://127.0.0.1:54321/auth/v1/.well-known/jwks.json` |
+| OAuth AS metadata | `http://127.0.0.1:54321/auth/v1/.well-known/oauth-authorization-server` (some docs show a root `.well-known/.../auth/v1` path; use whichever your stack returns) |
+| OIDC discovery | `http://127.0.0.1:54321/auth/v1/.well-known/openid-configuration` |
+
+**Registering OAuth clients:** This repo keeps **`allow_dynamic_registration = true`**. Clients register without the service role via **`POST {api}/auth/v1/oauth/clients/register`** (the **`registration_endpoint`** in **`GET {api}/auth/v1/.well-known/oauth-authorization-server`**). MCP tools and the **`apps/oauth`** **Register demo OAuth client** button use that path only — **`apps/oauth`** does not use **`SUPABASE_SERVICE_ROLE_KEY`**. For automation or **`db reset`** you can still create clients with the Admin API / Dashboard / **`pnpm supabase:oauth-register-demo`** (service role or dashboard outside the Next app).
+
+**After `supabase db reset`:** OAuth clients are removed. Re-register from **`/demo`** in the browser, or run **`pnpm --filter work-order-systems-supabase oauth:register-demo`** and update **`apps/oauth/.env.local`** with the printed **`client_id`** / **`client_secret`**. **`invalid redirect_uri`** almost always means the **`redirect_uri`** on `/oauth/authorize` is not **exactly** listed on that client (including **`localhost` vs `127.0.0.1`** and port).
+
+**JWT signing and tunnels:** Prefer **asymmetric** signing (**`signing_keys_path`**) so consumers validate access tokens via JWKS; **OIDC `openid` scope / ID tokens require asymmetric keys** (not HS256). If you expose local Auth through a tunnel, set **`jwt_issuer`** under **`[auth]`** to the public issuer URL so metadata and JWT **`iss`** match (see the same guide).
+
+**Data API with OAuth access tokens:** Third-party and MCP clients use the **same** Supabase REST and RPC surface as first-party apps. Send **`Authorization: Bearer <access_token>`** and **`apikey: <anon key>`**. The JWT **`sub`** is **`auth.uid()`** for RLS; tenant-scoped views (e.g. **`public.v_work_orders`**, **`v_assets`**) still require **`tenant_id`** in the JWT (via **`custom_access_token_hook`**) or **`rpc_set_tenant_context`** followed by a token refresh — OAuth does not change that model.
+
+**RLS and `client_id`:** OAuth access tokens include **`client_id`**. OIDC scopes do **not** control Postgres access; use RLS (and optionally **`auth.jwt() ->> 'client_id'`**) to allow or deny specific clients for sensitive tables/RPCs. See [Token security & RLS](https://supabase.com/docs/guides/auth/oauth-server/token-security).
+
 ---
 
 ## Modules, plugins, integrations

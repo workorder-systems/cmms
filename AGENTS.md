@@ -10,6 +10,7 @@ This is a **pnpm** monorepo (**Turborepo**) for a multi-tenant CMMS **database l
 |-----------|------|---------|
 | Root (`database`) | `.` | Root Vitest suite (`tests/`), scripts, workspace orchestration |
 | Supabase | `apps/supabase` | Supabase CLI project: `config.toml`, SQL migrations, Edge Functions (`pnpm start` / `pnpm supabase:start`) |
+| OAuth consent | `apps/oauth` | Next.js OAuth 2.1 consent UI for Supabase Auth (`pnpm --filter work-order-systems-oauth dev`, port **3005**) |
 | Docs | `apps/docs` | Next.js documentation site (MDX) |
 | Plugins | `plugins/*` | Optional integration services (webhook receivers, connectors); not shipped as part of core `apps` |
 | Example | `plugins/example` | Minimal HTTP webhook receiver for testing `pg_net` plugin deliveries locally |
@@ -86,7 +87,8 @@ Ensure **Docker + Supabase** are available. If **`SUPABASE_URL`** and **`SUPABAS
 2. **Supabase** from the repository root: **`pnpm start`** or **`pnpm supabase:start`** (runs the `work-order-systems-supabase` workspace in `apps/supabase`). First cold start can take ~2 minutes; later starts are faster.
 3. **Environment**: put **`SUPABASE_URL`**, **`SUPABASE_ANON_KEY`**, and **`SUPABASE_SERVICE_ROLE_KEY`** in a **root** `.env.local` for Vitest (see `.env.example`). `tests/setup.ts` loads `.env.local` / `.env` explicitly. With local CLI defaults, the API URL is `http://127.0.0.1:54321`.
 4. **Dev servers**: `pnpm dev` runs every workspace **`dev`** script via Turborepo (e.g. SDK `tsup --watch`, docs Next.js, UI Storybook). Run one workspace only, for example:
-   - `pnpm --filter work-order-systems-docs dev` → Next.js (default **http://localhost:3000**)
+   - `pnpm --filter work-order-systems-oauth dev` → OAuth consent Next.js app (**http://localhost:3005**; **`NEXT_PUBLIC_*`** in **`apps/oauth/.env.local`**). **`/demo`** registration is **dynamic client registration** only; this app does not use the service role (root **`.env.local`** still uses **`SUPABASE_SERVICE_ROLE_KEY`** for Vitest and other tooling).
+   - `pnpm --filter work-order-systems-docs dev` → Next.js docs (default **http://localhost:3000**)
    - `pnpm --filter @workspace/ui dev` → Storybook (**http://localhost:6006**)
    - `pnpm --filter @workorder-systems/sdk dev` → SDK watch build
    - `pnpm --filter work-order-systems-example dev` → example webhook receiver (**http://127.0.0.1:8765**); for local Supabase Docker + `pg_net`, set installation `webhook_url` to `http://host.docker.internal:8765/webhook` (see `plugins/example/README.md`)

@@ -78,6 +78,8 @@ cd apps/supabase && supabase status
 
 You should see API URL (this repo defaults to **`http://127.0.0.1:54321`**) and DB connection info. Direct Postgres uses **`[db].port`** from `config.toml` (often **54332** here—not Supabase’s stock 54322). See [`apps/supabase/README.md`](apps/supabase/README.md#local-development).
 
+**OAuth 2.1 consent UI (optional):** with **`[auth.oauth_server].enabled`** in `apps/supabase/config.toml`, run the Next app **`pnpm --filter work-order-systems-oauth dev`** (port **3005**, matching **`site_url`**) and set **`NEXT_PUBLIC_SUPABASE_URL`** / **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** in **`apps/oauth/.env.local`** (see **`apps/oauth/.env.local.example`**). The **`/demo`** register button uses dynamic client registration only (no service role in this app). Details: [`apps/oauth/README.md`](apps/oauth/README.md) and [`apps/supabase/README.md`](apps/supabase/README.md#oauth-21-server-identity-provider).
+
 ## 7. Run the test suite
 
 In a **new terminal** (keep Docker/Supabase running):
