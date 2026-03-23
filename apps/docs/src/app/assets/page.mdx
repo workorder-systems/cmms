@@ -8,6 +8,7 @@ export const sections = [
   { title: 'Get by ID', id: 'get-by-id' },
   { title: 'Lifecycle fields', id: 'lifecycle-fields' },
   { title: 'Warranties (multi-row)', id: 'warranties' },
+  { title: 'Barcode and scan resolution', id: 'barcode-scan' },
   { title: 'Create asset', id: 'create-asset' },
   { title: 'Update asset', id: 'update-asset' },
   { title: 'Delete asset', id: 'delete-asset' },
@@ -19,6 +20,10 @@ Lists and gets assets for the current tenant; create, update, delete. Set tenant
 
 <Note>
   **Downtime / availability:** use **`client.assets.recordDowntime()`** for structured outage events — see [Asset downtime](/asset-downtime).
+</Note>
+
+<Note>
+  **Barcodes / QR payloads:** optional **`barcode`** on create/update and **`client.assets.resolveByScanCode()`** — see [Floor ops and scanning](/floor-ops-scanning).
 </Note>
 
 ## List assets
@@ -84,6 +89,10 @@ const warrantyId = await client.assets.upsertWarranty({
 
 More context: [Capability inventory — Warranty](/capability-inventory#warranty).
 
+## Barcode and scan resolution
+
+Optional **`barcode`** (unique per tenant when set) is separate from **`assetNumber`**. After a scan, call **`client.assets.resolveByScanCode(tenantId, text)`** (or **`rpc_resolve_asset_by_scan_code`**) to get an asset id: matches **barcode** first, then **asset_number**. See [Floor ops and scanning](/floor-ops-scanning).
+
 ## Create asset
 
 Create a new asset. Returns the new asset UUID.
@@ -96,6 +105,7 @@ const assetId = await client.assets.create({
   name: 'HVAC Unit 3B',
   description: 'Main floor HVAC',
   assetNumber: 'AST-003',
+  barcode: '4006381333931', // optional; unique per tenant when set
   locationId: 'uuid-of-location',
   departmentId: 'uuid-of-department',
   status: 'active',
@@ -117,6 +127,9 @@ const assetId = await client.assets.create({
   </Property>
   <Property name="assetNumber">
     Optional. Asset number or code.
+  </Property>
+  <Property name="barcode">
+    Optional. Scannable id (unique per tenant when set). See [Floor ops and scanning](/floor-ops-scanning).
   </Property>
   <Property name="locationId">
     Optional. Location UUID.

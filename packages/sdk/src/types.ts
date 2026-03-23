@@ -24,6 +24,7 @@ import type { MobileFieldResource } from './resources/mobile-field.js';
 import type { MapZonesResource } from './resources/map-zones.js';
 import type { FieldOperationsResource } from './resources/field-operations.js';
 import type { IntegrationsResource } from './resources/integrations.js';
+import type { NotificationsResource } from './resources/notifications.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -101,4 +102,6 @@ export type DbClient = {
   fieldOps: FieldOperationsResource;
   /** ERP-style external id mappings and outbound integration event queue (`integration.manage`). */
   integrations: IntegrationsResource;
+  /** In-app notifications: list, mark read, preferences (`notification.read`, `notification.preference.manage`). */
+  notifications: NotificationsResource;
 };

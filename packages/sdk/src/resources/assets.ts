@@ -15,6 +15,8 @@ export interface CreateAssetParams {
   name: string;
   description?: string | null;
   assetNumber?: string | null;
+  /** Optional scannable id (unique per tenant when set). */
+  barcode?: string | null;
   locationId?: string | null;
   departmentId?: string | null;
   status?: string;
@@ -26,6 +28,8 @@ export interface UpdateAssetParams {
   name?: string | null;
   description?: string | null;
   assetNumber?: string | null;
+  /** Set to empty string to clear barcode; omit or null to leave unchanged. */
+  barcode?: string | null;
   locationId?: string | null;
   departmentId?: string | null;
   status?: string | null;
@@ -127,10 +131,11 @@ export function createAssetsResource(supabase: SupabaseClient<Database>) {
         p_location_id: params.locationId ?? null,
         p_department_id: params.departmentId ?? null,
         p_status: params.status ?? 'active',
+        p_barcode: params.barcode ?? null,
       });
     },
     async update(params: UpdateAssetParams): Promise<void> {
-      return callRpc(rpc(supabase), 'rpc_update_asset', {
+      await callRpc(rpc(supabase), 'rpc_update_asset', {
         p_tenant_id: params.tenantId,
         p_asset_id: params.assetId,
         p_name: params.name ?? null,
@@ -139,7 +144,20 @@ export function createAssetsResource(supabase: SupabaseClient<Database>) {
         p_location_id: params.locationId ?? null,
         p_department_id: params.departmentId ?? null,
         p_status: params.status ?? null,
+        p_barcode: params.barcode !== undefined ? params.barcode : null,
       });
+    },
+
+    /**
+     * Resolve a scanned code to an asset id (barcode column, then asset_number). Requires `asset.view`.
+     * Returns null if not found.
+     */
+    async resolveByScanCode(tenantId: string, code: string): Promise<string | null> {
+      const id = await callRpc<string | null>(rpc(supabase), 'rpc_resolve_asset_by_scan_code', {
+        p_tenant_id: tenantId,
+        p_code: code,
+      });
+      return id;
     },
     async delete(tenantId: string, assetId: string): Promise<void> {
       return callRpc(rpc(supabase), 'rpc_delete_asset', { p_tenant_id: tenantId, p_asset_id: assetId });

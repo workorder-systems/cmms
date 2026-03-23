@@ -46,7 +46,7 @@ const id = await client.workOrders.create({
 |----------|-------|--------|
 | `tenants` | `list()`, `getById()` | `create()`, `inviteUser()`, `assignRole()`, `removeMember()` |
 | `workOrders` | `list()`, `getById()`, `listAttachments(workOrderId)`, `listMyRequests()`, `listSlaStatus()`, `getSlaStatus(workOrderId)` | `create()`, `createRequest()` (portal), `acknowledge()`, `upsertSlaRule()`, `transitionStatus()`, `complete()`, `logTime()`, `updateAttachmentMetadata()` |
-| `assets` | `list()`, `getById()`, `listWarranties(assetId?)` | `create()`, `update()`, `delete()`, `bulkImport()`, `upsertWarranty()`, `recordDowntime()` |
+| `assets` | `list()`, `getById()`, `listWarranties(assetId?)`, `resolveByScanCode()` | `create()`, `update()`, `delete()`, `bulkImport()`, `upsertWarranty()`, `recordDowntime()` |
 | `fieldOps` | `listTools()`, `listToolCheckouts()`, `listShiftHandovers()` | `createTool()`, `updateTool()`, `checkoutTool()`, `returnTool()`, `createShiftHandover()`, `submitShiftHandover()`, `acknowledgeShiftHandover()`, `addShiftHandoverItem()` |
 | `locations` | `list()`, `getById()` | `create()`, `update()`, `delete()`, `bulkImport()` |
 | `spaces` | `list()`, `getById()` | `create()`, `update()`, `delete()` |
@@ -62,13 +62,14 @@ const id = await client.workOrders.create({
 | `labor` | technicians, crews, skills, shifts, assignments, capacity, conflicts | create/update technicians and related entities; scheduling helpers |
 | `scheduling` | schedule blocks, validation issues | `scheduleWorkOrder()`, `updateScheduleBlock()`, `validateSchedule()`, unschedule |
 | `costs` | WO/asset/location/department/project costs, lifecycle alerts | `costRollup()`, `assetLifecycleAlerts()`, `assetTotalCostOfOwnership()` |
-| `projects` | `list()`, `getById()` | — (read-only) |
-| `partsInventory` | parts, stock, suppliers, reservations, POs | reserve/issue parts, receive PO, create parts/suppliers/POs (see resource types) |
+| `projects` | `list()`, `getById()` | `create()`, `update()`, `delete()` (`project.manage`) |
+| `notifications` | `list()`, `listForTenant()` | `markRead()`, `upsertPreference()` |
+| `partsInventory` | parts, stock, suppliers, reservations, POs, `resolvePartByScanCode()` | reserve/issue parts, receive PO, create parts/suppliers/POs (see resource types) |
 | `safetyCompliance` | inspections, incidents, history/report views | create/update templates, runs, incidents, actions |
 | `mobile` | `sync()`, mobile list views | `startWorkOrder()`, `stopWorkOrder()`, `addWorkOrderNote()`, `registerWorkOrderAttachment()` |
 | `mapZones` | `list()`, `getById()` | `create()`, `update()`, `delete()` |
 
-**Not wrapped as a resource yet (fully typed on `client.supabase`):** in-app **notifications** — query `v_my_notifications` or call `rpc_list_my_notifications`, `rpc_mark_notifications_read`, `rpc_upsert_notification_preference`. Server automation uses `rpc_process_due_notifications` (service role / scheduled jobs). See the docs site **Notifications** page.
+Server-side notification delivery uses **`rpc_process_due_notifications`** (service role / scheduled jobs only)—not exposed on `client.notifications`. See the docs site **Notifications** page.
 
 All resource methods throw `SdkError` (with `code`, `message`, `details`, `hint`) on failure. Success returns typed data.
 
@@ -76,7 +77,7 @@ All resource methods throw `SdkError` (with `code`, `message`, `details`, `hint`
 
 - **Assets** (`client.assets.list()` / `getById()`): Rows include lifecycle fields — `commissioned_at`, `end_of_life_estimate`, `decommissioned_at`, `replaced_by_asset_id`, `replacement_of_asset_id`, `warranty_expires_at`, `service_contract_expires_at`, `planned_replacement_date`.
 - **Costs** (`client.costs`): Work order costs (labor, parts, vendor), roll-ups by asset/location/department/project, lifecycle alerts (warranty, EOL, contract, replacement), and `costRollup()`, `assetLifecycleAlerts()`, `assetTotalCostOfOwnership()` RPCs for reporting.
-- **Projects** (`client.projects.list()` / `getById()`): Read-only list of projects for the tenant; use `projectId` in `workOrders.create()` to link work orders to projects for cost roll-up.
+- **Projects** (`client.projects`): List, get, create, update, and delete projects (`project.manage` for writes); use `projectId` in `workOrders.create()` to link work orders to projects for cost roll-up.
 - **Work orders**: `CreateWorkOrderParams.projectId` optional when creating a work order.
 
 ## Options (runtime-specific)

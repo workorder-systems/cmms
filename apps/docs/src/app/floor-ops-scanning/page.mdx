@@ -1,0 +1,106 @@
+export const metadata = {
+  title: 'Floor ops and scanning',
+  description:
+    'Barcode fields on assets and parts, resolve RPCs after a scan, QR URL encoding, and signatures in attachments.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Asset and part barcodes', id: 'barcodes' },
+  { title: 'Resolve after scan', id: 'resolve' },
+  { title: 'QR codes and deep links', id: 'qr' },
+  { title: 'Signatures and scans as attachments', id: 'attachments' },
+]
+
+# Floor ops and scanning
+
+Use optional **`barcode`** values on **assets** and **parts** for labels that differ from **`asset_number`** / **`part_number`** (vendor stickers, QR payloads, etc.). **`client.assets.resolveByScanCode`** and **`client.partsInventory.resolvePartByScanCode`** map a single scanned string to an entity id using a **fixed resolution order** enforced in the database. {{ className: 'lead' }}
+
+## Overview
+
+| Entity | Storage | Resolution order (`rpc_resolve_*_by_scan_code`) |
+|--------|---------|--------------------------------------------------|
+| **Asset** | `app.assets.barcode` (optional, unique per tenant) | 1) `barcode` 2) `asset_number` |
+| **Part** | `app.parts.barcode` (optional, unique per tenant) | 1) `barcode` 2) `part_number` 3) `external_id` |
+
+Rows also appear on **`v_assets`**, **`v_parts`**, **`v_parts_with_stock`**, and **`v_mobile_assets`** (barcode is the **last** column on those views for backward-compatible column order).
+
+## Asset and part barcodes
+
+Set **`barcode`** on create/update via the SDK (or `rpc_create_asset` / `rpc_update_asset` / `rpc_create_part` / `rpc_update_part`). To **clear** a barcode, pass an **empty string** on update (`p_barcode: ''`).
+
+<CodeGroup title="Create asset with barcode">
+
+```ts
+const assetId = await client.assets.create({
+  tenantId,
+  name: 'Pump 12',
+  barcode: '4006381333931',
+})
+```
+
+</CodeGroup>
+
+<CodeGroup title="Create part with barcode">
+
+```ts
+const partId = await client.partsInventory.createPart({
+  tenantId,
+  partNumber: 'SKU-100',
+  barcode: '5901234123457',
+})
+```
+
+</CodeGroup>
+
+## Resolve after scan
+
+Trimming is applied inside the RPC. **`null`** is returned when nothing matches (your UI can show “unknown code”).
+
+<CodeGroup title="Resolve asset">
+
+```ts
+const assetId = await client.assets.resolveByScanCode(tenantId, scannedText)
+if (assetId) {
+  // navigate to asset or pre-fill work order
+}
+```
+
+</CodeGroup>
+
+<CodeGroup title="Resolve part">
+
+```ts
+const partId = await client.partsInventory.resolvePartByScanCode(tenantId, scannedText)
+```
+
+</CodeGroup>
+
+Permissions: **`asset.view`** and **`part.view`** respectively.
+
+Equivalent RPCs: **`rpc_resolve_asset_by_scan_code`**, **`rpc_resolve_part_by_scan_code`**.
+
+## QR codes and deep links
+
+The database does **not** generate QR images. Typical product patterns:
+
+- Encode a **URL** your SPA understands, e.g. `https://app.example.com/t/{tenantSlug}/a/{assetId}` or a signed token that maps server-side to an asset.
+- Or encode the **same string** you store in **`barcode`** and use **`resolveByScanCode`** after scan.
+
+Camera UI, label printing, and Storybook demos live in your app or **`@workspace/ui`**—not in this API repo.
+
+## Signatures and scans as attachments
+
+Work order (and other) attachments support a free-form **`kind`** (e.g. **`signature`**, **`scan`**). See [Mobile field](/mobile-field) for **`registerWorkOrderAttachment`** and Storage paths.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <Button href="/assets" variant="text" arrow="right">
+    <>Assets</>
+  </Button>
+  <Button href="/parts-inventory" variant="text" arrow="right">
+    <>Parts & inventory</>
+  </Button>
+  <Button href="/mobile-field" variant="text" arrow="right">
+    <>Mobile field</>
+  </Button>
+</div>

@@ -283,6 +283,8 @@ export interface CreatePartParams {
   unit?: string;
   preferredSupplierId?: string | null;
   externalId?: string | null;
+  /** Optional scannable id (unique per tenant when set). */
+  barcode?: string | null;
   reorderPoint?: number | null;
   minQuantity?: number | null;
   maxQuantity?: number | null;
@@ -299,6 +301,8 @@ export interface UpdatePartParams {
   unit?: string | null;
   preferredSupplierId?: string | null;
   externalId?: string | null;
+  /** Set to empty string to clear barcode; omit or null to leave unchanged. */
+  barcode?: string | null;
   reorderPoint?: number | null;
   minQuantity?: number | null;
   maxQuantity?: number | null;
@@ -617,12 +621,13 @@ export function createPartsInventoryResource(supabase: SupabaseClient<Database>)
         p_min_quantity: params.minQuantity ?? null,
         p_max_quantity: params.maxQuantity ?? null,
         p_lead_time_days: params.leadTimeDays ?? null,
+        p_barcode: params.barcode ?? null,
       });
     },
 
     /** Update a part. */
     async updatePart(params: UpdatePartParams): Promise<void> {
-      return callRpc<void>(rpc(supabase), 'rpc_update_part', {
+      await callRpc(rpc(supabase), 'rpc_update_part', {
         p_tenant_id: params.tenantId,
         p_part_id: params.partId,
         p_part_number: params.partNumber ?? null,
@@ -636,7 +641,20 @@ export function createPartsInventoryResource(supabase: SupabaseClient<Database>)
         p_max_quantity: params.maxQuantity ?? null,
         p_lead_time_days: params.leadTimeDays ?? null,
         p_is_active: params.isActive ?? null,
+        p_barcode: params.barcode !== undefined ? params.barcode : null,
       });
+    },
+
+    /**
+     * Resolve a scanned code to a part id (barcode, then part_number, then external_id). Requires `part.view`.
+     * Returns null if not found.
+     */
+    async resolvePartByScanCode(tenantId: string, code: string): Promise<string | null> {
+      const id = await callRpc<string | null>(rpc(supabase), 'rpc_resolve_part_by_scan_code', {
+        p_tenant_id: tenantId,
+        p_code: code,
+      });
+      return id;
     },
 
     /** Create a supplier. Returns supplier id. */

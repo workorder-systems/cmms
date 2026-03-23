@@ -26,6 +26,7 @@ describe('SDK', () => {
       expect(sdk.workOrders).toBeDefined();
       expect(sdk.fieldOps).toBeDefined();
       expect(sdk.integrations).toBeDefined();
+      expect(sdk.notifications).toBeDefined();
       expect(typeof sdk.setTenant).toBe('function');
       expect(typeof sdk.clearTenant).toBe('function');
     });
@@ -205,6 +206,27 @@ describe('SDK', () => {
     });
   });
 
+  describe('notifications resource', () => {
+    it('list and listForTenant return arrays when authenticated', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const fromView = await sdk.notifications.list({ limit: 10 });
+      expect(Array.isArray(fromView)).toBe(true);
+      const fromRpc = await sdk.notifications.listForTenant(tenantId, 10);
+      expect(Array.isArray(fromRpc)).toBe(true);
+    });
+
+    it('upsertPreference completes without error', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      await expect(
+        sdk.notifications.upsertPreference({
+          tenantId,
+          eventKey: 'work_order.assigned',
+          channelInApp: true,
+        })
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('integrations resource', () => {
     it('upsertExternalId and listExternalIds', async () => {
       const { tenantId } = await withAuthenticatedTenant(sdk);
@@ -227,6 +249,17 @@ describe('SDK', () => {
   });
 
   describe('partsInventory contracts', () => {
+    it('resolvePartByScanCode returns part id', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const partId = await sdk.partsInventory.createPart({
+        tenantId,
+        partNumber: 'SDK-PN-1',
+        barcode: 'SDK-P-BAR',
+      });
+      const resolved = await sdk.partsInventory.resolvePartByScanCode(tenantId, 'SDK-P-BAR');
+      expect(resolved).toBe(partId);
+    });
+
     it('createSupplierContract and listSupplierContracts', async () => {
       const { tenantId } = await withAuthenticatedTenant(sdk);
       const supplierId = await sdk.partsInventory.createSupplier({
@@ -259,6 +292,19 @@ describe('SDK', () => {
       });
       expect(typeof eventId).toBe('string');
       expect(eventId.length).toBeGreaterThan(10);
+    });
+
+    it('resolveByScanCode returns asset id for barcode', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK scan asset',
+        barcode: 'SDK-BAR-1',
+      });
+      const resolved = await sdk.assets.resolveByScanCode(tenantId, 'SDK-BAR-1');
+      expect(resolved).toBe(assetId);
+      const missing = await sdk.assets.resolveByScanCode(tenantId, 'nope');
+      expect(missing).toBeNull();
     });
 
     it('upsertWarranty and listWarranties', async () => {

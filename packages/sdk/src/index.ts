@@ -200,6 +200,13 @@ export type {
   AuditResource,
 } from './resources/audit.js';
 export type {
+  MyNotificationRow,
+  ListMyNotificationsOptions,
+  MarkNotificationsReadParams,
+  UpsertNotificationPreferenceParams,
+  NotificationsResource,
+} from './resources/notifications.js';
+export type {
   TenantApiKeyRow,
   CreateTenantApiKeyResult,
   TenantApiKeysResource,

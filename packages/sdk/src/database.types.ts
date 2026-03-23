@@ -547,6 +547,7 @@ export type Database = {
       v_assets: {
         Row: {
           asset_number: string | null
+          barcode: string | null
           commissioned_at: string | null
           created_at: string | null
           decommissioned_at: string | null
@@ -567,6 +568,7 @@ export type Database = {
         }
         Insert: {
           asset_number?: string | null
+          barcode?: string | null
           commissioned_at?: string | null
           created_at?: string | null
           decommissioned_at?: string | null
@@ -587,6 +589,7 @@ export type Database = {
         }
         Update: {
           asset_number?: string | null
+          barcode?: string | null
           commissioned_at?: string | null
           created_at?: string | null
           decommissioned_at?: string | null
@@ -3652,6 +3655,7 @@ export type Database = {
       v_mobile_assets: {
         Row: {
           asset_number: string | null
+          barcode: string | null
           id: string | null
           location_id: string | null
           name: string | null
@@ -3661,6 +3665,7 @@ export type Database = {
         }
         Insert: {
           asset_number?: string | null
+          barcode?: string | null
           id?: string | null
           location_id?: string | null
           name?: string | null
@@ -3670,6 +3675,7 @@ export type Database = {
         }
         Update: {
           asset_number?: string | null
+          barcode?: string | null
           id?: string | null
           location_id?: string | null
           name?: string | null
@@ -5385,6 +5391,7 @@ export type Database = {
       }
       v_parts: {
         Row: {
+          barcode: string | null
           created_at: string | null
           description: string | null
           external_id: string | null
@@ -5402,6 +5409,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          barcode?: string | null
           created_at?: string | null
           description?: string | null
           external_id?: string | null
@@ -5419,6 +5427,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          barcode?: string | null
           created_at?: string | null
           description?: string | null
           external_id?: string | null
@@ -10650,6 +10659,7 @@ export type Database = {
       rpc_create_asset: {
         Args: {
           p_asset_number?: string
+          p_barcode?: string
           p_department_id?: string
           p_description?: string
           p_location_id?: string
@@ -10801,6 +10811,7 @@ export type Database = {
       }
       rpc_create_part: {
         Args: {
+          p_barcode?: string
           p_description?: string
           p_external_id?: string
           p_lead_time_days?: number
@@ -11310,6 +11321,14 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_resolve_asset_by_scan_code: {
+        Args: { p_code: string; p_tenant_id: string }
+        Returns: string
+      }
+      rpc_resolve_part_by_scan_code: {
+        Args: { p_code: string; p_tenant_id: string }
+        Returns: string
+      }
       rpc_return_tool: {
         Args: { p_checkout_id: string; p_tenant_id: string }
         Returns: undefined
@@ -11424,6 +11443,7 @@ export type Database = {
         Args: {
           p_asset_id: string
           p_asset_number?: string
+          p_barcode?: string
           p_department_id?: string
           p_description?: string
           p_location_id?: string
@@ -11573,6 +11593,7 @@ export type Database = {
       }
       rpc_update_part: {
         Args: {
+          p_barcode?: string
           p_description?: string
           p_external_id?: string
           p_is_active?: boolean

@@ -8,6 +8,7 @@ export const sections = [
   { title: 'Vendors and contractors', id: 'vendors-contractors' },
   { title: 'Warranty tracking', id: 'warranty' },
   { title: 'Documents and attachments', id: 'documents' },
+  { title: 'Barcodes and scan resolution', id: 'barcodes' },
   { title: 'Tools and equipment', id: 'tools' },
   { title: 'Shift handover / logbook', id: 'handover' },
   { title: 'Work order labor assignment', id: 'labor-assignment' },
@@ -15,7 +16,7 @@ export const sections = [
 
 # Capability inventory
 
-This page answers **“is that in the platform?”** for areas that are easy to confuse with gaps. The **schema** is authoritative; **SDK** and **docs** catch up over time — use **`client.supabase`** for any typed RPC/view not yet wrapped on `client.*`. {{ className: 'lead' }}
+This page answers **“is that in the platform?”** for areas that are easy to confuse with gaps. The **schema** is authoritative; **SDK** and **docs** catch up over time — use **`client.supabase`** for any typed RPC/view not yet wrapped on `client.*` (most domains have a **`client.*`** resource). {{ className: 'lead' }}
 
 ## Vendors and contractors
 
@@ -40,6 +41,14 @@ See also [Parts & inventory](/parts-inventory).
 **Gap vs strict “controlled document” systems:** no automatic revision chains, approvals, or obsolescence workflow in-app — you model discipline in **`revision_label`** / process, or extend later.
 
 See [Work orders → Attachments](/work-orders) and migration `cmms_core_docs_tools_handover`.
+
+## Barcodes and scan resolution
+
+**In the database:** optional **`barcode`** on **`app.assets`** and **`app.parts`** (unique per tenant when set), plus **`rpc_resolve_asset_by_scan_code`** and **`rpc_resolve_part_by_scan_code`** (match **barcode**, then **asset_number** / **part_number** / **external_id** for parts). Exposed on **`v_assets`**, **`v_parts`**, **`v_parts_with_stock`**, **`v_mobile_assets`**.
+
+**SDK:** **`client.assets`** (`barcode` on create/update, **`resolveByScanCode`**), **`client.partsInventory`** (`barcode` on create/update, **`resolvePartByScanCode`**).
+
+**QR / camera UI** is your app or design system (e.g. **`@workspace/ui`**); the API stores and resolves the **payload string**. See [Floor ops and scanning](/floor-ops-scanning).
 
 ## Tools and equipment
 

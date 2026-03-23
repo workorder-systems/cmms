@@ -275,6 +275,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Spaces', href: '/spaces' },
       { title: 'Assets', href: '/assets' },
       { title: 'Asset downtime', href: '/asset-downtime' },
+      { title: 'Floor ops and scanning', href: '/floor-ops-scanning' },
     ],
   },
   {

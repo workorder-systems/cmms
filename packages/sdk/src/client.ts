@@ -27,6 +27,7 @@ import { createMobileFieldResource } from './resources/mobile-field.js';
 import { createMapZonesResource } from './resources/map-zones.js';
 import { createFieldOperationsResource } from './resources/field-operations.js';
 import { createIntegrationsResource } from './resources/integrations.js';
+import { createNotificationsResource } from './resources/notifications.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -96,6 +97,7 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     mapZones: createMapZonesResource(supabase),
     fieldOps: createFieldOperationsResource(supabase),
     integrations: createIntegrationsResource(supabase),
+    notifications: createNotificationsResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',
