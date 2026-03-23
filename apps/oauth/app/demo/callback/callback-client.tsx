@@ -130,7 +130,7 @@ export function DemoCallbackClient() {
   if (emptyVisit) {
     return (
       <OauthFrame wide>
-        <h1 className="oauth-title" style={{ marginBottom: 8 }}>
+        <h1 className="oauth-title oauth-title-compact">
           Nothing to do here
         </h1>
         <p className="oauth-muted">
@@ -148,7 +148,7 @@ export function DemoCallbackClient() {
     <OauthFrame wide>
       {showError ? (
         <>
-          <h1 className="oauth-title" style={{ marginBottom: 12 }}>
+          <h1 className="oauth-title oauth-title-loose">
             Couldn&apos;t finish
           </h1>
           <p className="oauth-error" role="alert">
@@ -159,7 +159,7 @@ export function DemoCallbackClient() {
 
       {bootstrapping ? (
         <>
-          <h1 className="oauth-title" style={{ marginBottom: 8 }}>
+          <h1 className="oauth-title oauth-title-compact">
             Finishing up…
           </h1>
           <p className="oauth-muted">Securely completing sign-in.</p>
@@ -171,10 +171,10 @@ export function DemoCallbackClient() {
           <div className="oauth-success-icon" aria-hidden>
             <IconCheck />
           </div>
-          <h1 className="oauth-title" style={{ marginBottom: 8 }}>
+          <h1 className="oauth-title oauth-title-compact">
             Demo complete
           </h1>
-          <p className="oauth-muted" style={{ marginBottom: 16 }}>
+          <p className="oauth-muted oauth-muted-wide">
             Token response (development only):
           </p>
           <pre className="oauth-pre">{JSON.stringify(exchange.body, null, 2)}</pre>
@@ -186,7 +186,7 @@ export function DemoCallbackClient() {
           <div className="oauth-success-icon" aria-hidden>
             <IconCheck />
           </div>
-          <h1 className="oauth-title" style={{ marginBottom: 8 }}>
+          <h1 className="oauth-title oauth-title-compact">
             You&apos;re connected
           </h1>
           <p className="oauth-muted">

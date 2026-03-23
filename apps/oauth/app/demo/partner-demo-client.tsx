@@ -104,10 +104,10 @@ export function PartnerDemoClient() {
 
   return (
     <OauthFrame wide>
-      <h1 className="oauth-title" style={{ marginBottom: 8 }}>
+      <h1 className="oauth-title oauth-title-compact">
         Developer demo
       </h1>
-      <p className="oauth-subtitle" style={{ marginBottom: 24 }}>
+      <p className="oauth-subtitle oauth-subtitle-wide">
         Run a sample OAuth flow against your Supabase project.
       </p>
 
@@ -117,7 +117,7 @@ export function PartnerDemoClient() {
 
       {showRegisterControls ? (
         <div className="oauth-demo-section">
-          <p className="oauth-muted" style={{ marginBottom: 12 }}>
+          <p className="oauth-muted oauth-muted-compact">
             {needsRegistration
               ? "No client configured for this browser yet."
               : "Need a fresh test client?"}
@@ -131,12 +131,12 @@ export function PartnerDemoClient() {
             {registerBusy ? "Working…" : "Create test client"}
           </button>
           {registerMessage ? (
-            <p className="oauth-error" role="alert" style={{ marginTop: 12 }}>
+            <p className="oauth-error oauth-space-top-sm" role="alert">
               {registerMessage}
             </p>
           ) : null}
           {!isDevelopment && needsRegistration ? (
-            <p className="oauth-demo-meta" style={{ marginTop: 12 }}>
+            <p className="oauth-demo-meta oauth-space-top-sm">
               Or set <code>NEXT_PUBLIC_DEMO_OAUTH_CLIENT_ID</code> in your environment.
             </p>
           ) : null}
@@ -172,7 +172,7 @@ export function PartnerDemoClient() {
               {busy ? "Redirecting…" : "Continue with OAuth"}
             </button>
           </div>
-          <details className="oauth-advanced" style={{ marginTop: 20 }}>
+          <details className="oauth-advanced oauth-space-top-md">
             <summary>Connection details</summary>
             <p className="oauth-demo-meta">
               <strong>Authorize</strong>

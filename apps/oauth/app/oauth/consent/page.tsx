@@ -24,7 +24,7 @@ export default async function OAuthConsentPage({
           The authorization link is missing details. Open the app or service you
           were using and start the connection again.
         </p>
-        <div className="oauth-links-row" style={{ marginTop: 20 }}>
+        <div className="oauth-links-row oauth-space-top-md">
           <Link href="/">Back to account access</Link>
         </div>
       </OauthFrame>
@@ -58,17 +58,14 @@ export default async function OAuthConsentPage({
           Start a new connection from the app you were using. If this keeps
           happening, try signing out and signing in again.
         </p>
-        <div className="oauth-links-row" style={{ marginTop: 16 }}>
+        <div className="oauth-links-row oauth-space-top-sm">
           <Link href="/login">Sign in</Link>
           <Link href="/">Home</Link>
         </div>
         {isDev ? (
-          <details className="oauth-advanced" style={{ marginTop: 16 }}>
+          <details className="oauth-advanced oauth-space-top-sm">
             <summary>Developer details</summary>
-            <pre
-              className="mono-inline"
-              style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-            >
+            <pre className="mono-inline oauth-pre-wrap">
               {result.error}
             </pre>
           </details>

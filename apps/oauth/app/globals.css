@@ -459,6 +459,39 @@ main.oauth-card:focus:not(:focus-visible) {
   margin-bottom: 1.5rem;
 }
 
+.oauth-subtitle-wide {
+  margin-bottom: 1.5rem;
+}
+
+.oauth-title-compact {
+  margin-bottom: 0.5rem;
+}
+
+.oauth-title-loose {
+  margin-bottom: 0.75rem;
+}
+
+.oauth-muted-compact {
+  margin-bottom: 0.75rem;
+}
+
+.oauth-muted-wide {
+  margin-bottom: 1rem;
+}
+
+.oauth-space-top-sm {
+  margin-top: 0.75rem;
+}
+
+.oauth-space-top-md {
+  margin-top: 1rem;
+}
+
+.oauth-pre-wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .oauth-inline-alert {
   margin: 0 0 1rem;
   padding: 0.625rem 0.75rem;
