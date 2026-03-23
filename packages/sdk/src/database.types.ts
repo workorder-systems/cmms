@@ -11311,6 +11311,10 @@ export type Database = {
         Args: { p_line_id: string; p_tenant_id: string }
         Returns: undefined
       }
+      rpc_replace_oauth_client_tenant_grants: {
+        Args: { p_oauth_client_id: string; p_tenant_ids: string[] }
+        Returns: undefined
+      }
       rpc_reserve_parts: {
         Args: {
           p_inventory_location_id?: string
