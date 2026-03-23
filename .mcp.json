@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "work-order-systems": {
+    "mcp": {
       "type": "http",
       "url": "${WORKORDER_SYSTEMS_MCP_URL:-http://127.0.0.1:3765/mcp}"
     }

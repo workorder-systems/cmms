@@ -35,7 +35,7 @@
     "test:teardown": "pnpm supabase:stop",
     "test:reset": "pnpm supabase:reset && pnpm test",
     "gen-types": "bash packages/sdk/scripts/gen-types.sh",
-    "mcp:work-order-systems": "pnpm --filter work-order-systems-mcp build && pnpm --filter work-order-systems-mcp start"
+    "mcp": "pnpm --filter mcp build && pnpm --filter mcp start"
   },
   "keywords": [
     "supabase",

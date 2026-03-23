@@ -3,10 +3,10 @@
     "supabase": {
       "url": "http://127.0.0.1:54321/mcp"
     },
-    "workorder": {
+    "mcp": {
       "command": "node",
       "args": [
-        "${workspaceFolder}/apps/work-order-systems-mcp/node_modules/mcp-remote/dist/proxy.js",
+        "${workspaceFolder}/apps/mcp/node_modules/mcp-remote/dist/proxy.js",
         "http://127.0.0.1:3765/mcp",
         "9876",
         "--host",

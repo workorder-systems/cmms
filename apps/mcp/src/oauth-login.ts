@@ -4,8 +4,8 @@
  * on a local loopback server, exchanges the code, prints access + refresh tokens (optional: stdio MCP / scripts).
  *
  * Usage (from repo root or this app directory):
- *   node --env-file=apps/work-order-systems-mcp/.env.local apps/work-order-systems-mcp/dist/oauth-login.js
- *   pnpm --filter work-order-systems-mcp mcp:oauth-login
+ *   node --env-file=apps/mcp/.env.local apps/mcp/dist/oauth-login.js
+ *   pnpm --filter mcp mcp:oauth-login
  *
  * Requires: SUPABASE_URL, SUPABASE_ANON_KEY
  */
@@ -58,7 +58,7 @@ async function registerClient(params: {
       apikey: params.anonKey,
     },
     body: JSON.stringify({
-      client_name: 'work-order-systems-mcp-login',
+      client_name: 'mcp-login',
       redirect_uris: params.redirectUris,
       client_type: 'confidential',
       token_endpoint_auth_method: 'client_secret_post',
@@ -227,7 +227,7 @@ async function main(): Promise<void> {
   }
 
   console.log('');
-  console.log('Paste into .cursor/mcp.json → work-order-systems → env (or export before starting MCP):');
+  console.log('Paste into .cursor/mcp.json → mcp → env (or export before starting MCP):');
   console.log('');
   console.log(`WORKORDER_SYSTEMS_ACCESS_TOKEN=${tokens.access_token}`);
   if (tokens.refresh_token) {

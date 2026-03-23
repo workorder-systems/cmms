@@ -2,7 +2,7 @@
  * Server `instructions` sent to MCP clients on initialize (helps agents use tools correctly).
  */
 export const MCP_SERVER_INSTRUCTIONS = `
-Work Order Systems (CMMS) over Supabase.
+CMMS work orders and tenants over Supabase.
 
 Typical flow:
 1. Call tenants_list to see organizations the user can access.

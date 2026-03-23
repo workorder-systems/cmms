@@ -181,8 +181,8 @@ export function createWorkOrderSystemsMcpServer(
 ): McpServer {
   const server = new McpServer(
     {
-      name: 'work-order-systems',
-      title: 'Work Order Systems',
+      name: 'mcp',
+      title: 'MCP',
       version: MCP_PACKAGE_VERSION,
       description:
         'CMMS work orders and tenants via Supabase (JWT). Call tenants_list, then set_active_tenant before tenant-scoped tools; refresh OAuth or session after switching tenant so the JWT includes tenant_id.',

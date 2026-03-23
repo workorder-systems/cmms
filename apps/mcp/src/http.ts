@@ -60,7 +60,7 @@ async function main(): Promise<void> {
   app.get('/health', (_req, res) => {
     res.status(200).json({
       ok: true,
-      service: 'work-order-systems-mcp',
+      service: 'mcp',
       version: MCP_PACKAGE_VERSION,
       transport: 'streamable-http',
     });
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
   });
 
   app.listen(port, host, () => {
-    console.error(`work-order-systems-mcp HTTP listening on http://${host}:${port}${mcpPath}`);
+    console.error(`mcp HTTP listening on http://${host}:${port}${mcpPath}`);
     console.error('Protected resource metadata: GET /.well-known/oauth-protected-resource');
   });
 }

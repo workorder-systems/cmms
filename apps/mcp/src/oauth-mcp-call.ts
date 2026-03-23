@@ -3,12 +3,12 @@
  * End-to-end: OAuth with Supabase (via MCP SDK) → initialize → tools/list (optional tools/call).
  * Demonstrates the same flow Cursor/mcp-remote should use: Bearer from OAuth, then MCP RPCs.
  *
- * Prerequisites: HTTP MCP server running (pnpm --filter work-order-systems-mcp start).
+ * Prerequisites: HTTP MCP server running (pnpm --filter mcp start).
  *
  * Usage:
- *   pnpm --filter work-order-systems-mcp mcp:oauth-call
- *   pnpm --filter work-order-systems-mcp mcp:oauth-call tenants_list
- *   pnpm --filter work-order-systems-mcp mcp:oauth-call work_orders_get '{"work_order_id":"..."}'
+ *   pnpm --filter mcp mcp:oauth-call
+ *   pnpm --filter mcp mcp:oauth-call tenants_list
+ *   pnpm --filter mcp mcp:oauth-call work_orders_get '{"work_order_id":"..."}'
  */
 import { randomInt } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -106,7 +106,7 @@ async function main(): Promise<void> {
   const redirectLocalhost = `http://localhost:${callbackPort}${callbackPath}`;
 
   const clientMetadata = {
-    client_name: 'work-order-systems-oauth-mcp-pipeline',
+    client_name: 'mcp-oauth-pipeline',
     redirect_uris: [redirectUrl, redirectLocalhost],
     grant_types: ['authorization_code', 'refresh_token'],
     response_types: ['code'],
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
     openBrowser(authUrl.toString());
   });
 
-  const clientInfo = { name: 'work-order-systems-oauth-pipeline', version: '0.1.0' } as const;
+  const clientInfo = { name: 'mcp-oauth-pipeline', version: '0.1.0' } as const;
   const makeTransport = () =>
     new StreamableHTTPClientTransport(mcpUrl, {
       authProvider: provider,

@@ -31,7 +31,7 @@ export function loadDotEnvFile(path: string): void {
 }
 
 /**
- * Load apps/work-order-systems-mcp/.env.local when not already set in the environment.
+ * Load apps/mcp/.env.local when not already set in the environment.
  * Does not override existing process.env (so CI and shells win).
  */
 export function tryLoadMcpLocalEnv(): void {
@@ -39,7 +39,7 @@ export function tryLoadMcpLocalEnv(): void {
   const candidates = [
     resolve(here, '../.env.local'),
     resolve(process.cwd(), '.env.local'),
-    resolve(process.cwd(), 'apps/work-order-systems-mcp/.env.local'),
+    resolve(process.cwd(), 'apps/mcp/.env.local'),
   ];
   for (const p of candidates) {
     loadDotEnvFile(p);

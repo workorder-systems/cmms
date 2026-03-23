@@ -1,6 +1,6 @@
-# work-order-systems-mcp
+# mcp
 
-MCP server for **Work Order Systems** CMMS: typed access via [`@workorder-systems/sdk`](../../packages/sdk/README.md), **Zod**-validated tool inputs, and **Supabase** user JWTs (same as the REST API).
+CMMS MCP server (workspace package **`mcp`**, sources under [`apps/mcp/`](./)): typed access via [`@workorder-systems/sdk`](../../packages/sdk/README.md), **Zod**-validated tool inputs, and **Supabase** user JWTs (same as the REST API).
 
 ## Clients overview
 
@@ -19,38 +19,38 @@ Same pattern as **Linear**: Cursor runs **`mcp-remote`**, which talks **HTTP MCP
 
 ### 1. Run the HTTP MCP server (terminal)
 
-Needs **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** (server-side only — root **`.env.local`**, or `apps/work-order-systems-mcp/.env.local`, gitignored):
+Needs **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`** (server-side only — root **`.env.local`**, or `apps/mcp/.env.local`, gitignored):
 
 ```bash
 # From repo root (builds SDK + MCP, then listens on :3765)
-pnpm mcp:work-order-systems
+pnpm mcp
 ```
 
 Or step by step:
 
 ```bash
 pnpm --filter @workorder-systems/sdk build
-pnpm --filter work-order-systems-mcp build
-pnpm --filter work-order-systems-mcp start   # default http://0.0.0.0:3765/mcp
+pnpm --filter mcp build
+pnpm --filter mcp start   # default http://0.0.0.0:3765/mcp
 ```
 
 **If Cursor logs `ECONNREFUSED` / `connect ECONNREFUSED 127.0.0.1:3765`:** nothing is listening on that port — start the server *before* MCP connects, and keep that terminal open. The `mcp-remote` callback port warning (e.g. reusing `9876`) is normal; the fatal error is always the refused connection to **`3765`**.
 
 Leave this process running while you use Cursor or Claude Code against this URL.
 
-**Health check:** `GET /health` returns `{"ok":true,"service":"work-order-systems-mcp"}` (no auth).
+**Health check:** `GET /health` returns `{"ok":true,"service":"mcp",...}` (no auth).
 
 ### 2. Cursor MCP entry (no `env` secrets)
 
-Local example (matches [`.cursor/mcp.json`](../../.cursor/mcp.json) in this repo). Prefer **`node`** plus the workspace copy of **`mcp-remote`** so Cursor’s shell does not depend on `npx`/`npm` on `PATH`, and you pick up this repo’s **patched** `mcp-remote` (OAuth `form_post` → `/oauth/callback`). Run **`pnpm install`** once so `apps/work-order-systems-mcp/node_modules/mcp-remote` exists.
+Local example (matches [`.cursor/mcp.json`](../../.cursor/mcp.json) in this repo). Prefer **`node`** plus the workspace copy of **`mcp-remote`** so Cursor’s shell does not depend on `npx`/`npm` on `PATH`, and you pick up this repo’s **patched** `mcp-remote` (OAuth `form_post` → `/oauth/callback`). Run **`pnpm install`** once so `apps/mcp/node_modules/mcp-remote` exists.
 
 ```json
 {
   "mcpServers": {
-    "workorder": {
+    "mcp": {
       "command": "node",
       "args": [
-        "${workspaceFolder}/apps/work-order-systems-mcp/node_modules/mcp-remote/dist/proxy.js",
+        "${workspaceFolder}/apps/mcp/node_modules/mcp-remote/dist/proxy.js",
         "http://127.0.0.1:3765/mcp",
         "9876",
         "--host",
@@ -77,7 +77,7 @@ Production: replace the URL with your deployed HTTPS origin, e.g. `https://mcp.e
 2. Either rely on the repo **project** config [`.mcp.json`](../.mcp.json) (checked in; Claude prompts for approval), or add locally:
 
    ```bash
-   claude mcp add --transport http work-order-systems http://127.0.0.1:3765/mcp
+   claude mcp add --transport http mcp http://127.0.0.1:3765/mcp
    ```
 
 3. In Claude Code, run **`/mcp`** and authenticate when prompted (OAuth 2.0), same pattern as other hosted MCP servers.
@@ -87,21 +87,21 @@ Optional: set **`WORKORDER_SYSTEMS_MCP_URL`** (full URL including `/mcp`) so `.m
 **Static token (automation only):** not recommended for daily use; if you must:
 
 ```bash
-claude mcp add --transport http work-order-systems http://127.0.0.1:3765/mcp \
+claude mcp add --transport http mcp http://127.0.0.1:3765/mcp \
   --header "Authorization: Bearer <supabase-user-jwt>"
 ```
 
 **Fallback — `mcp-remote` over stdio** (mirrors Cursor if native HTTP OAuth fails):
 
 ```bash
-claude mcp add --transport stdio work-order-systems -- \
+claude mcp add --transport stdio mcp -- \
   npx -y mcp-remote http://127.0.0.1:3765/mcp 9876 --host 127.0.0.1
 ```
 
 On **native Windows** (not WSL), wrap `npx` so the shell can spawn it:
 
 ```bash
-claude mcp add --transport stdio work-order-systems -- cmd /c npx -y mcp-remote http://127.0.0.1:3765/mcp 9876 --host 127.0.0.1
+claude mcp add --transport stdio mcp -- cmd /c npx -y mcp-remote http://127.0.0.1:3765/mcp 9876 --host 127.0.0.1
 ```
 
 ### 3. First connection
@@ -114,12 +114,12 @@ Same sequence the MCP TypeScript SDK uses with `StreamableHTTPClientTransport` +
 
 ```bash
 # Terminal A: HTTP MCP server
-pnpm --filter work-order-systems-mcp build
-pnpm --filter work-order-systems-mcp start
+pnpm --filter mcp build
+pnpm --filter mcp start
 
-# Terminal B: anon key in apps/work-order-systems-mcp/.env.local (or env)
-pnpm --filter work-order-systems-mcp mcp:oauth-call
-pnpm --filter work-order-systems-mcp mcp:oauth-call tenants_list
+# Terminal B: anon key in apps/mcp/.env.local (or env)
+pnpm --filter mcp mcp:oauth-call
+pnpm --filter mcp mcp:oauth-call tenants_list
 ```
 
 `mcp:oauth-call` adds the Supabase **`apikey`** header on `/auth/v1/*` during discovery, registration, and token exchange (required by GoTrue). Optional: `WORKORDER_SYSTEMS_MCP_URL`, `OAUTH_MCP_CALLBACK_PORT`.
@@ -147,7 +147,7 @@ OAuth clients may also need [`app.oauth_client_tenant_grants`](../../apps/supaba
 
 ### HTTP server (`pnpm start` / `pnpm mcp:http`)
 
-Loaded from the environment, or from `apps/work-order-systems-mcp/.env.local` if present (does not override existing vars).
+Loaded from the environment, or from `apps/mcp/.env.local` if present (does not override existing vars).
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -173,14 +173,14 @@ Loaded from the environment, or from `apps/work-order-systems-mcp/.env.local` if
 ## Scripts
 
 ```bash
-pnpm --filter work-order-systems-mcp build
-pnpm --filter work-order-systems-mcp start          # HTTP (OAuth-capable)
-pnpm --filter work-order-systems-mcp start:stdio    # optional legacy
-pnpm --filter work-order-systems-mcp mcp:oauth-login # optional: print tokens for stdio/scripts
-pnpm --filter work-order-systems-mcp test
+pnpm --filter mcp build
+pnpm --filter mcp start          # HTTP (OAuth-capable)
+pnpm --filter mcp start:stdio    # optional legacy
+pnpm --filter mcp mcp:oauth-login # optional: print tokens for stdio/scripts
+pnpm --filter mcp test
 ```
 
-Published-style entrypoints (after `build`): **`work-order-systems-mcp`** → stdio, **`work-order-systems-mcp-http`** → HTTP (same as `start`).
+Published-style entrypoints (after `build`): **`mcp`** → stdio, **`mcp-http`** → HTTP (same as `start`).
 
 ### Optional: `mcp:oauth-login` (tokens for stdio / automation)
 
@@ -195,9 +195,9 @@ Only if you cannot use HTTP OAuth:
 ```json
 {
   "mcpServers": {
-    "work-order-systems": {
+    "mcp": {
       "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/db/apps/work-order-systems-mcp/dist/stdio.js"],
+      "args": ["/ABSOLUTE/PATH/TO/db/apps/mcp/dist/stdio.js"],
       "env": {
         "SUPABASE_URL": "http://127.0.0.1:54321",
         "SUPABASE_ANON_KEY": "your-anon-key",

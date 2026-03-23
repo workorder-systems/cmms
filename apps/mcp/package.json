@@ -1,13 +1,13 @@
 {
-  "name": "work-order-systems-mcp",
+  "name": "mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "work-order-systems-mcp": "./dist/stdio.js",
-    "work-order-systems-mcp-http": "./dist/http.js",
-    "work-order-systems-mcp-login": "./dist/oauth-login.js",
-    "work-order-systems-mcp-oauth-call": "./dist/oauth-mcp-call.js"
+    "mcp": "./dist/stdio.js",
+    "mcp-http": "./dist/http.js",
+    "mcp-login": "./dist/oauth-login.js",
+    "mcp-oauth-call": "./dist/oauth-mcp-call.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
