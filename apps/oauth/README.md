@@ -4,6 +4,8 @@ Minimal **Next.js** UI for [Supabase OAuth 2.1 server](https://supabase.com/docs
 
 **`/demo`** is an optional partner playground: PKCE authorize → consent → **`/demo/callback`** → **`POST /api/demo/oauth-token`**. **Register demo OAuth client** uses **OAuth 2.0 Dynamic Client Registration** only (`POST /auth/v1/oauth/clients/register` — the same **`registration_endpoint`** in **`/.well-known/oauth-authorization-server`** that MCP clients use). This repo keeps **`[auth.oauth_server].allow_dynamic_registration = true`**; the consent app does **not** use **`SUPABASE_SERVICE_ROLE_KEY`** or the Admin OAuth client API.
 
+**MCP / Cursor vs `/demo`:** Supabase Auth can **auto-approve** on `GET /oauth/authorizations/:id` when the user **already has consent** for that OAuth client and scopes (same `client_id` as a previous `mcp-remote` registration). The consent app detects GoTrue’s **`{ "redirect_url": "..." }`** response and **redirects immediately** so you are not shown a stale form whose first **Allow** would fail with `authorization request cannot be processed`. **`/demo`** often uses a **new** dynamically registered client each time, so auto-approve is less likely than with a **reused** MCP client under `~/.mcp-auth/`.
+
 ## Source layout
 
 | Module | Role |

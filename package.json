@@ -34,7 +34,8 @@
     "test:setup": "pnpm supabase:start && pnpm test",
     "test:teardown": "pnpm supabase:stop",
     "test:reset": "pnpm supabase:reset && pnpm test",
-    "gen-types": "bash packages/sdk/scripts/gen-types.sh"
+    "gen-types": "bash packages/sdk/scripts/gen-types.sh",
+    "mcp:work-order-systems": "pnpm --filter work-order-systems-mcp build && pnpm --filter work-order-systems-mcp start"
   },
   "keywords": [
     "supabase",
@@ -56,5 +57,10 @@
     "vite": "^5.0.0",
     "vitest": "^1.2.1"
   },
-  "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"
+  "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee",
+  "pnpm": {
+    "patchedDependencies": {
+      "mcp-remote@0.1.38": "patches/mcp-remote@0.1.38.patch"
+    }
+  }
 }

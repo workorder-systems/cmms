@@ -6,6 +6,7 @@ import {
   type FormEvent,
   useCallback,
   useId,
+  useRef,
   useState,
 } from "react";
 
@@ -29,12 +30,18 @@ export function OAuthConsentClient({
   const hintId = useId();
   const errorId = useId();
   const [tenantError, setTenantError] = useState<string | null>(null);
+  const submitLock = useRef(false);
 
   const onSubmit = useCallback((e: FormEvent<HTMLFormElement>) => {
+    if (submitLock.current) {
+      e.preventDefault();
+      return;
+    }
+    const form = e.currentTarget;
     const native = e.nativeEvent as SubmitEvent;
     const submitter = native.submitter as HTMLButtonElement | null;
+
     if (submitter?.name === "decision" && submitter.value === "approve") {
-      const form = e.currentTarget;
       const n = form.querySelectorAll<HTMLInputElement>(
         'input[name="tenant_ids"]:checked',
       ).length;
@@ -45,6 +52,43 @@ export function OAuthConsentClient({
       }
     }
     setTenantError(null);
+
+    form.style.pointerEvents = "none";
+    form.style.opacity = "0.85";
+
+    /*
+     * Do not disable submit buttons in onSubmit: React re-renders before the browser
+     * serializes the form, and disabled submitters are omitted from POST — so `decision`
+     * never reaches /api/oauth/decision. Mirror the clicked button into a hidden field
+     * (and Enter-key implicit submit uses the first decision button = deny).
+     */
+    let decision: "approve" | "deny" | null = null;
+    if (
+      submitter?.name === "decision" &&
+      (submitter.value === "approve" || submitter.value === "deny")
+    ) {
+      decision = submitter.value;
+    } else {
+      const first = form.querySelector<HTMLButtonElement>(
+        'button[type="submit"][name="decision"]',
+      );
+      if (first?.value === "approve" || first?.value === "deny") {
+        decision = first.value;
+      }
+    }
+    if (decision) {
+      form
+        .querySelectorAll("input[data-oauth-decision-field]")
+        .forEach((el) => el.remove());
+      const hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = "decision";
+      hidden.value = decision;
+      hidden.setAttribute("data-oauth-decision-field", "");
+      form.appendChild(hidden);
+    }
+
+    submitLock.current = true;
   }, []);
 
   const initial = clientName.charAt(0).toUpperCase();

@@ -19,6 +19,12 @@ export type AuthorizationDetails = {
   user?: { id?: string; email?: string };
 };
 
+/** Result of GET /oauth/authorizations/:id — either full details or GoTrue auto-approve (ConsentResponse). */
+export type FetchAuthorizationResult =
+  | { ok: true; kind: "details"; data: AuthorizationDetails }
+  | { ok: true; kind: "redirect"; redirectUrl: string }
+  | { ok: false; error: string };
+
 function userJwtHeaders(accessToken: string, anonKey: string) {
   return {
     Authorization: `Bearer ${accessToken}`,
@@ -36,7 +42,7 @@ function missingEnvError(): { ok: false; error: string } {
 export async function fetchAuthorizationDetails(
   accessToken: string,
   authorizationId: string,
-): Promise<{ ok: true; data: AuthorizationDetails } | { ok: false; error: string }> {
+): Promise<FetchAuthorizationResult> {
   const base = authV1BaseUrl();
   const env = readSupabasePublicEnv();
   if (!base || !env) {
@@ -61,8 +67,30 @@ export async function fetchAuthorizationDetails(
     };
   }
 
-  const data = (await res.json()) as AuthorizationDetails;
-  return { ok: true, data };
+  const raw = (await res.json()) as Record<string, unknown>;
+
+  /*
+   * GoTrue auto-approve: existing consent + matching scopes completes the authorization on GET
+   * and returns ConsentResponse { redirect_url } only — not AuthorizationDetailsResponse.
+   * If we render the consent form anyway, the user's first POST hits a non-pending row → validation_failed.
+   */
+  const redirectUrl =
+    typeof raw.redirect_url === "string" ? raw.redirect_url.trim() : "";
+  const hasAuthzId =
+    typeof raw.authorization_id === "string" && raw.authorization_id.length > 0;
+  if (redirectUrl && !hasAuthzId) {
+    return { ok: true, kind: "redirect", redirectUrl };
+  }
+
+  if (!hasAuthzId) {
+    return {
+      ok: false,
+      error: "Unexpected authorization response (missing authorization_id)",
+    };
+  }
+
+  const data = raw as unknown as AuthorizationDetails;
+  return { ok: true, kind: "details", data };
 }
 
 export async function postOAuthConsent(

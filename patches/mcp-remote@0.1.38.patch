@@ -1,0 +1,34 @@
+diff --git a/dist/chunk-65X3S4HB.js b/dist/chunk-65X3S4HB.js
+index 1b1d86e41e0caea869ae4a3718d491da0ff5c8d3..55ca0d741e5f5923f42689855ef98828207ca461 100644
+--- a/dist/chunk-65X3S4HB.js
++++ b/dist/chunk-65X3S4HB.js
+@@ -20600,6 +20600,7 @@ async function connectToRemoteServer(client, serverUrl, authProvider, headers, a
+ function setupOAuthCallbackServerWithLongPoll(options) {
+   let authCode = null;
+   const app = express();
++  app.use(express.urlencoded({ extended: true }));
+   let authCompletedResolve;
+   const authCompletedPromise = new Promise((resolve) => {
+     authCompletedResolve = resolve;
+@@ -20633,8 +20634,8 @@ function setupOAuthCallbackServerWithLongPoll(options) {
+       }
+     });
+   });
+-  app.get(options.path, (req, res) => {
+-    const code = req.query.code;
++  const handleOAuthCallback = (req, res) => {
++    const code = req.query.code ?? req.body?.code;
+     if (!code) {
+       res.status(400).send("Error: No authorization code received");
+       return;
+@@ -20653,7 +20654,9 @@ function setupOAuthCallbackServerWithLongPoll(options) {
+       </script>
+     `);
+     options.events.emit("auth-code-received", code);
+-  });
++  };
++  app.get(options.path, handleOAuthCallback);
++  app.post(options.path, handleOAuthCallback);
+   const server = app.listen(options.port, "127.0.0.1", () => {
+     log(`OAuth callback server running at http://127.0.0.1:${options.port}`);
+   });

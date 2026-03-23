@@ -4,6 +4,10 @@ const GENERIC_CONSENT_LOAD_ERROR =
 const INVALID_AUTHORIZATION_ERROR =
   "This authorization request is no longer valid. Start the connection again from the app you were using.";
 
+/** GoTrue: authorization.Status != pending (double submit, another tab, or stale back/forward). */
+const AUTHORIZATION_NOT_PENDING_ERROR =
+  "This sign-in request was already used or is no longer active. Start a new connection from the app you were using (for example, reconnect MCP in Cursor). If you clicked Allow twice, the first click may have succeeded.";
+
 const CONFIG_ERROR =
   "This OAuth app is missing Supabase settings. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to match the same Supabase project that issued this sign-in link.";
 
@@ -27,27 +31,65 @@ function normalizeForKeywords(raw: string): string {
     return "";
   }
 
-  try {
-    const parsed = JSON.parse(trimmed) as {
-      error?: string;
-      error_code?: string;
-      message?: string;
-      msg?: string;
-      error_description?: string;
-    };
+  const tryParseObject = (s: string): Record<string, unknown> | null => {
+    try {
+      return JSON.parse(s) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  };
+
+  const parsedFull = tryParseObject(trimmed);
+  if (parsedFull) {
     const combined = [
-      parsed.error,
-      parsed.error_code,
-      parsed.message,
-      parsed.msg,
-      parsed.error_description,
+      parsedFull.error,
+      parsedFull.error_code,
+      parsedFull.message,
+      parsedFull.msg,
+      parsedFull.error_description,
     ]
-      .filter(Boolean)
+      .filter((v) => typeof v === "string" && v.length > 0)
       .join(" ");
-    return combined ? combined.toString().toLowerCase() : trimmed.toLowerCase();
-  } catch {
-    return trimmed.toLowerCase();
+    return combined ? combined.toLowerCase() : trimmed.toLowerCase();
   }
+
+  const tailJson = trimmed.match(/\{[\s\S]*\}\s*$/);
+  if (tailJson) {
+    const parsed = tryParseObject(tailJson[0]);
+    if (parsed) {
+      const combined = [
+        parsed.error,
+        parsed.error_code,
+        parsed.message,
+        parsed.msg,
+        parsed.error_description,
+      ]
+        .filter((v) => typeof v === "string" && v.length > 0)
+        .join(" ");
+      if (combined) {
+        const idx = tailJson.index ?? 0;
+        return `${trimmed.slice(0, idx).toLowerCase()} ${combined.toLowerCase()}`.trim();
+      }
+    }
+  }
+
+  return trimmed.toLowerCase();
+}
+
+function matchesAuthorizationNotPendingKeywords(normalized: string): boolean {
+  return (
+    normalized.includes("authorization request cannot be processed") ||
+    normalized.includes("authorization request is no longer pending") ||
+    normalized.includes("no longer pending")
+  );
+}
+
+/**
+ * True when GoTrue says the authorization row is not pending (duplicate consent POST, race, or stale tab).
+ * Used to redirect the browser to the OAuth client's redirect_uri with ?error= so MCP bridges finish cleanly.
+ */
+export function isOAuthAuthorizationNoLongerPendingError(raw: string): boolean {
+  return matchesAuthorizationNotPendingKeywords(normalizeForKeywords(raw));
 }
 
 /**
@@ -95,6 +137,10 @@ export function getOAuthConsentLoadErrorMessage(raw: string): string {
     n.includes("access_denied")
   ) {
     return INVALID_AUTHORIZATION_ERROR;
+  }
+
+  if (matchesAuthorizationNotPendingKeywords(n)) {
+    return AUTHORIZATION_NOT_PENDING_ERROR;
   }
 
   if (
