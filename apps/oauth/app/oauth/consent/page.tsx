@@ -107,7 +107,7 @@ export default async function OAuthConsentPage({
   return (
     <OauthFrame>
       <div className="oauth-app-row">
-        <div className="oauth-app-avatar" aria-hidden>
+        <div className="oauth-app-mark" aria-hidden>
           {initial}
         </div>
         <div>
