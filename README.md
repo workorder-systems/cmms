@@ -7,8 +7,8 @@
 <p><strong><em>The Linux of maintenance software.</em></strong></p>
 
 <p>
-  Production-grade, <strong>self-hostable</strong> <strong>CMMS backend</strong>.<br />
-  Postgres, RLS, RPCs, <code>@workorder-systems/sdk</code>, tests, docs.
+  A <strong>production-grade</strong>, <strong>self-hostable</strong> <strong>CMMS backend</strong> on Postgres and Supabase.<br />
+  <strong>RLS</strong>, <strong>RPCs</strong>, typed <code>@workorder-systems/sdk</code>, <strong>OAuth&nbsp;2.1</strong> for partners, <strong>MCP</strong> for AI tools, tests, and docs.
 </p>
 
 <p><b>Deploy it. Own it. Extend it.</b></p>
