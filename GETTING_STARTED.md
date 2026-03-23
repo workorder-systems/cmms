@@ -80,6 +80,8 @@ You should see API URL (this repo defaults to **`http://127.0.0.1:54321`**) and 
 
 **OAuth 2.1 consent UI (optional):** with **`[auth.oauth_server].enabled`** in `apps/supabase/config.toml`, run the Next app **`pnpm --filter work-order-systems-oauth dev`** (port **3005**, matching **`site_url`**) and set **`NEXT_PUBLIC_SUPABASE_URL`** / **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** in **`apps/oauth/.env.local`** (see **`apps/oauth/.env.local.example`**). The **`/demo`** register button uses dynamic client registration only (no service role in this app). Details: [`apps/oauth/README.md`](apps/oauth/README.md) and [`apps/supabase/README.md`](apps/supabase/README.md#oauth-21-server-identity-provider).
 
+**MCP (optional):** the repo includes **`apps/mcp`**, an HTTP MCP server that exposes CMMS tools (tenants, work orders) using the same Supabase user JWTs as the REST API. It serves OAuth **protected-resource metadata** (RFC 9728) so **Cursor** (`mcp-remote`), **Claude Code**, and similar clients can sign in via Supabase Auth. From the repo root: **`pnpm mcp`** (build + start on port **3765** by default). Env: root **`.env.local`** or **`apps/mcp/.env.local`**. Full setup: [`apps/mcp/README.md`](apps/mcp/README.md).
+
 ## 7. Run the test suite
 
 In a **new terminal** (keep Docker/Supabase running):
@@ -114,6 +116,8 @@ pnpm test:reset
 ## Next steps
 
 - **Schema and API rules:** [`apps/supabase/README.md`](apps/supabase/README.md)
+- **OAuth consent & dynamic registration:** [`apps/oauth/README.md`](apps/oauth/README.md)
+- **MCP (AI tools, Cursor, OAuth flow):** [`apps/mcp/README.md`](apps/mcp/README.md)
 - **Contributing and migrations:** [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - **Agent/automation playbook:** [`AGENTS.md`](AGENTS.md)
 - **Vision, alpha, stability, license:** [`docs/PROJECT.md`](docs/PROJECT.md)

@@ -242,6 +242,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Configuration', href: '/configuration' },
       { title: 'Authentication', href: '/authentication' },
       { title: 'Tenant context', href: '/tenant-context' },
+      { title: 'MCP (AI assistants)', href: '/mcp' },
       { title: 'Tenant API keys', href: '/tenant-api-keys' },
       { title: 'Authorization (RBAC and ABAC)', href: '/authorization' },
       { title: 'Errors', href: '/errors' },

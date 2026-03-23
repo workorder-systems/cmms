@@ -111,6 +111,8 @@ Supabase Auth can act as an **OAuth 2.1 / OIDC provider** for partners, MCP tool
 
 **RLS and `client_id`:** OAuth access tokens include **`client_id`**. OIDC scopes do **not** control Postgres access; use RLS (and optionally **`auth.jwt() ->> 'client_id'`**) to allow or deny specific clients for sensitive tables/RPCs. See [Token security & RLS](https://supabase.com/docs/guides/auth/oauth-server/token-security).
 
+**MCP in this monorepo:** [`apps/mcp`](../mcp/README.md) is a **Streamable HTTP** MCP server (default **3765**, path **`/mcp`**) that validates access tokens against this Auth API’s JWKS and publishes **[RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728)** protected-resource metadata so MCP hosts (Cursor, Claude Code, `mcp-remote`) use Supabase as the authorization server. Run **`pnpm mcp`** from the repository root after **`pnpm install`**.
+
 ---
 
 ## Modules, plugins, integrations

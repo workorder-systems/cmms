@@ -11,6 +11,7 @@ This is a **pnpm** monorepo (**Turborepo**) for a multi-tenant CMMS **database l
 | Root (`database`) | `.` | Root Vitest suite (`tests/`), scripts, workspace orchestration |
 | Supabase | `apps/supabase` | Supabase CLI project: `config.toml`, SQL migrations, Edge Functions (`pnpm start` / `pnpm supabase:start`) |
 | OAuth consent | `apps/oauth` | Next.js OAuth 2.1 consent UI for Supabase Auth (`pnpm --filter work-order-systems-oauth dev`, port **3005**) |
+| MCP | `apps/mcp` | CMMS MCP server: Streamable HTTP, Supabase JWT + RFC 9728 metadata (`pnpm mcp` from root, or `pnpm --filter mcp start` on port **3765** default) |
 | Docs | `apps/docs` | Next.js documentation site (MDX) |
 | Plugins | `plugins/*` | Optional integration services (webhook receivers, connectors); not shipped as part of core `apps` |
 | Example | `plugins/example` | Minimal HTTP webhook receiver for testing `pg_net` plugin deliveries locally |
@@ -29,6 +30,7 @@ Use this as a default order of operations. Adjust when the user’s task is narr
 
 - First-time local setup: **`GETTING_STARTED.md`** (Docker, Supabase CLI, env, test failures).
 - Read **`apps/supabase/README.md`** before changing schema, RLS, views, or RPCs.
+- **OAuth / MCP:** consent UI is **`apps/oauth/README.md`**; MCP server (AI tools, `mcp-remote`, RFC 9728) is **`apps/mcp/README.md`**.
 - For **new migrations**, follow project SQL/RLS conventions in **`.cursor/rules/migration.mdc`** (and **`CONTRIBUTING.md`** → Database changes).
 - For **tests**, read **`tests/README.md`** for what the suite covers and which helpers exist.
 
@@ -93,6 +95,7 @@ Ensure **Docker + Supabase** are available. If **`SUPABASE_URL`** and **`SUPABAS
    - `pnpm --filter @workorder-systems/sdk dev` → SDK watch build
    - `pnpm --filter work-order-systems-example dev` → example webhook receiver (**http://127.0.0.1:8765**); for local Supabase Docker + `pg_net`, set installation `webhook_url` to `http://host.docker.internal:8765/webhook` (see `plugins/example/README.md`)
    - `pnpm --filter work-order-systems-example smoke:setup` → registers `example_receiver`, seeds Vault (Docker), creates user/tenant, installs plugin, creates a work order, runs `rpc_process_plugin_deliveries` (needs `.env.local` **service role** + receiver running with matching `WEBHOOK_SECRET`; see that README)
+   - **`pnpm mcp`** (repo root) → builds and starts the **HTTP MCP** app (`apps/mcp`): needs **`SUPABASE_URL`** + **`SUPABASE_ANON_KEY`** in **`.env.local`** or **`apps/mcp/.env.local`**. OAuth consent (`apps/oauth`) uses the same Supabase project; MCP clients complete OAuth via Supabase Auth. See **`apps/mcp/README.md`**.
 
 ### Environment variable precedence
 

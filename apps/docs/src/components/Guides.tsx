@@ -23,6 +23,12 @@ const guides = [
     description: 'Set and clear tenant context for multi-tenant operations.',
   },
   {
+    href: '/mcp',
+    name: 'MCP (AI assistants)',
+    description:
+      'Model Context Protocol server: same JWT and SDK as apps; Cursor, OAuth, and generic sdk_invoke.',
+  },
+  {
     href: '/tenant-api-keys',
     name: 'Tenant API keys',
     description: 'Machine auth per tenant; SDK management and automated meter ingest.',

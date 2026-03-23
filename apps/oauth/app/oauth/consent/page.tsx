@@ -74,6 +74,10 @@ export default async function OAuthConsentPage({
     );
   }
 
+  if (result.kind === "redirect") {
+    redirect(result.redirectUrl);
+  }
+
   const { data: tenantRows, error: tenantsError } = await supabase
     .from("v_tenants")
     .select("id, name")

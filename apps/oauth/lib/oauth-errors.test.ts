@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getOAuthConsentLoadErrorMessage } from "./oauth-errors";
+import {
+  getOAuthConsentLoadErrorMessage,
+  isOAuthAuthorizationNoLongerPendingError,
+} from "./oauth-errors";
+import { buildOAuthRedirectClientErrorUrl } from "./oauth-redirect-url";
 
 describe("getOAuthConsentLoadErrorMessage", () => {
   it("maps HTTP 404 with empty body to invalid authorization copy", () => {
@@ -40,6 +44,41 @@ describe("getOAuthConsentLoadErrorMessage", () => {
   it("falls back to generic for unrecognized errors", () => {
     expect(getOAuthConsentLoadErrorMessage("HTTP 418: teapot")).toBe(
       "We couldn't load this request. Try again or contact support.",
+    );
+  });
+
+  it("maps GoTrue validation_failed when authorization is no longer pending", () => {
+    expect(
+      getOAuthConsentLoadErrorMessage(
+        'HTTP 400: {"code":400,"error_code":"validation_failed","msg":"authorization request cannot be processed"}',
+      ),
+    ).toBe(
+      "This sign-in request was already used or is no longer active. Start a new connection from the app you were using (for example, reconnect MCP in Cursor). If you clicked Allow twice, the first click may have succeeded.",
+    );
+  });
+
+  it("detects no-longer-pending errors for consent redirect handling", () => {
+    expect(
+      isOAuthAuthorizationNoLongerPendingError(
+        'HTTP 400: {"code":400,"error_code":"validation_failed","msg":"authorization request cannot be processed"}',
+      ),
+    ).toBe(true);
+    expect(
+      isOAuthAuthorizationNoLongerPendingError("HTTP 418: teapot"),
+    ).toBe(false);
+  });
+
+  it("builds OAuth error redirect URLs for MCP callback compatibility", () => {
+    const url = buildOAuthRedirectClientErrorUrl(
+      "http://127.0.0.1:9876/oauth/callback",
+      "server_error",
+      "authorization_step_already_completed",
+    );
+    const parsed = new URL(url);
+    expect(parsed.origin + parsed.pathname).toBe("http://127.0.0.1:9876/oauth/callback");
+    expect(parsed.searchParams.get("error")).toBe("server_error");
+    expect(parsed.searchParams.get("error_description")).toBe(
+      "authorization_step_already_completed",
     );
   });
 });
