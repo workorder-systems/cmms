@@ -4,22 +4,29 @@ import Link from "next/link";
 export default function Home() {
   return (
     <OauthFrame>
-      <h1 className="oauth-title" style={{ marginBottom: 8 }}>
-        Account access
-      </h1>
-      <p className="oauth-subtitle" style={{ marginBottom: 8 }}>
-        Sign in and approve third-party apps that use Work Order Systems.
+      <h1 className="oauth-title">Account access</h1>
+      <p className="oauth-subtitle oauth-subtitle--home">
+        Sign in to continue an app connection, or try the local developer OAuth
+        demo.
       </p>
-      <nav aria-label="Main">
-        <ul className="oauth-nav-list">
-          <li>
-            <Link href="/login">Sign in</Link>
-          </li>
-          <li>
-            <Link href="/demo">Developer demo</Link>
-          </li>
-        </ul>
-      </nav>
+      <ul className="oauth-choice-list" aria-label="Actions">
+        <li>
+          <Link href="/login" className="oauth-choice">
+            <span className="oauth-choice-title">Sign in</span>
+            <span className="oauth-choice-desc">
+              Continue to approve access for a third-party app.
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link href="/demo" className="oauth-choice">
+            <span className="oauth-choice-title">Developer demo</span>
+            <span className="oauth-choice-desc">
+              Run a sample OAuth flow against your Supabase project.
+            </span>
+          </Link>
+        </li>
+      </ul>
     </OauthFrame>
   );
 }

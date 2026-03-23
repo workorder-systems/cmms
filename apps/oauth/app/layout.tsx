@@ -13,7 +13,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="oauth-body">{children}</body>
+      <body className="oauth-body">
+        <a href="#oauth-main" className="oauth-skip-link">
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

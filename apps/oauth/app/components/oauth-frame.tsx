@@ -16,9 +16,13 @@ export function OauthFrame({ children, wide }: Props) {
       <OauthHeroBackdrop />
       <div className="oauth-frame-column">
         <WorkOrderBrand />
-        <div className={`oauth-card${wide ? " oauth-card--wide" : ""}`}>
+        <main
+          id="oauth-main"
+          className={`oauth-card${wide ? " oauth-card--wide" : ""}`}
+          tabIndex={-1}
+        >
           {children}
-        </div>
+        </main>
       </div>
       <p className="oauth-footer-brand" aria-hidden>
         Work Order Systems
