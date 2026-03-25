@@ -9,7 +9,7 @@ import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import { buildProtectedResourceMetadata } from './oauth-metadata.js';
 import { createSupabaseJwtVerifier } from './supabase-jwt-verifier.js';
-import { createUserDbClient } from './user-client.js';
+import { createSessionDbClient, createUserDbClient } from './user-client.js';
 import { createWorkOrderSystemsMcpServer } from './tools.js';
 import { tryLoadMcpLocalEnv } from './load-local-env.js';
 import { oauthCallbackWrongServerHtml } from './oauth-callback-fallback.js';
@@ -107,8 +107,43 @@ async function main(): Promise<void> {
         return;
       }
 
-      const getClient = async () => createUserDbClient(supabaseUrl, anonKey, token);
-      const mcpServer = createWorkOrderSystemsMcpServer(getClient);
+      const refreshHeader = req.headers['x-supabase-refresh-token'];
+      const refreshToken =
+        typeof refreshHeader === 'string'
+          ? refreshHeader.trim()
+          : Array.isArray(refreshHeader)
+            ? (refreshHeader[0] ?? '').trim()
+            : '';
+
+      const getClient = async () =>
+        refreshToken
+          ? await createSessionDbClient(supabaseUrl, anonKey, token, refreshToken)
+          : createUserDbClient(supabaseUrl, anonKey, token);
+
+      const embedSearchUrl = process.env.WORKORDER_SYSTEMS_EMBED_SEARCH_URL?.trim();
+      const mcpServer = createWorkOrderSystemsMcpServer(getClient, {
+        ...(embedSearchUrl
+          ? {
+              embedSearch: {
+                embedSearchUrl,
+                anonKey,
+                getAccessToken: async () => token,
+              },
+            }
+          : {}),
+        tryRefreshAccessTokenAfterSetTenant: refreshToken
+          ? async () => {
+              const client = await getClient();
+              const { data, error } = await client.supabase.auth.refreshSession();
+              const next = data.session?.access_token;
+              if (error || !next) {
+                return { refreshed: false } as const;
+              }
+              return { refreshed: true, access_token: next } as const;
+            }
+          : undefined,
+        getMcpBearerAccessToken: async () => token,
+      });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
       });

@@ -164,6 +164,7 @@ Loaded from the environment, or from `apps/mcp/.env.local` if present (does not 
 | `WORKORDER_SYSTEMS_MCP_PATH` | no | Default `/mcp` |
 | `WORKORDER_SYSTEMS_PUBLIC_ORIGIN` | no | Public URL for metadata behind TLS/proxy |
 | `SUPABASE_JWT_AUD` | no | JWT `aud` for verification; omit if not present on tokens |
+| `WORKORDER_SYSTEMS_EMBED_SEARCH_URL` | no | Full URL of the deployed **`embed-search`** Edge Function (same project as `SUPABASE_URL`). When **unset**, the server omits **`similar_past_work_orders`**, **`semantic_search`**, and vector-similarity `semantic_search.*` entries from **`sdk_catalog`** (non-admin); use **`entity_search`** and list/get tools instead. |
 
 ### stdio only (`pnpm start:stdio`)
 
@@ -173,6 +174,7 @@ Loaded from the environment, or from `apps/mcp/.env.local` if present (does not 
 | `SUPABASE_ANON_KEY` | yes | Anon key |
 | `WORKORDER_SYSTEMS_ACCESS_TOKEN` | yes | User JWT |
 | `WORKORDER_SYSTEMS_REFRESH_TOKEN` | no | Refresh after `set_active_tenant` |
+| `WORKORDER_SYSTEMS_EMBED_SEARCH_URL` | no | Same as HTTP: opt-in text-in similarity tools + catalog entries |
 
 ---
 
@@ -239,6 +241,8 @@ Coverage is aligned with the SDK: tenant context (`tenant_context.set` / `tenant
 | `work_orders_list` | List WOs for JWT tenant context |
 | `work_orders_get` | Get one WO by id |
 | `work_orders_create` | Create WO via `rpc_create_work_order` |
+| `similar_past_work_orders` | (If `WORKORDER_SYSTEMS_EMBED_SEARCH_URL` is set) Text-in similarity over completed work orders via Edge **`embed-search`** |
+| `semantic_search` | (If embed URL set) Text-in similarity over **`work_orders`**, **`assets`**, or **`parts`** |
 
 ---
 

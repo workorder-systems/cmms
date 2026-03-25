@@ -334,6 +334,15 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# AI-native: modular embedding (JWT + anon key); OpenAI key via dashboard secrets.
+[functions.embed-search]
+enabled = true
+verify_jwt = true
+
+[functions.embed-index]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 # Port (changed from 54327 to avoid conflict with another project).

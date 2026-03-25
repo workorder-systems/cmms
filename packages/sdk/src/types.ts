@@ -25,6 +25,7 @@ import type { MapZonesResource } from './resources/map-zones.js';
 import type { FieldOperationsResource } from './resources/field-operations.js';
 import type { IntegrationsResource } from './resources/integrations.js';
 import type { NotificationsResource } from './resources/notifications.js';
+import type { SemanticSearchResource } from './resources/semantic-search.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -104,4 +105,6 @@ export type DbClient = {
   integrations: IntegrationsResource;
   /** In-app notifications: list, mark read, preferences (`notification.read`, `notification.preference.manage`). */
   notifications: NotificationsResource;
+  /** Semantic search, embeddings RPCs, ontology candidates, idempotency helpers (AI-native CMMS). */
+  semanticSearch: SemanticSearchResource;
 };

@@ -43,3 +43,54 @@ export const sdkInvokeInputSchema = z.object({
 });
 
 export type SdkInvokeInput = z.infer<typeof sdkInvokeInputSchema>;
+
+const detailLevelSchema = z
+  .enum(['summary', 'standard', 'full'])
+  .optional()
+  .describe(
+    'summary (default): ids, titles, scores, and references. standard: adds a short description preview. full: full text fields including cause and resolution.'
+  );
+
+export const cmmsSimilarPastTextInputSchema = z.object({
+  query_text: z.string().min(1).describe('Natural-language search query.'),
+  limit: z.number().int().min(1).max(50).optional(),
+  exclude_work_order_id: uuidSchema.optional(),
+  min_similarity: z.number().min(0).max(1).optional(),
+  detail_level: detailLevelSchema,
+});
+
+export type CmmsSimilarPastTextInput = z.infer<typeof cmmsSimilarPastTextInputSchema>;
+
+const semanticSearchDomainSchema = z.enum(['work_orders', 'assets', 'parts']);
+
+/** Text-in similarity via Edge embed-search (multi-domain). */
+export const semanticSearchTextInputSchema = z
+  .object({
+    domain: semanticSearchDomainSchema.describe('Entity collection to search (work_orders, assets, parts).'),
+    query_text: z.string().min(1).describe('Natural-language search query.'),
+    limit: z.number().int().min(1).max(50).optional(),
+    exclude_work_order_id: uuidSchema
+      .optional()
+      .describe('Only valid when domain is work_orders; excludes one WO from hits.'),
+    min_similarity: z.number().min(0).max(1).optional(),
+    detail_level: detailLevelSchema,
+  })
+  .superRefine((val, c) => {
+    if (val.domain !== 'work_orders' && val.exclude_work_order_id) {
+      c.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'exclude_work_order_id is only valid when domain is work_orders',
+        path: ['exclude_work_order_id'],
+      });
+    }
+  });
+
+export type SemanticSearchTextInput = z.infer<typeof semanticSearchTextInputSchema>;
+
+export const entitySearchInputSchema = z.object({
+  query: z.string().min(1).describe('Free-text to match aliases or entity names (assets, parts, locations).'),
+  entity_types: z.array(z.string().min(1)).optional().describe('Optional filter e.g. asset, part, location'),
+  limit: z.number().int().min(1).max(50).optional(),
+});
+
+export type EntitySearchInput = z.infer<typeof entitySearchInputSchema>;

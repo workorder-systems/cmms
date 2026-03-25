@@ -316,3 +316,19 @@ export type {
   RegisterEntityAttachmentParams,
   MobileFieldResource,
 } from './resources/mobile-field.js';
+export type {
+  SimilarPastWorkOrderRow,
+  SimilarAssetRow,
+  SimilarPartRow,
+  EntityCandidateRow,
+  NextWorkOrderForEmbeddingRow,
+  NextAssetForEmbeddingRow,
+  NextPartForEmbeddingRow,
+  UpsertWorkOrderEmbeddingParams,
+  BatchWorkOrderEmbeddingRow,
+  BatchAssetEmbeddingRow,
+  BatchPartEmbeddingRow,
+  SimilarPastWorkOrdersParams,
+  SemanticSearchResource,
+} from './resources/semantic-search.js';
+export { formatEmbeddingForRpc } from './resources/semantic-search.js';
