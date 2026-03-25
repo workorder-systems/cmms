@@ -7,11 +7,11 @@ CMMS backed by Supabase. Use the host connection’s session for auth.
 Operating rules (important):
 - Always call tools with arguments that match the tool's JSON schema exactly. If you're unsure, inspect the tool schema and then call it.
 - Never assume a tool takes { tenant_id: ... } unless the schema says so. Some tools use active tenant context and accept only an id.
-- After switching tenants, tenant-scoped reads may return empty until the session token/JWT is refreshed to include the tenant_id claim.
+- After switching tenants, the JWT must include tenant_id (Supabase issues it on refresh). HTTP MCP can refresh in the same request when the client sends X-Supabase-Refresh-Token (Supabase refresh_token). If refresh is unavailable, reconnect OAuth or pass a new Bearer token.
 
 Typical flow:
 1. Call tenants_list, pick the right tenant, then call set_active_tenant with { tenant_id } (uuid).
-2. If set_active_tenant returns new_access_token, use it for subsequent tool calls (it includes tenant_id). Otherwise, if tenant-scoped reads return empty or null after set_active_tenant, refresh the OAuth access token so the JWT includes tenant_id, then retry reads.
+2. If set_active_tenant returns new_access_token, the HTTP server already uses it for later tools in that request when refresh ran. If tenant-scoped reads are still empty, ensure the MCP client sends X-Supabase-Refresh-Token (or refresh OAuth and retry).
 3. Use entity_search to resolve asset_id / location_id / part_id before creating work.
 4. Use work_orders_create to create a work order (this tool takes an explicit tenant_id).
 5. Use work_orders_list and work_orders_get to read work orders (these use the active tenant JWT context):

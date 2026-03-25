@@ -143,9 +143,12 @@ pnpm --filter mcp mcp:oauth-call tenants_list
 
 ## Tenant context and token refresh
 
-RLS and views use **`tenant_id` on the JWT** (from `custom_access_token_hook` after `rpc_set_tenant_context`). After **`set_active_tenant`**, you may need a **refreshed access token** for tenant-scoped views — the OAuth client should refresh via Supabase when possible.
+RLS and views use **`tenant_id` on the JWT** (from `custom_access_token_hook` after `rpc_set_tenant_context`). After **`set_active_tenant`**, Supabase must issue a **new access token** so the claim updates.
 
-OAuth clients may also need [`app.oauth_client_tenant_grants`](../../apps/supabase/migrations/20260326130000_oauth_client_tenant_grants.sql) populated for the chosen tenant.
+- **HTTP MCP:** send header **`X-Supabase-Refresh-Token`** with the user’s Supabase **`refresh_token`** (from the OAuth/token response). The server calls `refreshSession` after `set_active_tenant` and reuses the rotated access token for the rest of that MCP request (and returns `new_access_token` in the tool result when applicable). For multi-user security, the server does not persist refresh tokens across requests.
+- **OAuth `tenant_id`:** the hook prefers **`current_tenant_id`** from user metadata when that tenant is in [`app.oauth_client_tenant_grants`](../../apps/supabase/migrations/20260326130000_oauth_client_tenant_grants.sql), so switching orgs matches `set_active_tenant` after refresh.
+
+OAuth consent must populate tenant grants for the organizations the client may use.
 
 ---
 

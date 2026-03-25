@@ -115,10 +115,17 @@ async function main(): Promise<void> {
             ? (refreshHeader[0] ?? '').trim()
             : '';
 
+      /*
+       * Mutable tokens for this HTTP request: set_active_tenant + refreshSession mints a new JWT
+       * (tenant_id claim). If we kept the original Bearer string, sdk_catalog / sdk_invoke would
+       * keep decoding the stale token for the rest of the request.
+       */
+      const tokenState = { accessToken: token, refreshToken };
+
       const getClient = async () =>
-        refreshToken
-          ? await createSessionDbClient(supabaseUrl, anonKey, token, refreshToken)
-          : createUserDbClient(supabaseUrl, anonKey, token);
+        tokenState.refreshToken
+          ? await createSessionDbClient(supabaseUrl, anonKey, tokenState.accessToken, tokenState.refreshToken)
+          : createUserDbClient(supabaseUrl, anonKey, tokenState.accessToken);
 
       const embedSearchUrl = process.env.WORKORDER_SYSTEMS_EMBED_SEARCH_URL?.trim();
       const mcpServer = createWorkOrderSystemsMcpServer(getClient, {
@@ -127,22 +134,27 @@ async function main(): Promise<void> {
               embedSearch: {
                 embedSearchUrl,
                 anonKey,
-                getAccessToken: async () => token,
+                getAccessToken: async () => tokenState.accessToken,
               },
             }
           : {}),
-        tryRefreshAccessTokenAfterSetTenant: refreshToken
+        tryRefreshAccessTokenAfterSetTenant: tokenState.refreshToken
           ? async () => {
               const client = await getClient();
               const { data, error } = await client.supabase.auth.refreshSession();
-              const next = data.session?.access_token;
-              if (error || !next) {
+              const session = data.session;
+              const next = session?.access_token;
+              if (error || !next || !session) {
                 return { refreshed: false } as const;
+              }
+              tokenState.accessToken = next;
+              if (session.refresh_token) {
+                tokenState.refreshToken = session.refresh_token;
               }
               return { refreshed: true, access_token: next } as const;
             }
           : undefined,
-        getMcpBearerAccessToken: async () => token,
+        getMcpBearerAccessToken: async () => tokenState.accessToken,
       });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,

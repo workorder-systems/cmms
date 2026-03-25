@@ -253,7 +253,7 @@ export function registerTools(
     {
       title: 'Set active tenant',
       description:
-        'Switch tenant context (rpc_set_tenant_context). Updates user metadata; tenant-scoped views read tenant_id from the JWT — refresh the OAuth access token after this when using HTTP MCP, or rely on stdio refresh when WORKORDER_SYSTEMS_REFRESH_TOKEN is set.',
+        'Switch tenant context (rpc_set_tenant_context). Updates user metadata; tenant_id on the JWT updates after Supabase refreshSession. HTTP: send X-Supabase-Refresh-Token with the Supabase refresh_token so the server can refresh in-request; stdio: set WORKORDER_SYSTEMS_REFRESH_TOKEN.',
       inputSchema: setActiveTenantInputSchema,
       annotations: toolAnn.writeTenantContext,
     },
