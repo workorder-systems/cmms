@@ -9,7 +9,7 @@ import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import { buildProtectedResourceMetadata } from './oauth-metadata.js';
 import { createSupabaseJwtVerifier } from './supabase-jwt-verifier.js';
-import { createUserDbClient } from './user-client.js';
+import { createSessionDbClient, createUserDbClient } from './user-client.js';
 import { createWorkOrderSystemsMcpServer } from './tools.js';
 import { tryLoadMcpLocalEnv } from './load-local-env.js';
 import { oauthCallbackWrongServerHtml } from './oauth-callback-fallback.js';
@@ -107,8 +107,55 @@ async function main(): Promise<void> {
         return;
       }
 
-      const getClient = async () => createUserDbClient(supabaseUrl, anonKey, token);
-      const mcpServer = createWorkOrderSystemsMcpServer(getClient);
+      const refreshHeader = req.headers['x-supabase-refresh-token'];
+      const refreshToken =
+        typeof refreshHeader === 'string'
+          ? refreshHeader.trim()
+          : Array.isArray(refreshHeader)
+            ? (refreshHeader[0] ?? '').trim()
+            : '';
+
+      /*
+       * Mutable tokens for this HTTP request: set_active_tenant + refreshSession mints a new JWT
+       * (tenant_id claim). If we kept the original Bearer string, sdk_catalog / sdk_invoke would
+       * keep decoding the stale token for the rest of the request.
+       */
+      const tokenState = { accessToken: token, refreshToken };
+
+      const getClient = async () =>
+        tokenState.refreshToken
+          ? await createSessionDbClient(supabaseUrl, anonKey, tokenState.accessToken, tokenState.refreshToken)
+          : createUserDbClient(supabaseUrl, anonKey, tokenState.accessToken);
+
+      const embedSearchUrl = process.env.WORKORDER_SYSTEMS_EMBED_SEARCH_URL?.trim();
+      const mcpServer = createWorkOrderSystemsMcpServer(getClient, {
+        ...(embedSearchUrl
+          ? {
+              embedSearch: {
+                embedSearchUrl,
+                anonKey,
+                getAccessToken: async () => tokenState.accessToken,
+              },
+            }
+          : {}),
+        tryRefreshAccessTokenAfterSetTenant: tokenState.refreshToken
+          ? async () => {
+              const client = await getClient();
+              const { data, error } = await client.supabase.auth.refreshSession();
+              const session = data.session;
+              const next = session?.access_token;
+              if (error || !next || !session) {
+                return { refreshed: false } as const;
+              }
+              tokenState.accessToken = next;
+              if (session.refresh_token) {
+                tokenState.refreshToken = session.refresh_token;
+              }
+              return { refreshed: true, access_token: next } as const;
+            }
+          : undefined,
+        getMcpBearerAccessToken: async () => tokenState.accessToken,
+      });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
       });

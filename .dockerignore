@@ -1,0 +1,31 @@
+# VCS
+.git
+.gitignore
+
+# Already installed / build outputs (rebuilt in image)
+**/node_modules
+**/dist
+**/.turbo
+
+# Local env (secrets belong in runtime env / orchestrator, not the image)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Tests and coverage (not needed to compile MCP)
+coverage
+**/coverage
+tests
+**/vitest.config.ts
+**/*.test.ts
+**/*.test.tsx
+
+# Editor and tooling
+.cursor
+.vscode
+*.md
+!packages/sdk/README.md
+
+# Supabase CLI local artifacts (not needed to build MCP)
+apps/supabase/.branches
+apps/supabase/.temp

@@ -24,12 +24,30 @@ async function main(): Promise<void> {
   const tryRefreshAccessTokenAfterSetTenant = useSession
     ? async () => {
         const { data, error } = await dbClient.supabase.auth.refreshSession();
-        return !error && Boolean(data.session?.access_token);
+        const token = data.session?.access_token;
+        if (error || !token) {
+          return { refreshed: false } as const;
+        }
+        return { refreshed: true, access_token: token } as const;
       }
     : undefined;
 
+  const embedSearchUrl = process.env.WORKORDER_SYSTEMS_EMBED_SEARCH_URL?.trim();
+
   const server = createWorkOrderSystemsMcpServer(async () => dbClient, {
     tryRefreshAccessTokenAfterSetTenant,
+    ...(embedSearchUrl
+      ? {
+          embedSearch: {
+            embedSearchUrl,
+            anonKey,
+            getAccessToken: async () => {
+              const { data } = await dbClient.supabase.auth.getSession();
+              return data.session?.access_token ?? accessToken;
+            },
+          },
+        }
+      : {}),
   });
 
   const transport = new StdioServerTransport();

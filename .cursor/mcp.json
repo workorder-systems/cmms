@@ -1,9 +1,13 @@
 {
   "mcpServers": {
-    "mcp": {
+    // mcp-remote caches OAuth tokens on disk (~/.mcp-auth). To force a clean login / new session, quit Cursor
+    // (or restart the MCP server entry) and remove the cached auth for this URL, e.g. delete ~/.mcp-auth or
+    // the matching file inside it. Tenant switching in-app still needs a refreshed JWT after set_active_tenant.
+    "workorder-systems": {
       "command": "node",
       "args": [
         "${workspaceFolder}/apps/mcp/node_modules/mcp-remote/dist/proxy.js",
+        // "npx -y mcp-remote",
         "http://127.0.0.1:3765/mcp",
         "9876",
         "--host",

@@ -25,6 +25,7 @@ import { fieldOperationsOperations } from './operations/field-operations.js';
 import { mobileFieldOperations } from './operations/mobile-field.js';
 import { partsInventoryOperations } from './operations/parts-inventory.js';
 import { safetyComplianceOperations } from './operations/safety-compliance.js';
+import { semanticSearchOperations } from './operations/semantic-search.js';
 
 /**
  * Full SDK invoke registry (DbClient resources + tenant_context). Keys are operation_id strings.
@@ -56,6 +57,7 @@ export const SDK_OPERATION_REGISTRY: Record<string, SdkOperationDef> = {
   ...mobileFieldOperations,
   ...partsInventoryOperations,
   ...safetyComplianceOperations,
+  ...semanticSearchOperations,
 };
 
 export const SDK_OPERATION_IDS = Object.keys(SDK_OPERATION_REGISTRY).sort();

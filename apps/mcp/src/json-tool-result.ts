@@ -13,12 +13,39 @@ export function jsonResult(data: unknown) {
   };
 }
 
+/**
+ * Compact JSON output (no pretty indentation) to reduce tokens for large payloads.
+ * Keep `jsonResult` as the default for readability; use this for summary/compact tools.
+ */
+export function jsonCompactResult(data: unknown) {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(data),
+      },
+    ],
+  };
+}
+
 export function jsonToolError(message: string) {
   return {
     content: [
       {
         type: 'text' as const,
         text: JSON.stringify({ error: message }, null, 2),
+      },
+    ],
+    isError: true as const,
+  };
+}
+
+export function jsonCompactToolError(message: string) {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({ error: message }),
       },
     ],
     isError: true as const,

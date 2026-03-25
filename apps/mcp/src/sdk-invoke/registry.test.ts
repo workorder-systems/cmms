@@ -55,4 +55,28 @@ describe('sdk invoke dispatch', () => {
     expect(setTenant).toHaveBeenCalledWith(id);
     await expect(def.invoke(client, { tenant_id: 'not-a-uuid' })).rejects.toThrow();
   });
+
+  it('dispatches semantic_search.search_entity_candidates', async () => {
+    const searchEntityCandidates = vi.fn().mockResolvedValue([]);
+    const client = {
+      semanticSearch: { searchEntityCandidates },
+    } as unknown as import('@workorder-systems/sdk').DbClient;
+    const def = SDK_OPERATION_REGISTRY['semantic_search.search_entity_candidates']!;
+    await def.invoke(client, { p_query: 'pump', p_limit: 3 });
+    expect(searchEntityCandidates).toHaveBeenCalledWith({
+      query: 'pump',
+      entityTypes: null,
+      limit: 3,
+    });
+  });
+
+  it('dispatches semantic_search.next_assets_for_embedding', async () => {
+    const nextAssetsForEmbedding = vi.fn().mockResolvedValue([]);
+    const client = {
+      semanticSearch: { nextAssetsForEmbedding },
+    } as unknown as import('@workorder-systems/sdk').DbClient;
+    const def = SDK_OPERATION_REGISTRY['semantic_search.next_assets_for_embedding']!;
+    await def.invoke(client, { p_limit: 10 });
+    expect(nextAssetsForEmbedding).toHaveBeenCalledWith(10);
+  });
 });
