@@ -20,6 +20,7 @@ The **CMMS MCP** app ([`apps/mcp/README.md`](../mcp/README.md)) runs separately 
 | **`lib/demo-oauth-register-server.ts`** | `POST` to **`/auth/v1/oauth/clients/register`** (dynamic registration). |
 | **`lib/demo-client.ts`** | Browser: PKCE `sessionStorage` keys, **`demoPkceRedirectUri()`**. |
 | **`lib/runtime-env.ts`** | **`isDevelopment`** / **`isProduction`**. |
+| **`lib/oauth-dev-mode.ts`** | **`isOAuthDevDemoEnabled()`** — `/demo` and `/api/demo/*` (see Production below). |
 
 ## Environment
 
@@ -37,7 +38,9 @@ Register **`http://localhost:3005/demo/callback`** and **`http://127.0.0.1:3005/
 ## Production / staging
 
 - Deploy with **anon** credentials only (`NEXT_PUBLIC_*`).
-- Set **`NEXT_PUBLIC_DEMO_OAUTH_CLIENT_ID`** and **`DEMO_OAUTH_CLIENT_SECRET`** if you want a fixed client instead of cookies; otherwise users can register via dynamic registration from **`/demo`** when enabled on the project.
+- **Developer demo (`/demo`, `/api/demo/*`):** Off by default for **`next start`** and production builds (`NODE_ENV=production`). **`next dev`** keeps the demo on so local OAuth testing is unchanged. To enable the demo on a **staging** server that runs a production build, set **`OAUTH_ENABLE_DEV_DEMO=true`** (alias **`WORKORDER_SYSTEMS_OAUTH_ENABLE_DEV_DEMO`**). Do **not** set this on end-user production hosts.
+- When the demo is off, the home page only offers **Sign in**; **`GET /demo`** is rewritten to a short “not available” page; **`/api/demo/*`** returns **404**.
+- Set **`NEXT_PUBLIC_DEMO_OAUTH_CLIENT_ID`** and **`DEMO_OAUTH_CLIENT_SECRET`** if you want a fixed client instead of cookies when the demo is enabled; otherwise users can register via dynamic registration from **`/demo`** when that route is available.
 - The callback page does not print tokens or authorization codes in production builds.
 
 ## Using OAuth tokens for the CMMS API (work orders, assets, …)

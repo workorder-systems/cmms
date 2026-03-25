@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import type { DbClient } from '@workorder-systems/sdk';
+import type { DbClient, TenantRow } from '@workorder-systems/sdk';
 import { jsonCompactResult, jsonCompactToolError, jsonResult, jsonToolError, jsonToolTry } from './json-tool-result.js';
 import { MCP_SERVER_INSTRUCTIONS } from './mcp-instructions.js';
 import { MCP_PACKAGE_VERSION } from './server-version.js';
@@ -91,10 +91,10 @@ export function registerTools(
 
         const tenants = await client.tenants.list();
         const candidates = (tenants ?? [])
-          .map((t) => ({
-            tenant_id: (t as { id?: unknown }).id ?? null,
-            name: (t as { name?: unknown }).name ?? null,
-            slug: (t as { slug?: unknown }).slug ?? null,
+          .map((t: TenantRow) => ({
+            tenant_id: typeof t.id === 'string' ? t.id : null,
+            name: typeof t.name === 'string' ? t.name : null,
+            slug: typeof t.slug === 'string' ? t.slug : null,
           }))
           .filter((t) => typeof t.tenant_id === 'string' && t.tenant_id.length > 0);
 

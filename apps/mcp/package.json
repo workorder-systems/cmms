@@ -10,7 +10,7 @@
     "mcp-oauth-call": "./dist/oauth-mcp-call.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node ./scripts/ensure-sdk-built.mjs && tsc -p tsconfig.json",
     "dev": "tsx watch src/http.ts",
     "mcp:oauth-login": "node dist/oauth-login.js",
     "mcp:oauth-call": "node dist/oauth-mcp-call.js",

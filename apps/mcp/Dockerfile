@@ -29,7 +29,8 @@ COPY plugins ./plugins
 
 RUN pnpm install --frozen-lockfile
 
-RUN pnpm --filter @workorder-systems/sdk build && pnpm --filter mcp build
+# mcp `build` runs scripts/ensure-sdk-built.mjs so @workorder-systems/sdk dist exists before tsc.
+RUN pnpm --filter mcp build
 
 # Drop devDependencies for all workspace packages after artifacts exist in dist/.
 ENV CI=true
