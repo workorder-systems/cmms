@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { DbClient } from '@workorder-systems/sdk';
-import { jsonResult, jsonToolTry } from '../json-tool-result.js';
-import { sdkInvokeInputSchema } from '../schemas.js';
+import { jsonCompactResult, jsonResult, jsonToolTry } from '../json-tool-result.js';
+import { sdkInvokeInputSchema, sdkOperationSchemaInputSchema } from '../schemas.js';
 import { isSdkOperationVisibleInCatalog, type CatalogFilterContext } from './catalog-filter.js';
 import { SDK_OPERATION_IDS, SDK_OPERATION_REGISTRY } from './registry.js';
 import { getSessionTenantId } from './session-tenant.js';
@@ -60,6 +60,77 @@ export function registerSdkInvokeTools(
   getClient: () => Promise<DbClient>,
   invokeOptions?: SdkInvokeRegisterOptions
 ): void {
+  server.registerTool(
+    'sdk_catalog_compact',
+    {
+      title: 'SDK operations catalog (compact)',
+      description:
+        'Token-efficient catalog of sdk_invoke operations visible to the current session. Returns only operation_id and description. Use sdk_operation_schema to fetch args_json_schema for one operation when needed.',
+      annotations: ann.read,
+    },
+    async () =>
+      jsonToolTry(async () => {
+        const client = await getClient();
+        const ctx = await loadCatalogFilterContext(client, {
+          getBearerAccessToken: invokeOptions?.getBearerAccessToken,
+          embeddingEdgeConfigured: invokeOptions?.embeddingEdgeConfigured,
+        });
+        const visibleIds = SDK_OPERATION_IDS.filter((operation_id) => {
+          const def = SDK_OPERATION_REGISTRY[operation_id];
+          return def && isSdkOperationVisibleInCatalog(operation_id, def, ctx);
+        });
+        return jsonCompactResult({
+          tenant_id_in_session: ctx.tenantId ?? null,
+          visible_operation_count: visibleIds.length,
+          operations: visibleIds.map((operation_id) => {
+            const def = SDK_OPERATION_REGISTRY[operation_id]!;
+            return {
+              operation_id,
+              description: def.description,
+            };
+          }),
+          next_actions: ['Call sdk_operation_schema with an operation_id to see the exact args schema.'],
+        });
+      })
+  );
+
+  server.registerTool(
+    'sdk_operation_schema',
+    {
+      title: 'SDK operation schema',
+      description:
+        'Fetch args_json_schema for a single sdk_invoke operation_id, subject to the same allow-list visibility rules as sdk_catalog.',
+      inputSchema: sdkOperationSchemaInputSchema,
+      annotations: ann.read,
+    },
+    async (raw) =>
+      jsonToolTry(async () => {
+        const { operation_id } = sdkOperationSchemaInputSchema.parse(raw);
+        const def = SDK_OPERATION_REGISTRY[operation_id];
+        if (!def) {
+          throw new Error(
+            `Unknown operation_id: ${operation_id}. Call sdk_catalog_compact or sdk_catalog for operation ids visible to your session.`
+          );
+        }
+        const client = await getClient();
+        const ctx = await loadCatalogFilterContext(client, {
+          getBearerAccessToken: invokeOptions?.getBearerAccessToken,
+          embeddingEdgeConfigured: invokeOptions?.embeddingEdgeConfigured,
+        });
+        if (!isSdkOperationVisibleInCatalog(operation_id, def, ctx)) {
+          throw new Error(
+            `Operation not allowed for the current session: ${operation_id}. Call set_active_tenant (and refresh token) then retry.`
+          );
+        }
+        return jsonCompactResult({
+          operation_id,
+          description: def.description,
+          annotations: def.annotations,
+          args_json_schema: inputJsonSchema(def),
+        });
+      })
+  );
+
   server.registerTool(
     'sdk_catalog',
     {

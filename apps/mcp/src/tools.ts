@@ -1,18 +1,22 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { DbClient } from '@workorder-systems/sdk';
-import { jsonResult, jsonToolError, jsonToolTry } from './json-tool-result.js';
+import { jsonCompactResult, jsonCompactToolError, jsonResult, jsonToolError, jsonToolTry } from './json-tool-result.js';
 import { MCP_SERVER_INSTRUCTIONS } from './mcp-instructions.js';
 import { MCP_PACKAGE_VERSION } from './server-version.js';
 import { registerSdkInvokeTools } from './sdk-invoke/register-sdk-invoke.js';
+import { getSessionTenantId } from './sdk-invoke/session-tenant.js';
 import { callEmbedSearch, type EmbedSearchTransportContext } from './embed-search-client.js';
 import {
   cmmsSimilarPastTextInputSchema,
   entitySearchInputSchema,
+  resolveActiveTenantInputSchema,
   semanticSearchTextInputSchema,
   setActiveTenantInputSchema,
   workOrdersCreateInputSchema,
   workOrdersGetInputSchema,
+  workOrdersGetSummaryInputSchema,
+  workOrdersListSummaryInputSchema,
 } from './schemas.js';
 
 /** Optional: call Supabase Edge embed-search with the same user JWT (text-in similarity). */
@@ -60,6 +64,76 @@ export function registerTools(
   });
 
   server.registerTool(
+    'resolve_active_tenant',
+    {
+      title: 'Resolve active tenant',
+      description:
+        'Resolve which tenant to use. If a tenant is already present in the JWT/session, returns it. If the user belongs to exactly 1 tenant, suggests that tenant. If multiple, returns candidates and requires user choice.',
+      inputSchema: resolveActiveTenantInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async () => {
+      try {
+        const client = await getClient();
+        const bearer = await options?.getMcpBearerAccessToken?.();
+        const tenantId = await getSessionTenantId(client, bearer);
+        if (tenantId) {
+          return jsonCompactResult({
+            ok: true,
+            resolved: true,
+            tenant_id: tenantId,
+            needs_set_active_tenant: false,
+            needs_user_input: false,
+            candidates: [],
+            next_actions: ['Proceed with tenant-scoped tools (tenant_id is already present in JWT/session).'],
+          });
+        }
+
+        const tenants = await client.tenants.list();
+        const candidates = (tenants ?? [])
+          .map((t) => ({
+            tenant_id: (t as { id?: unknown }).id ?? null,
+            name: (t as { name?: unknown }).name ?? null,
+            slug: (t as { slug?: unknown }).slug ?? null,
+          }))
+          .filter((t) => typeof t.tenant_id === 'string' && t.tenant_id.length > 0);
+
+        if (candidates.length === 0) {
+          return jsonCompactToolError('No tenants found for the current user.');
+        }
+
+        if (candidates.length === 1) {
+          const only = candidates[0]!;
+          return jsonCompactResult({
+            ok: true,
+            resolved: true,
+            tenant_id: only.tenant_id,
+            needs_set_active_tenant: true,
+            needs_user_input: false,
+            candidates,
+            next_actions: ['Call set_active_tenant with this tenant_id before tenant-scoped reads/writes.'],
+          });
+        }
+
+        return jsonCompactResult({
+          ok: true,
+          resolved: false,
+          tenant_id: null,
+          needs_set_active_tenant: false,
+          needs_user_input: true,
+          candidates,
+          next_actions: [
+            'Ask the user which tenant to use (by name/slug), then call set_active_tenant with the chosen tenant_id.',
+          ],
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return jsonCompactToolError(message);
+      }
+    }
+  );
+
+  server.registerTool(
     'tenants_list',
     {
       title: 'List tenants',
@@ -90,6 +164,62 @@ export function registerTools(
   );
 
   server.registerTool(
+    'work_orders_list_summary',
+    {
+      title: 'List work orders (summary)',
+      description:
+        'Token-efficient list of work orders for the active tenant (JWT tenant_id claim). Returns only key fields for selection/disambiguation; use work_orders_get_summary or work_orders_get for details.',
+      inputSchema: workOrdersListSummaryInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async (raw) => {
+      try {
+        const client = await getClient();
+        const args = workOrdersListSummaryInputSchema.parse(raw);
+        const limit = args.limit ?? 50;
+        const { data, error } = await client.supabase
+          .from('v_work_orders')
+          .select(
+            [
+              'id',
+              'title',
+              'status',
+              'priority',
+              'due_date',
+              'assigned_to',
+              'assigned_to_name',
+              'asset_id',
+              'location_id',
+              'project_id',
+              'created_at',
+              'updated_at',
+            ].join(',')
+          )
+          .neq('status', 'draft')
+          .order('updated_at', { ascending: false })
+          .limit(limit);
+        if (error) {
+          return jsonCompactToolError(error.message);
+        }
+        const bearer = await options?.getMcpBearerAccessToken?.();
+        const tenantId = await getSessionTenantId(client, bearer);
+        return jsonCompactResult({
+          ok: true,
+          tenant_id: tenantId ?? null,
+          returned_count: (data ?? []).length,
+          rows: data ?? [],
+          next_actions: [
+            'Pick a work_order_id and call work_orders_get_summary (or work_orders_get for full fields).',
+          ],
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return jsonCompactToolError(message);
+      }
+    }
+  );
+
+  server.registerTool(
     'work_orders_get',
     {
       title: 'Get work order',
@@ -102,6 +232,59 @@ export function registerTools(
         const client = await getClient();
         return client.workOrders.getById(args.work_order_id);
       })
+  );
+
+  server.registerTool(
+    'work_orders_get_summary',
+    {
+      title: 'Get work order (summary)',
+      description:
+        'Token-efficient fetch of one work order by id. Returns key fields only; use work_orders_get for full details.',
+      inputSchema: workOrdersGetSummaryInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async (raw) => {
+      try {
+        const client = await getClient();
+        const args = workOrdersGetSummaryInputSchema.parse(raw);
+        const { data, error } = await client.supabase
+          .from('v_work_orders')
+          .select(
+            [
+              'id',
+              'title',
+              'status',
+              'priority',
+              'due_date',
+              'assigned_to',
+              'assigned_to_name',
+              'asset_id',
+              'location_id',
+              'project_id',
+              'description',
+              'created_at',
+              'updated_at',
+            ].join(',')
+          )
+          .eq('id', args.work_order_id)
+          .maybeSingle();
+        if (error) {
+          return jsonCompactToolError(error.message);
+        }
+        const bearer = await options?.getMcpBearerAccessToken?.();
+        const tenantId = await getSessionTenantId(client, bearer);
+        return jsonCompactResult({
+          ok: true,
+          tenant_id: tenantId ?? null,
+          work_order_id: args.work_order_id,
+          row: data ?? null,
+          next_actions: ['Call work_orders_get if you need full text fields (cause, resolution, SLA fields, etc.).'],
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return jsonCompactToolError(message);
+      }
+    }
   );
 
   server.registerTool(
@@ -143,15 +326,15 @@ export function registerTools(
     async () =>
       jsonResult({
         steps: [
-          'tenants_list, then set_active_tenant',
-          'entity_search for assets, parts, and locations',
+          'resolve_active_tenant, then set_active_tenant if needed',
+          'entity_search for assets, parts, and locations (ask user if multiple candidates)',
           ...(options?.embedSearch
             ? [
                 'similar_past_work_orders / semantic_search (text-in embed-search; optional detail_level)',
               ]
             : []),
-          'work_orders_get when you need one work order in full',
-          'sdk_catalog and sdk_invoke for other SDK operations',
+          'work_orders_list_summary / work_orders_get_summary; work_orders_get for full fields',
+          'sdk_catalog_compact, sdk_operation_schema as needed, sdk_invoke',
         ],
       })
   );

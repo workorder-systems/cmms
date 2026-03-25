@@ -3,13 +3,31 @@ import { z } from 'zod';
 /** UUID string (Postgres tenant / entity ids). */
 export const uuidSchema = z.string().uuid();
 
+/** Common limit param for list-style tools. */
+export const listLimitSchema = z
+  .number()
+  .int()
+  .min(1)
+  .max(200)
+  .optional()
+  .describe('Max rows to return (default varies per tool).');
+
 export const setActiveTenantInputSchema = z.object({
   tenant_id: uuidSchema.describe('Tenant UUID to scope subsequent CMMS operations (must be a member; OAuth clients need tenant grants).'),
 });
 
+/** Resolve active tenant for the caller; no args. */
+export const resolveActiveTenantInputSchema = z.object({});
+
 export const workOrdersGetInputSchema = z.object({
   work_order_id: uuidSchema,
 });
+
+export const workOrdersListSummaryInputSchema = z.object({
+  limit: listLimitSchema,
+});
+
+export const workOrdersGetSummaryInputSchema = workOrdersGetInputSchema;
 
 export const workOrdersCreateInputSchema = z.object({
   tenant_id: uuidSchema.describe('Tenant that will own the work order.'),
@@ -26,7 +44,10 @@ export const workOrdersCreateInputSchema = z.object({
 });
 
 export type SetActiveTenantInput = z.infer<typeof setActiveTenantInputSchema>;
+export type ResolveActiveTenantInput = z.infer<typeof resolveActiveTenantInputSchema>;
 export type WorkOrdersGetInput = z.infer<typeof workOrdersGetInputSchema>;
+export type WorkOrdersListSummaryInput = z.infer<typeof workOrdersListSummaryInputSchema>;
+export type WorkOrdersGetSummaryInput = z.infer<typeof workOrdersGetSummaryInputSchema>;
 export type WorkOrdersCreateInput = z.infer<typeof workOrdersCreateInputSchema>;
 
 /** Generic SDK invoke: operation_id from sdk_catalog; args validated per operation. */
@@ -43,6 +64,12 @@ export const sdkInvokeInputSchema = z.object({
 });
 
 export type SdkInvokeInput = z.infer<typeof sdkInvokeInputSchema>;
+
+export const sdkOperationSchemaInputSchema = z.object({
+  operation_id: z.string().min(1).describe('Operation id from sdk_catalog_compact or sdk_catalog.'),
+});
+
+export type SdkOperationSchemaInput = z.infer<typeof sdkOperationSchemaInputSchema>;
 
 const detailLevelSchema = z
   .enum(['summary', 'standard', 'full'])
