@@ -98,3 +98,7 @@ export function toToolErrorPayload(err: unknown): ToolErrorPayload {
     },
   };
 }
+
+export function toStructuredToolError(err: unknown): ToolErrorPayload['error'] {
+  return toToolErrorPayload(err).error;
+}

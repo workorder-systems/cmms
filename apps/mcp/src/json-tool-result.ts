@@ -1,4 +1,4 @@
-import { SdkError, normalizeError } from '@workorder-systems/sdk';
+import { toToolErrorPayload } from './tool-errors.js';
 
 /**
  * Shared JSON text responses for MCP tools (success and error).
@@ -35,7 +35,7 @@ export function jsonToolError(message: string) {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify({ error: message }, null, 2),
+        text: JSON.stringify({ error: { message } }, null, 2),
       },
     ],
     isError: true as const,
@@ -47,7 +47,7 @@ export function jsonCompactToolError(message: string) {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify({ error: message }),
+        text: JSON.stringify({ error: { message } }),
       },
     ],
     isError: true as const,
@@ -63,15 +63,12 @@ export function jsonStructuredToolError(
     extra?: Record<string, unknown>;
   }
 ) {
-  const normalized = normalizeError(error);
+  const base = toToolErrorPayload(error);
   const payload = {
     error: {
-      message: normalized.message,
-      code: normalized.code ?? null,
-      details: normalized.details ?? null,
-      hint: normalized.hint ?? null,
-      retryable: options?.retryable ?? null,
-      next_action: options?.next_action ?? null,
+      ...base.error,
+      retryable: options?.retryable ?? base.error.retryable ?? null,
+      next_action: options?.next_action ?? base.error.next_action ?? null,
       ...(options?.extra ?? {}),
     },
   };
@@ -85,10 +82,6 @@ export function jsonStructuredToolError(
     ],
     isError: true as const,
   };
-}
-
-export function isSdkLikeError(error: unknown): error is SdkError {
-  return error instanceof SdkError;
 }
 
 export async function jsonToolTry<T>(fn: () => Promise<T>) {

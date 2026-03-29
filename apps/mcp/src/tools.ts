@@ -541,6 +541,30 @@ export function registerTools(
   );
 
   server.registerTool(
+    'workflow_bundle_guide',
+    {
+      title: 'Workflow bundle guide',
+      description:
+        'Curated workflow-oriented MCP tool bundles for common tenant bootstrap, work order intake, and maintenance lookup flows.',
+      inputSchema: workflowBundleInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async (raw) => {
+      try {
+        const { bundle_id } = workflowBundleInputSchema.parse(raw);
+        if (!bundle_id) {
+          return jsonCompactResult({
+            bundles: Object.values(WORKFLOW_BUNDLES),
+          });
+        }
+        return jsonCompactResult(WORKFLOW_BUNDLES[bundle_id as WorkflowBundleId]);
+      } catch (err) {
+        return jsonCompactToolError(toStructuredToolError(err));
+      }
+    }
+  );
+
+  server.registerTool(
     'workflow_guide',
     {
       title: 'Workflow guide',

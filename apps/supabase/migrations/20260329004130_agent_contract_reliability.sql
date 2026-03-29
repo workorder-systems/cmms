@@ -330,21 +330,49 @@ begin
   end if;
 
   return query
-  with location_context as (
+  with recursive location_tree as (
     select
-      lh.id as location_id,
-      lh.tenant_id,
-      array_to_string(lh.path_names, ' > ') as location_path,
+      l.id,
+      l.tenant_id,
+      l.name,
+      l.parent_location_id,
+      l.location_type,
+      array[l.id] as path_ids,
+      array[l.name] as path_names
+    from app.locations l
+    where l.parent_location_id is null
+      and l.tenant_id = v_tenant_id
+
+    union all
+
+    select
+      l.id,
+      l.tenant_id,
+      l.name,
+      l.parent_location_id,
+      l.location_type,
+      lt.path_ids || l.id,
+      lt.path_names || l.name
+    from app.locations l
+    join location_tree lt
+      on l.parent_location_id = lt.id
+    where l.tenant_id = v_tenant_id
+  ),
+  location_context as (
+    select
+      lt.id as location_id,
+      lt.tenant_id,
+      array_to_string(lt.path_names, ' > ') as location_path,
       (
         select site.name
         from app.locations site
-        where site.tenant_id = lh.tenant_id
+        where site.tenant_id = lt.tenant_id
           and site.location_type = 'site'
-          and site.id = any (lh.path_ids)
-        order by array_position(lh.path_ids, site.id)
+          and site.id = any (lt.path_ids)
+        order by array_position(lt.path_ids, site.id)
         limit 1
       ) as site_name
-    from app.v_location_hierarchy lh
+    from location_tree lt
   ),
   candidate_rows as (
     -- alias matches for assets

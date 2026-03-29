@@ -3,7 +3,7 @@
  * DB contract is tested in other suites.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createDbClient, SdkError } from '@workorder-systems/sdk';
+import { createDbClient, SdkError } from '../packages/sdk/dist/index.js';
 import { waitForSupabase } from './helpers/supabase';
 import { createTestSdkClient, withAuthenticatedTenant } from './helpers/sdk';
 import { shortSlug } from './helpers/faker';
@@ -133,6 +133,26 @@ describe('SDK', () => {
       expect(wo).not.toBeNull();
       expect((wo as { id: string }).id).toBe(woId);
       expect((wo as { title: string }).title).toBe('SDK Get WO');
+    });
+
+    it('create supports retry-safe clientRequestId', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const clientRequestId = `sdk-client-request-${Date.now()}`;
+
+      const firstId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK idempotent WO',
+        priority: 'medium',
+        clientRequestId,
+      });
+      const secondId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK idempotent WO retry',
+        priority: 'medium',
+        clientRequestId,
+      });
+
+      expect(secondId).toBe(firstId);
     });
 
     it('createRequest and listMyRequests (portal)', async () => {
@@ -275,6 +295,37 @@ describe('SDK', () => {
       expect(typeof cid).toBe('string');
       const list = await sdk.partsInventory.listSupplierContracts();
       expect(list.some((c) => c.id === cid)).toBe(true);
+    });
+  });
+
+  describe('semanticSearch resource', () => {
+    it('searchEntityCandidatesV2 returns disambiguation fields', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      await sdk.partsInventory.createSupplier({
+        tenantId,
+        name: 'SDK Search Supplier',
+      });
+
+      const partId = await sdk.partsInventory.createPart({
+        tenantId,
+        partNumber: 'SDK-SEARCH-1',
+        name: 'SDK Search Part',
+        barcode: 'SDK-SEARCH-BARCODE',
+      });
+
+      const rows = await sdk.semanticSearch.searchEntityCandidatesV2({
+        query: 'SDK Search',
+        entityTypes: ['part'],
+        limit: 5,
+      });
+
+      expect(Array.isArray(rows)).toBe(true);
+      const part = rows.find((row) => row.entity_id === partId);
+      expect(part).toBeDefined();
+      expect(part?.entity_type).toBe('part');
+      expect(part?.part_number).toBe('SDK-SEARCH-1');
+      expect(part?.barcode).toBe('SDK-SEARCH-BARCODE');
+      expect(typeof part?.disambiguation_hint).toBe('string');
     });
   });
 

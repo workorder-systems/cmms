@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestClient, waitForSupabase } from './helpers/supabase';
 import { createTestUser } from './helpers/auth';
 import { createTestTenant, setTenantContext } from './helpers/tenant';
-import { createTestAsset, createTestWorkOrder, transitionWorkOrderStatus } from './helpers/entities';
+import { createTestAsset, createTestLocation, createTestWorkOrder, transitionWorkOrderStatus } from './helpers/entities';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /** Deterministic 1536-d unit vector for pgvector RPC tests (no OpenAI). */
@@ -94,6 +94,37 @@ describe('Semantic search & embeddings (AI-native)', () => {
     });
     expect(error).toBeNull();
     expect(Array.isArray(hits)).toBe(true);
+  });
+
+  it('should return richer disambiguation hints from rpc_search_entity_candidates_v2', async () => {
+    const userClient = createTestClient();
+    await createTestUser(userClient);
+    const tenantId = await createTestTenant(userClient);
+    await setTenantContext(userClient, tenantId);
+
+    const siteId = await createTestLocation(userClient, tenantId, 'North Plant', undefined, 'site');
+    const buildingId = await createTestLocation(userClient, tenantId, 'Building A', siteId, 'building');
+    const floorId = await createTestLocation(userClient, tenantId, 'Level 1', buildingId, 'floor');
+    const roomId = await createTestLocation(userClient, tenantId, 'Pump Room 7', floorId, 'room');
+    await createTestAsset(userClient, tenantId, 'North Pump 7', roomId, undefined, 'NP-7');
+
+    const { data: hits, error } = await userClient.rpc('rpc_search_entity_candidates_v2', {
+      p_query: 'North Pump 7',
+      p_entity_types: ['asset'],
+      p_limit: 5,
+    });
+
+    expect(error).toBeNull();
+    expect(Array.isArray(hits)).toBe(true);
+    expect((hits ?? []).length).toBeGreaterThan(0);
+
+    const first = (hits as Array<Record<string, unknown>>)[0]!;
+    expect(first.entity_type).toBe('asset');
+    expect(first.label).toBe('North Pump 7');
+    expect(first.asset_number).toBe('NP-7');
+    expect(first.site_name).toBe('North Plant');
+    expect(String(first.location_path ?? '')).toContain('Pump Room 7');
+    expect(String(first.disambiguation_hint ?? '')).toContain('North Plant');
   });
 
   it('should claim idempotency only once', async () => {

@@ -82,8 +82,10 @@ describe('workOrdersCreateInputSchema', () => {
       title: 'x',
       priority: 'high',
       description: null,
+      client_request_id: 'request-123',
     });
     expect(parsed.priority).toBe('high');
+    expect(parsed.client_request_id).toBe('request-123');
   });
 });
 

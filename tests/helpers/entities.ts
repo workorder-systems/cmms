@@ -128,7 +128,8 @@ export async function createTestWorkOrder(
   locationId?: string,
   assetId?: string,
   dueDate?: Date,
-  pmScheduleId?: string
+  pmScheduleId?: string,
+  clientRequestId?: string
 ): Promise<string> {
   const finalTitle = title ?? makeWorkOrderTitle();
 
@@ -142,6 +143,7 @@ export async function createTestWorkOrder(
     p_asset_id: assetId || null,
     p_due_date: dueDate?.toISOString() || null,
     p_pm_schedule_id: pmScheduleId || null,
+    p_client_request_id: clientRequestId || null,
   });
 
   if (error) {
