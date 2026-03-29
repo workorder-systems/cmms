@@ -57,6 +57,7 @@ export interface PartRow {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  barcode?: string | null;
 }
 
 /** Supplier row (v_suppliers). */

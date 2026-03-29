@@ -62,6 +62,13 @@ export const pmSchedulesListSummaryInputSchema = z.object({
   limit: listLimitSchema,
 });
 
+export const workflowBundleInputSchema = z.object({
+  bundle_id: z
+    .enum(['tenant_bootstrap', 'work_order_intake', 'work_order_lookup', 'maintenance_lookup'])
+    .optional()
+    .describe('Optional curated workflow bundle id. Omit to list every available bundle.'),
+});
+
 export type SetActiveTenantInput = z.infer<typeof setActiveTenantInputSchema>;
 export type ResolveActiveTenantInput = z.infer<typeof resolveActiveTenantInputSchema>;
 export type WorkOrdersGetInput = z.infer<typeof workOrdersGetInputSchema>;
@@ -71,6 +78,7 @@ export type WorkOrdersCreateInput = z.infer<typeof workOrdersCreateInputSchema>;
 export type AssetsListSummaryInput = z.infer<typeof assetsListSummaryInputSchema>;
 export type PartsListSummaryInput = z.infer<typeof partsListSummaryInputSchema>;
 export type PmSchedulesListSummaryInput = z.infer<typeof pmSchedulesListSummaryInputSchema>;
+export type WorkflowBundleInput = z.infer<typeof workflowBundleInputSchema>;
 
 /** Generic SDK invoke: operation_id from sdk_catalog; args validated per operation. */
 export const sdkInvokeInputSchema = z.object({

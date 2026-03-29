@@ -30,24 +30,54 @@ export function jsonCompactResult(data: unknown) {
   };
 }
 
-export function jsonToolError(message: string) {
+export function jsonToolError(
+  messageOrPayload:
+    | string
+    | {
+        message: string;
+        code?: string;
+        details?: string;
+        hint?: string;
+        retryable?: boolean;
+        next_action?: string;
+      }
+) {
+  const payload =
+    typeof messageOrPayload === 'string'
+      ? { error: { message: messageOrPayload } }
+      : { error: messageOrPayload };
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify({ error: { message } }, null, 2),
+        text: JSON.stringify(payload, null, 2),
       },
     ],
     isError: true as const,
   };
 }
 
-export function jsonCompactToolError(message: string) {
+export function jsonCompactToolError(
+  messageOrPayload:
+    | string
+    | {
+        message: string;
+        code?: string;
+        details?: string;
+        hint?: string;
+        retryable?: boolean;
+        next_action?: string;
+      }
+) {
+  const payload =
+    typeof messageOrPayload === 'string'
+      ? { error: { message: messageOrPayload } }
+      : { error: messageOrPayload };
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify({ error: { message } }),
+        text: JSON.stringify(payload),
       },
     ],
     isError: true as const,

@@ -1,7 +1,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { DbClient, TenantRow } from '@workorder-systems/sdk';
-import { jsonCompactResult, jsonCompactToolError, jsonResult, jsonToolError, jsonToolTry } from './json-tool-result.js';
+import {
+  jsonCompactResult,
+  jsonCompactToolError,
+  jsonResult,
+  jsonStructuredToolError,
+  jsonToolError,
+  jsonToolTry,
+} from './json-tool-result.js';
 import { MCP_SERVER_INSTRUCTIONS } from './mcp-instructions.js';
 import { MCP_PACKAGE_VERSION } from './server-version.js';
 import { registerSdkInvokeTools } from './sdk-invoke/register-sdk-invoke.js';
@@ -144,7 +151,7 @@ export function registerTools(
       inputSchema: workflowBundleInputSchema,
       annotations: toolAnn.readTenantData,
     },
-    async (raw) => {
+    async (raw: unknown) => {
       try {
         const { bundle_id } = workflowBundleInputSchema.parse(raw);
         if (bundle_id) {
@@ -154,7 +161,7 @@ export function registerTools(
           bundles: Object.values(WORKFLOW_BUNDLES),
         });
       } catch (err) {
-        return jsonToolError(toStructuredToolError(err));
+        return jsonStructuredToolError(err);
       }
     }
   );
@@ -271,7 +278,7 @@ export function registerTools(
       inputSchema: workOrdersListSummaryInputSchema,
       annotations: toolAnn.readTenantData,
     },
-    async (raw) => {
+    async (raw: unknown) => {
       try {
         const client = await getClient();
         const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
@@ -487,7 +494,7 @@ export function registerTools(
             id: row.id,
             name: row.name,
             part_number: row.part_number,
-            barcode: row.barcode ?? null,
+            barcode: 'barcode' in row ? row.barcode ?? null : null,
             preferred_supplier_id: row.preferred_supplier_id,
             updated_at: row.updated_at,
           })),
@@ -534,30 +541,6 @@ export function registerTools(
           })),
           next_actions: ['Use sdk_invoke for full PM schedule detail or generation actions.'],
         });
-      } catch (err) {
-        return jsonCompactToolError(toStructuredToolError(err));
-      }
-    }
-  );
-
-  server.registerTool(
-    'workflow_bundle_guide',
-    {
-      title: 'Workflow bundle guide',
-      description:
-        'Curated workflow-oriented MCP tool bundles for common tenant bootstrap, work order intake, and maintenance lookup flows.',
-      inputSchema: workflowBundleInputSchema,
-      annotations: toolAnn.readTenantData,
-    },
-    async (raw) => {
-      try {
-        const { bundle_id } = workflowBundleInputSchema.parse(raw);
-        if (!bundle_id) {
-          return jsonCompactResult({
-            bundles: Object.values(WORKFLOW_BUNDLES),
-          });
-        }
-        return jsonCompactResult(WORKFLOW_BUNDLES[bundle_id as WorkflowBundleId]);
       } catch (err) {
         return jsonCompactToolError(toStructuredToolError(err));
       }
