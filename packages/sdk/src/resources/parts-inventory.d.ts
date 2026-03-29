@@ -52,6 +52,7 @@ export interface PartRow {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    barcode?: string | null;
 }
 /** Supplier row (v_suppliers). */
 export interface SupplierRow {
@@ -344,6 +345,8 @@ export declare function createPartsInventoryResource(supabase: SupabaseClient<Da
     listParts(): Promise<PartRow[]>;
     /** Get part by id. */
     getPartById(id: string): Promise<PartRow | null>;
+    /** Lightweight parts list for selection/disambiguation (ordered by updated_at desc, limited). */
+    listSummary(limit?: number): Promise<Array<Pick<PartRow, 'id' | 'name' | 'part_number' | 'barcode' | 'preferred_supplier_id' | 'updated_at'>>>;
     /** List suppliers (v_suppliers). */
     listSuppliers(): Promise<SupplierRow[]>;
     /** Get supplier by id. */

@@ -26,6 +26,7 @@ import type { FieldOperationsResource } from './resources/field-operations.js';
 import type { IntegrationsResource } from './resources/integrations.js';
 import type { NotificationsResource } from './resources/notifications.js';
 import type { SemanticSearchResource } from './resources/semantic-search.js';
+import type { AgentHelpersResource } from './resources/agent.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -107,4 +108,6 @@ export type DbClient = {
   notifications: NotificationsResource;
   /** Semantic search, embeddings RPCs, ontology candidates, idempotency helpers (AI-native CMMS). */
   semanticSearch: SemanticSearchResource;
+  /** Agent-first helper layer: tenant bootstrap, summary-first selectors, and safe multi-step helpers. */
+  agent: AgentHelpersResource;
 };

@@ -29,6 +29,7 @@ import { createFieldOperationsResource } from './resources/field-operations.js';
 import { createIntegrationsResource } from './resources/integrations.js';
 import { createNotificationsResource } from './resources/notifications.js';
 import { createSemanticSearchResource } from './resources/semantic-search.js';
+import { createAgentResource } from './resources/agent.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -100,12 +101,38 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     integrations: createIntegrationsResource(supabase),
     notifications: createNotificationsResource(supabase),
     semanticSearch: createSemanticSearchResource(supabase),
+    agent: createAgentResource(supabase),
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',
         { p_tenant_id: tenantId }
       );
       unwrapResult(null, error as import('@supabase/supabase-js').PostgrestError | null);
+    },
+    async refreshTenantSession(): Promise<string | null> {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        throw error;
+      }
+      const session = data.session;
+      if (!session?.refresh_token) {
+        return null;
+      }
+      const refreshed = await supabase.auth.refreshSession({
+        refresh_token: session.refresh_token,
+      });
+      if (refreshed.error) {
+        throw refreshed.error;
+      }
+      return refreshed.data.session?.access_token ?? null;
+    },
+    async setTenantAndRefresh(tenantId: string): Promise<string | null> {
+      const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
+        'rpc_set_tenant_context',
+        { p_tenant_id: tenantId }
+      );
+      unwrapResult(null, error as import('@supabase/supabase-js').PostgrestError | null);
+      return client.refreshTenantSession();
     },
     async clearTenant(): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(

@@ -23,6 +23,25 @@ export interface CreateWorkOrderParams {
     projectId?: string | null;
     clientRequestId?: string | null;
 }
+export interface WorkOrderSummaryRow {
+    id: string;
+    title: string | null;
+    status: string | null;
+    priority: string | null;
+    due_date: string | null;
+    assigned_to: string | null;
+    assigned_to_name: string | null;
+    asset_id: string | null;
+    location_id: string | null;
+    project_id: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    description?: string | null;
+}
+export interface WorkOrderSummaryListOptions {
+    limit?: number;
+    includeDraft?: boolean;
+}
 /** Single row for bulk import (title required; others optional, use catalog keys). */
 export interface BulkImportRow {
     title: string;
@@ -162,8 +181,12 @@ export declare function createWorkOrdersResource(supabase: SupabaseClient<Databa
     list(): Promise<WorkOrderRow[]>;
     /** List work orders including draft (v_work_orders). Use when the caller needs draft work orders. */
     listIncludingDraft(): Promise<WorkOrderRow[]>;
+    /** Token-efficient list for selection and disambiguation. */
+    listSummary(options?: WorkOrderSummaryListOptions): Promise<WorkOrderSummaryRow[]>;
     /** Get a single work order by id. */
     getById(id: string): Promise<WorkOrderRow | null>;
+    /** Token-efficient fetch of a single work order by id. */
+    getSummary(id: string): Promise<WorkOrderSummaryRow | null>;
     /** Create a work order. Returns the new work order UUID. */
     create(params: CreateWorkOrderParams): Promise<string>;
     /** Bulk import work orders. Status/priority set on insert (no transition). Returns created ids and per-row errors. */

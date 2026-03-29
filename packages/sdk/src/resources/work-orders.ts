@@ -5,6 +5,23 @@ import { callRpc } from '../unwrap.js';
 
 /** Row from v_work_orders view. */
 export type WorkOrderRow = Database['public']['Views']['v_work_orders'] extends { Row: infer R } ? R : Record<string, unknown>;
+export type WorkOrderSummaryRow = Pick<
+  WorkOrderRow,
+  | 'id'
+  | 'tenant_id'
+  | 'title'
+  | 'status'
+  | 'priority'
+  | 'due_date'
+  | 'assigned_to'
+  | 'assigned_to_name'
+  | 'asset_id'
+  | 'location_id'
+  | 'project_id'
+  | 'description'
+  | 'updated_at'
+  | 'created_at'
+>;
 
 /** Row from v_work_order_attachments view (file_id, bucket_id, storage_path for signed URLs). */
 export type WorkOrderAttachmentRow = Database['public']['Views']['v_work_order_attachments'] extends { Row: infer R } ? R : Record<string, unknown>;
@@ -24,6 +41,11 @@ export interface CreateWorkOrderParams {
   projectId?: string | null;
   /** Optional idempotency key for retry-safe automation. Reusing the same key returns the original work order id. */
   clientRequestId?: string | null;
+}
+
+export interface WorkOrderListSummaryOptions {
+  limit?: number;
+  includeDraft?: boolean;
 }
 
 /** Single row for bulk import (title required; others optional, use catalog keys). */
@@ -200,11 +222,76 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
       return (data ?? []) as WorkOrderRow[];
     },
 
+    /** Token-efficient work-order list for selectors, agent planning, and disambiguation. */
+    async listSummary(options?: WorkOrderListSummaryOptions): Promise<WorkOrderSummaryRow[]> {
+      let query = supabase
+        .from('v_work_orders')
+        .select(
+          [
+            'id',
+            'tenant_id',
+            'title',
+            'status',
+            'priority',
+            'due_date',
+            'assigned_to',
+            'assigned_to_name',
+            'asset_id',
+            'location_id',
+            'project_id',
+            'description',
+            'updated_at',
+            'created_at',
+          ].join(',')
+        )
+        .order('updated_at', { ascending: false });
+
+      if (!options?.includeDraft) {
+        query = query.neq('status', 'draft');
+      }
+
+      if (options?.limit != null) {
+        query = query.limit(options.limit);
+      }
+
+      const { data, error } = await query;
+      if (error) throw normalizeError(error);
+      return (data ?? []) as WorkOrderSummaryRow[];
+    },
+
     /** Get a single work order by id. */
     async getById(id: string): Promise<WorkOrderRow | null> {
       const { data, error } = await supabase.from('v_work_orders').select('*').eq('id', id).maybeSingle();
       if (error) throw normalizeError(error);
       return data as WorkOrderRow | null;
+    },
+
+    /** Token-efficient work-order fetch for selection and agent planning. */
+    async getSummary(id: string): Promise<WorkOrderSummaryRow | null> {
+      const { data, error } = await supabase
+        .from('v_work_orders')
+        .select(
+          [
+            'id',
+            'tenant_id',
+            'title',
+            'status',
+            'priority',
+            'due_date',
+            'assigned_to',
+            'assigned_to_name',
+            'asset_id',
+            'location_id',
+            'project_id',
+            'description',
+            'updated_at',
+            'created_at',
+          ].join(',')
+        )
+        .eq('id', id)
+        .maybeSingle();
+      if (error) throw normalizeError(error);
+      return data as WorkOrderSummaryRow | null;
     },
 
     /** Create a work order. Returns the new work order UUID. Optional clientRequestId makes retries idempotent. */

@@ -28,6 +28,31 @@ export function createWorkOrdersResource(supabase) {
                 throw normalizeError(error);
             return data;
         },
+        async listSummary(options) {
+            const limit = Math.min(Math.max(options?.limit ?? 50, 1), 200);
+            let query = supabase
+                .from('v_work_orders')
+                .select('id,title,status,priority,due_date,assigned_to,assigned_to_name,asset_id,location_id,project_id,updated_at')
+                .order('updated_at', { ascending: false })
+                .limit(limit);
+            if (!options?.includeDraft) {
+                query = query.neq('status', 'draft');
+            }
+            const { data, error } = await query;
+            if (error)
+                throw normalizeError(error);
+            return (data ?? []);
+        },
+        async getSummary(id) {
+            const { data, error } = await supabase
+                .from('v_work_orders')
+                .select('id,title,status,priority,due_date,assigned_to,assigned_to_name,asset_id,location_id,project_id,description,updated_at')
+                .eq('id', id)
+                .maybeSingle();
+            if (error)
+                throw normalizeError(error);
+            return data;
+        },
         /** Create a work order. Returns the new work order UUID. */
         async create(params) {
             return callRpc(rpc(supabase), 'rpc_create_work_order', {

@@ -4,6 +4,10 @@ import { normalizeError } from '../errors.js';
 import { callRpc } from '../unwrap.js';
 
 export type AssetRow = Database['public']['Views']['v_assets'] extends { Row: infer R } ? R : Record<string, unknown>;
+export type AssetSummaryRow = Pick<
+  AssetRow,
+  'id' | 'tenant_id' | 'name' | 'asset_number' | 'barcode' | 'location_id' | 'status' | 'updated_at'
+>;
 
 /** Row from v_asset_warranties (multi-row warranty history per asset). */
 export type AssetWarrantyRow = Database['public']['Views']['v_asset_warranties'] extends { Row: infer R }
@@ -91,6 +95,16 @@ export function createAssetsResource(supabase: SupabaseClient<Database>) {
       const { data, error } = await supabase.from('v_assets').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as AssetRow[];
+    },
+    /** Token-efficient asset list for selectors, agents, and disambiguation UIs. */
+    async listSummary(limit = 50): Promise<AssetSummaryRow[]> {
+      const { data, error } = await supabase
+        .from('v_assets')
+        .select('id,tenant_id,name,asset_number,barcode,location_id,status,updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+      if (error) throw normalizeError(error);
+      return (data ?? []) as AssetSummaryRow[];
     },
     async getById(id: string): Promise<AssetRow | null> {
       const { data, error } = await supabase.from('v_assets').select('*').eq('id', id).maybeSingle();

@@ -75,8 +75,19 @@ export interface RecordAssetDowntimeParams {
     linkedWorkOrderId?: string | null;
     notes?: string | null;
 }
+export interface AssetSummaryRow {
+    id: string;
+    name: string | null;
+    asset_number: string | null;
+    barcode: string | null;
+    status: string | null;
+    location_id: string | null;
+    updated_at: string | null;
+}
 export declare function createAssetsResource(supabase: SupabaseClient<Database>): {
     list(): Promise<AssetRow[]>;
+    /** Token-efficient asset summaries for selectors and agent disambiguation. */
+    listSummary(limit?: number): Promise<AssetSummaryRow[]>;
     getById(id: string): Promise<AssetRow | null>;
     /** Warranty rows for the tenant; pass `assetId` to filter one asset. */
     listWarranties(assetId?: string): Promise<AssetWarrantyRow[]>;

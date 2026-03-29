@@ -9,6 +9,7 @@
 
 export { createDbClient, createDbClientFromSupabase } from './client.js';
 export { SdkError, normalizeError } from './errors.js';
+export { formatEmbeddingForRpc } from './resources/semantic-search.js';
 export type { Database } from './database.types.js';
 export type { DbClient, DbClientOptions } from './types.js';
 export type {
@@ -38,6 +39,8 @@ export type {
   CompleteWorkOrderParams,
   LogTimeParams,
   UpdateAttachmentMetadataParams,
+  WorkOrderSummaryRow,
+  WorkOrdersListSummaryOptions,
   WorkOrdersResource,
 } from './resources/work-orders.js';
 export type {
@@ -69,6 +72,8 @@ export type {
   UpdateAssetParams,
   UpsertAssetWarrantyParams,
   RecordAssetDowntimeParams,
+  AssetSummaryRow,
+  AssetsListSummaryOptions,
   AssetsResource,
 } from './resources/assets.js';
 export type {
@@ -177,6 +182,8 @@ export type {
   CreatePmDependencyParams,
   GenerateDuePmsParams,
   TriggerManualPmParams,
+  PmScheduleSummaryRow,
+  PmSchedulesListSummaryOptions,
   PmResource,
 } from './resources/pm.js';
 export type {
@@ -269,6 +276,8 @@ export type {
   CreateSupplierContractParams,
   UpdateSupplierContractParams,
   AddSupplierContractRateParams,
+  PartSummaryRow,
+  PartsListSummaryOptions,
   PartsInventoryResource,
 } from './resources/parts-inventory.js';
 export type {
@@ -332,4 +341,13 @@ export type {
   SimilarPastWorkOrdersParams,
   SemanticSearchResource,
 } from './resources/semantic-search.js';
-export { formatEmbeddingForRpc } from './resources/semantic-search.js';
+export type {
+  AgentResolveTenantResult,
+  AgentEnsureTenantResult,
+  AgentSearchEntitiesParams,
+  AgentSearchEntitiesResult,
+  AgentCreateWorkOrderSafeParams,
+  AgentCreateWorkOrderSafeResult,
+  WorkflowBundleRecommendation,
+  AgentHelpers,
+} from './resources/agent.js';

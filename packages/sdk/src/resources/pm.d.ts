@@ -28,6 +28,16 @@ export type UpcomingPmRow = Database['public']['Views']['v_upcoming_pms'] extend
 export type PmHistoryRow = Database['public']['Views']['v_pm_history'] extends {
     Row: infer R;
 } ? R : Record<string, unknown>;
+export interface PmScheduleSummaryRow {
+    id: string;
+    title: string | null;
+    asset_id: string | null;
+    asset_name: string | null;
+    next_due_date: string | null;
+    is_active: boolean | null;
+    is_overdue: boolean | null;
+    updated_at: string | null;
+}
 /** Params for creating a PM template. */
 export interface CreatePmTemplateParams {
     tenantId: string;
@@ -121,6 +131,8 @@ export declare function createPmResource(supabase: SupabaseClient<Database>): {
     listTemplateChecklistItems(): Promise<PmTemplateChecklistItemRow[]>;
     /** List PM schedules for the current tenant (v_pm_schedules). */
     listSchedules(): Promise<PmScheduleRow[]>;
+    /** Token-efficient PM schedule summaries for selection/disambiguation. */
+    listSchedulesSummary(limit?: number): Promise<PmScheduleSummaryRow[]>;
     /** List due PMs (v_due_pms). */
     listDue(): Promise<DuePmRow[]>;
     /** List overdue PMs (v_overdue_pms). */

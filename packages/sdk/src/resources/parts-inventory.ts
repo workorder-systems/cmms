@@ -60,6 +60,16 @@ export interface PartRow {
   barcode?: string | null;
 }
 
+/** Lightweight part selector row for search/disambiguation UIs and agents. */
+export interface PartSummaryRow {
+  id: string;
+  name: string | null;
+  part_number: string;
+  barcode: string | null;
+  preferred_supplier_id: string | null;
+  updated_at: string;
+}
+
 /** Supplier row (v_suppliers). */
 export interface SupplierRow {
   id: string;
@@ -406,6 +416,19 @@ export function createPartsInventoryResource(supabase: SupabaseClient<Database>)
       const { data, error } = await supabase.from('v_parts').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as PartRow[];
+    },
+
+    /** Token-efficient parts summary for selection and disambiguation. */
+    async listSummary(limit = 50): Promise<PartSummaryRow[]> {
+      const rows = await this.listParts();
+      return rows.slice(0, limit).map((row) => ({
+        id: row.id,
+        name: row.name,
+        part_number: row.part_number,
+        barcode: row.barcode ?? null,
+        preferred_supplier_id: row.preferred_supplier_id,
+        updated_at: row.updated_at,
+      }));
     },
 
     /** Get part by id. */

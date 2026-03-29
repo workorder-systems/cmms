@@ -9,6 +9,16 @@ export function createAssetsResource(supabase) {
                 throw normalizeError(error);
             return (data ?? []);
         },
+        async listSummary(limit = 50) {
+            const { data, error } = await supabase
+                .from('v_assets')
+                .select('id,name,asset_number,barcode,status,location_id,updated_at')
+                .order('updated_at', { ascending: false })
+                .limit(limit);
+            if (error)
+                throw normalizeError(error);
+            return (data ?? []);
+        },
         async getById(id) {
             const { data, error } = await supabase.from('v_assets').select('*').eq('id', id).maybeSingle();
             if (error)

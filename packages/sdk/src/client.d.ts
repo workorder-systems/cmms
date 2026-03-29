@@ -27,4 +27,17 @@ export declare function createDbClient(url: string, anonKey: string, options?: D
  * via auth.setSession({ access_token, refresh_token }).
  */
 export declare function createDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient;
+/**
+ * Refresh the current Supabase session and return the tenant_id claim, if present.
+ */
+export declare function refreshTenantSession(
+  supabase: SupabaseClient<Database>
+): Promise<{ session: import('@supabase/supabase-js').Session | null; tenantId: string | null }>;
+/**
+ * Set tenant context then refresh the Supabase session so JWT tenant_id updates.
+ */
+export declare function setTenantAndRefreshSession(
+  supabase: SupabaseClient<Database>,
+  tenantId: string
+): Promise<{ session: import('@supabase/supabase-js').Session | null; tenantId: string | null }>;
 //# sourceMappingURL=client.d.ts.map
