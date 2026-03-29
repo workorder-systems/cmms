@@ -147,3 +147,22 @@ If many tests fail with auth/schema errors, reset the DB (`pnpm supabase:reset` 
 - Local DB port is **54332** (not the Supabase default 54322) per `[db].port` in `apps/supabase/config.toml`—use that URL when connecting with `psql` or GUI clients.
 - Auth: **`authz.custom_access_token_hook`** (wired in `apps/supabase/config.toml`) adds tenant context to JWT claims from user metadata.
 - **`enable_confirmations = false`** in local config — sign-up is auto-confirmed for development.
+
+## Cursor Cloud specific instructions
+
+### Environment bootstrap (already done by the update script)
+
+The update script runs `pnpm install` on each session start. Docker, Supabase CLI, and `fuse-overlayfs`/`iptables-legacy` are pre-installed in the VM snapshot.
+
+### Starting services before tests
+
+1. **Docker daemon:** `sudo dockerd &>/dev/null &` then `sleep 3 && sudo chmod 666 /var/run/docker.sock`.
+2. **Supabase:** `pnpm start` (first cold start ~2 min with image pulls; subsequent starts are faster).
+3. **`.env.local`:** Do **not** leave the placeholder values from `.env.example` (e.g. `your-anon-key-here`). Either populate with real local keys from `supabase status --output json` or delete `.env.local` entirely so `tests/setup.ts` auto-discovers the running Supabase stack. If placeholder values are present, tests will treat them as real credentials and fail with timeouts.
+
+### Non-obvious gotchas
+
+- **SDK must be built before `tests/sdk.test.ts` passes.** Run `pnpm build` (or `pnpm --filter @workorder-systems/sdk build`) before `pnpm test` to avoid the `sdk.test.ts` resolution error. All other test files work without a prior build.
+- **`pnpm lint` — `@workspace/ui` has ~160 pre-existing warnings** and its lint script uses `--max-warnings 0`, so it will fail. This is a known pre-existing condition in the repo; do not spend time fixing it unless explicitly asked.
+- **`apps/docs` lint** uses `next lint` which is deprecated in Next.js 15+. On a fresh checkout the command may prompt interactively for ESLint config if no `.eslintrc.json` exists. The file `apps/docs/.eslintrc.json` with `{"extends": "next/core-web-vitals"}` resolves this.
+- **Local DB port is 54332** (not the Supabase default 54322). Use `postgresql://postgres:postgres@127.0.0.1:54332/postgres` for direct `psql` access.
