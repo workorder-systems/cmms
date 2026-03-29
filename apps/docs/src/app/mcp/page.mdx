@@ -94,6 +94,16 @@ Use these first when the goal is “pick the right row” rather than “inspect
 
 For example, missing tenant context returns an explicit guidance payload instead of silently returning an empty list where possible.
 
+Under the hood, these flows now align more closely with shared SDK ergonomics:
+
+- `client.workOrders.listSummary(...)`
+- `client.assets.listSummary(...)`
+- `client.partsInventory.listSummary(...)`
+- `client.pm.listSchedulesSummary(...)`
+- `client.agent.resolveTenant()`
+- `client.agent.ensureTenant(...)`
+- `client.agent.createWorkOrderSafe(...)`
+
 For a full agent-builder guide, see [Building agents](/agents).
 
 ## Full reference

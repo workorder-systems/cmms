@@ -29,7 +29,7 @@ import { createFieldOperationsResource } from './resources/field-operations.js';
 import { createIntegrationsResource } from './resources/integrations.js';
 import { createNotificationsResource } from './resources/notifications.js';
 import { createSemanticSearchResource } from './resources/semantic-search.js';
-import { createAgentResource } from './resources/agent.js';
+import { createAgentHelpers } from './resources/agent.js';
 
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
@@ -101,7 +101,7 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
     integrations: createIntegrationsResource(supabase),
     notifications: createNotificationsResource(supabase),
     semanticSearch: createSemanticSearchResource(supabase),
-    agent: createAgentResource(supabase),
+    agent: undefined as unknown as DbClient['agent'],
     async setTenant(tenantId: string): Promise<void> {
       const { error } = await (supabase as unknown as Record<string, (n: string, p?: object) => Promise<{ data: unknown; error: unknown }>>).rpc(
         'rpc_set_tenant_context',
@@ -142,5 +142,6 @@ function buildDbClientFromSupabase(supabase: SupabaseClient<Database>): DbClient
       unwrapResult(null, error as import('@supabase/supabase-js').PostgrestError | null);
     },
   };
+  client.agent = createAgentHelpers(client);
   return client;
 }

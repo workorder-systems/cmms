@@ -342,12 +342,16 @@ export type {
   SemanticSearchResource,
 } from './resources/semantic-search.js';
 export type {
-  AgentResolveTenantResult,
-  AgentEnsureTenantResult,
-  AgentSearchEntitiesParams,
-  AgentSearchEntitiesResult,
-  AgentCreateWorkOrderSafeParams,
-  AgentCreateWorkOrderSafeResult,
-  WorkflowBundleRecommendation,
+  AgentTenantCandidate,
+  ResolveTenantResult,
+  EnsureTenantOptions,
+  EnsureTenantResult,
+  SearchEntitiesOptions,
+  CreateWorkOrderSafeOptions,
+  WorkOrderSummaryRow as AgentWorkOrderSummaryRow,
+  AssetSummaryRow as AgentAssetSummaryRow,
+  PartSummaryRow as AgentPartSummaryRow,
+  PmScheduleSummaryRow as AgentPmScheduleSummaryRow,
   AgentHelpers,
+  AgentHelpersResource,
 } from './resources/agent.js';

@@ -58,6 +58,49 @@ const workOrderId = await client.workOrders.create({
 
 Use a stable request id for retries of the *same* logical create operation. Use a new request id when you truly want a new work order.
 
+## Agent-first helper layer
+
+The SDK now includes an explicit **`client.agent`** helper layer for common agent-style workflows. This layer is additive: raw domain resources still exist and are the right choice for conventional app code, while `client.agent` provides smaller, workflow-oriented helpers for automation.
+
+Examples:
+
+- `client.agent.resolveTenant()` — determine whether tenant choice is already resolved or still needs user input
+- `client.agent.ensureTenant({ tenantId, refreshSession: true })` — set tenant context and refresh the session in one step
+- `client.agent.searchEntities({ query, entityTypes, limit })` — richer entity resolution using the v2 disambiguation contract
+- `client.agent.createWorkOrderSafe(...)` — retry-safe work order creation with `clientRequestId`
+- `client.agent.listWorkOrdersSummary()` / `listAssetsSummary()` / `listPartsSummary()` / `listPmSchedulesSummary()` — token-efficient selector helpers
+
+```ts
+const tenant = await client.agent.resolveTenant()
+if (tenant.needs_set_tenant && tenant.tenant_id) {
+  await client.agent.ensureTenant({
+    tenantId: tenant.tenant_id,
+    refreshSession: true,
+  })
+}
+
+const candidates = await client.agent.searchEntities({
+  query: 'north pump 7',
+  entityTypes: ['asset'],
+  limit: 5,
+})
+```
+
+### Summary-first SDK methods
+
+The core resources now also expose smaller summary-first methods directly:
+
+- `client.workOrders.listSummary(...)`
+- `client.workOrders.getSummary(id)`
+- `client.assets.listSummary(...)`
+- `client.partsInventory.listSummary(...)`
+- `client.pm.listSchedulesSummary(...)`
+
+These are useful for:
+- agents that need lightweight selectors
+- UIs building pickers or search results
+- services that want “selection before detail” behavior
+
 ## Resources
 
 | Resource | Reads | Writes |

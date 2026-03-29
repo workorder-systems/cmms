@@ -1,7 +1,21 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, Session } from '@supabase/supabase-js';
 import type { Database } from '../database.types.js';
 import { normalizeError } from '../errors.js';
-import type { DbClient } from '../types.js';
+import type {
+  AssetsResource,
+  AssetSummaryRow,
+} from './assets.js';
+import type {
+  PartsInventoryResource,
+  PartSummaryRow,
+} from './parts-inventory.js';
+import type { PmResource, PmScheduleSummaryRow } from './pm.js';
+import type {
+  WorkOrdersResource,
+  WorkOrderSummaryRow,
+} from './work-orders.js';
+import type { SemanticSearchResource } from './semantic-search.js';
+import type { TenantsResource } from './tenants.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -44,58 +58,13 @@ function tenantIdFromSession(session: { access_token?: string; user?: { user_met
   return undefined;
 }
 
-export interface WorkOrderSummaryRow {
-  id: string;
-  title: string | null;
-  status: string | null;
-  priority: string | null;
-  due_date: string | null;
-  assigned_to: string | null;
-  assigned_to_name: string | null;
-  asset_id: string | null;
-  location_id: string | null;
-  project_id: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
-
-export interface AssetSummaryRow {
-  id: string;
-  name: string | null;
-  asset_number: string | null;
-  barcode: string | null;
-  status: string | null;
-  location_id: string | null;
-  updated_at: string | null;
-}
-
-export interface PartSummaryRow {
-  id: string;
-  name: string | null;
-  part_number: string;
-  barcode: string | null;
-  preferred_supplier_id: string | null;
-  updated_at: string;
-}
-
-export interface PmScheduleSummaryRow {
-  id: string;
-  title: string | null;
-  asset_id: string | null;
-  asset_name: string | null;
-  next_due_date: string | null;
-  is_active: boolean | null;
-  is_overdue: boolean | null;
-  updated_at: string | null;
-}
-
 export interface ResolveTenantCandidate {
   tenant_id: string;
   name: string | null;
   slug: string | null;
 }
 
-export interface ResolveTenantResult {
+export interface AgentResolveTenantResult {
   resolved: boolean;
   tenant_id: string | null;
   needs_set_tenant: boolean;
@@ -109,20 +78,25 @@ export interface EnsureTenantOptions {
   refreshSession?: boolean;
 }
 
-export interface EnsureTenantResult {
+export interface AgentEnsureTenantResult {
   tenant_id: string;
   tenant_id_in_jwt: string | null;
   refreshed: boolean;
+  session: Session | null;
   next_actions: string[];
 }
 
-export interface SearchEntitiesOptions {
+export interface AgentSearchEntitiesParams {
   query: string;
   entityTypes?: string[] | null;
   limit?: number;
 }
 
-export interface CreateWorkOrderSafeOptions {
+export type AgentSearchEntitiesResult = Awaited<
+  ReturnType<SemanticSearchResource['searchEntityCandidatesV2']>
+>;
+
+export interface AgentCreateWorkOrderSafeParams {
   tenantId: string;
   title: string;
   description?: string | null;
@@ -137,7 +111,40 @@ export interface CreateWorkOrderSafeOptions {
   clientRequestId?: string | null;
 }
 
-type SelectClient = SupabaseClient<Database> | DbClient['supabase'];
+export interface AgentCreateWorkOrderSafeResult {
+  work_order_id: string;
+  client_request_id: string | null;
+}
+
+export interface WorkflowBundleRecommendation {
+  bundle_id:
+    | 'tenant_bootstrap'
+    | 'work_order_intake'
+    | 'work_order_lookup'
+    | 'maintenance_lookup';
+  purpose: string;
+  recommended_methods: string[];
+  when_to_use: string;
+  when_not_to_use: string;
+}
+
+export interface AgentHelpersResource {
+  resolveTenant(): Promise<AgentResolveTenantResult>;
+  ensureTenant(options: EnsureTenantOptions): Promise<AgentEnsureTenantResult>;
+  setTenantAndRefresh(tenantId: string): Promise<AgentEnsureTenantResult>;
+  searchEntities(options: AgentSearchEntitiesParams): Promise<AgentSearchEntitiesResult>;
+  createWorkOrderSafe(
+    options: AgentCreateWorkOrderSafeParams
+  ): Promise<AgentCreateWorkOrderSafeResult>;
+  recommendWorkflowBundle(
+    bundleId?: WorkflowBundleRecommendation['bundle_id']
+  ): WorkflowBundleRecommendation | WorkflowBundleRecommendation[];
+  listWorkOrdersSummary(limit?: number): Promise<WorkOrderSummaryRow[]>;
+  getWorkOrderSummary(workOrderId: string): Promise<WorkOrderSummaryRow | null>;
+  listAssetsSummary(limit?: number): Promise<AssetSummaryRow[]>;
+  listPartsSummary(limit?: number): Promise<PartSummaryRow[]>;
+  listPmSchedulesSummary(limit?: number): Promise<PmScheduleSummaryRow[]>;
+}
 
 async function runSelect<T>(
   query: Promise<{ data: T[] | null; error: unknown }>
@@ -149,7 +156,9 @@ async function runSelect<T>(
   return data ?? [];
 }
 
-async function getCurrentSessionTenant(client: SelectClient): Promise<string | undefined> {
+async function getCurrentSessionTenant(
+  client: SupabaseClient<Database>
+): Promise<string | undefined> {
   const { data, error } = await client.auth.getSession();
   if (error) {
     throw normalizeError(error);
@@ -157,17 +166,107 @@ async function getCurrentSessionTenant(client: SelectClient): Promise<string | u
   return tenantIdFromSession(data.session ?? undefined);
 }
 
-export interface AgentHelpers {
-  resolveTenant(): Promise<ResolveTenantResult>;
-  ensureTenant(options: EnsureTenantOptions): Promise<EnsureTenantResult>;
-  searchEntities(options: SearchEntitiesOptions): Promise<Awaited<ReturnType<DbClient['semanticSearch']['searchEntityCandidatesV2']>>>;
-  createWorkOrderSafe(options: CreateWorkOrderSafeOptions): Promise<{ work_order_id: string }>;
+async function refreshSessionIfPossible(
+  supabase: SupabaseClient<Database>
+): Promise<{ refreshed: boolean; session: Session | null }> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw normalizeError(error);
+  }
+
+  const session = data.session;
+  if (!session?.refresh_token) {
+    return { refreshed: false, session: session ?? null };
+  }
+
+  const { data: refreshedData, error: refreshError } =
+    await supabase.auth.refreshSession({
+      refresh_token: session.refresh_token,
+    });
+  if (refreshError) {
+    throw normalizeError(refreshError);
+  }
+
+  return {
+    refreshed: Boolean(refreshedData.session),
+    session: refreshedData.session ?? null,
+  };
 }
 
-export function createAgentHelpers(client: DbClient): AgentHelpers {
+export type AgentResourceDeps = {
+  supabase: SupabaseClient<Database>;
+  tenants: TenantsResource;
+  assets: AssetsResource;
+  partsInventory: PartsInventoryResource;
+  pm: PmResource;
+  workOrders: WorkOrdersResource;
+  semanticSearch: SemanticSearchResource;
+  setTenant: (tenantId: string) => Promise<void>;
+  setTenantAndRefresh: (tenantId: string) => Promise<Session | null>;
+};
+
+export function createAgentHelpers(
+  deps: AgentResourceDeps
+): AgentHelpersResource {
+  const workflowBundles: WorkflowBundleRecommendation[] = [
+    {
+      bundle_id: 'tenant_bootstrap',
+      purpose: 'Resolve tenant context before tenant-scoped reads or writes.',
+      recommended_methods: [
+        'agent.resolveTenant',
+        'agent.ensureTenant',
+        'tenants.list',
+      ],
+      when_to_use:
+        'At session start, after reconnect, or when tenant-scoped reads return empty results unexpectedly.',
+      when_not_to_use:
+        'When tenant_id is already present in the JWT and tenant-scoped reads are working.',
+    },
+    {
+      bundle_id: 'work_order_intake',
+      purpose: 'Resolve entities and create a work order safely with retry protection.',
+      recommended_methods: [
+        'agent.resolveTenant',
+        'agent.ensureTenant',
+        'agent.searchEntities',
+        'agent.createWorkOrderSafe',
+      ],
+      when_to_use:
+        'When creating work from natural language intent and disambiguating asset/location choices first.',
+      when_not_to_use:
+        'When canonical ids are already known and direct workOrders.create is sufficient.',
+    },
+    {
+      bundle_id: 'work_order_lookup',
+      purpose: 'Browse and inspect work orders with summary-first reads.',
+      recommended_methods: [
+        'agent.listWorkOrdersSummary',
+        'agent.getWorkOrderSummary',
+        'workOrders.getById',
+      ],
+      when_to_use:
+        'When selecting or disambiguating a work order before loading the full row.',
+      when_not_to_use:
+        'When the exact work order id is already known and full detail is required immediately.',
+    },
+    {
+      bundle_id: 'maintenance_lookup',
+      purpose: 'Browse assets, parts, and PM schedules with token-efficient summaries.',
+      recommended_methods: [
+        'agent.listAssetsSummary',
+        'agent.listPartsSummary',
+        'agent.listPmSchedulesSummary',
+      ],
+      when_to_use:
+        'When agents or UIs need lightweight selectors for maintenance-related entities.',
+      when_not_to_use:
+        'When reporting summaries or full detail rows are the better fit.',
+    },
+  ];
+
   return {
-    async resolveTenant(): Promise<ResolveTenantResult> {
-      const tenantId = await getCurrentSessionTenant(client.supabase);
+    async resolveTenant(): Promise<AgentResolveTenantResult> {
+      const tenantId = await getCurrentSessionTenant(deps.supabase);
       if (tenantId) {
         return {
           resolved: true,
@@ -179,7 +278,7 @@ export function createAgentHelpers(client: DbClient): AgentHelpers {
         };
       }
 
-      const tenants = await client.tenants.list();
+      const tenants = await deps.tenants.list();
       const candidates: ResolveTenantCandidate[] = (tenants ?? [])
         .filter((tenant) => typeof tenant.id === 'string' && tenant.id.length > 0)
         .map((tenant) => ({
@@ -212,31 +311,22 @@ export function createAgentHelpers(client: DbClient): AgentHelpers {
       };
     },
 
-    async ensureTenant(options: EnsureTenantOptions): Promise<EnsureTenantResult> {
-      await client.setTenant(options.tenantId);
+    async ensureTenant(
+      options: EnsureTenantOptions
+    ): Promise<AgentEnsureTenantResult> {
+      await deps.setTenant(options.tenantId);
 
-      let refreshed = false;
-      if (options.refreshSession !== false) {
-        const { data, error } = await client.supabase.auth.getSession();
-        if (error) {
-          throw normalizeError(error);
-        }
-        if (data.session) {
-          const { data: refreshedData, error: refreshError } = await client.supabase.auth.refreshSession({
-            refresh_token: data.session.refresh_token,
-          });
-          if (refreshError) {
-            throw normalizeError(refreshError);
-          }
-          refreshed = Boolean(refreshedData.session);
-        }
-      }
+      const refreshedResult =
+        options.refreshSession === false
+          ? { refreshed: false, session: null }
+          : await refreshSessionIfPossible(deps.supabase);
 
-      const tenantInJwt = await getCurrentSessionTenant(client.supabase);
+      const tenantInJwt = await getCurrentSessionTenant(deps.supabase);
       return {
         tenant_id: options.tenantId,
         tenant_id_in_jwt: tenantInJwt ?? null,
-        refreshed,
+        refreshed: refreshedResult.refreshed,
+        session: refreshedResult.session,
         next_actions:
           tenantInJwt === options.tenantId
             ? ['Proceed with tenant-scoped SDK calls.']
@@ -244,16 +334,33 @@ export function createAgentHelpers(client: DbClient): AgentHelpers {
       };
     },
 
-    async searchEntities(options: SearchEntitiesOptions) {
-      return client.semanticSearch.searchEntityCandidatesV2({
+    async setTenantAndRefresh(
+      tenantId: string
+    ): Promise<AgentEnsureTenantResult> {
+      const session = await deps.setTenantAndRefresh(tenantId);
+      const tenantInJwt = await getCurrentSessionTenant(deps.supabase);
+      return {
+        tenant_id: tenantId,
+        tenant_id_in_jwt: tenantInJwt ?? null,
+        refreshed: Boolean(session),
+        session,
+        next_actions:
+          tenantInJwt === tenantId
+            ? ['Proceed with tenant-scoped SDK calls.']
+            : ['Refresh the Supabase session again if tenant-scoped views still appear empty.'],
+      };
+    },
+
+    async searchEntities(options: AgentSearchEntitiesParams) {
+      return deps.semanticSearch.searchEntityCandidatesV2({
         query: options.query,
         entityTypes: options.entityTypes ?? null,
         limit: options.limit,
       });
     },
 
-    async createWorkOrderSafe(options: CreateWorkOrderSafeOptions) {
-      const workOrderId = await client.workOrders.create({
+    async createWorkOrderSafe(options: AgentCreateWorkOrderSafeParams) {
+      const workOrderId = await deps.workOrders.create({
         tenantId: options.tenantId,
         title: options.title,
         description: options.description ?? null,
@@ -268,108 +375,50 @@ export function createAgentHelpers(client: DbClient): AgentHelpers {
         clientRequestId: options.clientRequestId ?? null,
       });
 
-      return { work_order_id: workOrderId };
+      return {
+        work_order_id: workOrderId,
+        client_request_id: options.clientRequestId ?? null,
+      };
+    },
+    recommendWorkflowBundle(bundleId) {
+      if (!bundleId) {
+        return workflowBundles;
+      }
+      return (
+        workflowBundles.find((bundle) => bundle.bundle_id === bundleId) ??
+        workflowBundles
+      );
+    },
+
+    listWorkOrdersSummary(limit = 50) {
+      return deps.workOrders.listSummary({ limit });
+    },
+
+    getWorkOrderSummary(workOrderId: string) {
+      return deps.workOrders.getSummary(workOrderId);
+    },
+
+    listAssetsSummary(limit = 50) {
+      return deps.assets.listSummary(limit);
+    },
+
+    listPartsSummary(limit = 50) {
+      return deps.partsInventory.listSummary(limit);
+    },
+
+    listPmSchedulesSummary(limit = 50) {
+      return deps.pm.listSchedulesSummary({ limit });
     },
   };
 }
 
-export async function listWorkOrdersSummary(
-  supabase: SelectClient,
-  limit = 50
-): Promise<WorkOrderSummaryRow[]> {
-  return runSelect<WorkOrderSummaryRow>(
-    supabase
-      .from('v_work_orders')
-      .select(
-        [
-          'id',
-          'title',
-          'status',
-          'priority',
-          'due_date',
-          'assigned_to',
-          'assigned_to_name',
-          'asset_id',
-          'location_id',
-          'project_id',
-          'created_at',
-          'updated_at',
-        ].join(',')
-      )
-      .neq('status', 'draft')
-      .order('updated_at', { ascending: false })
-      .limit(limit)
-  );
-}
-
-export async function getWorkOrderSummary(
-  supabase: SelectClient,
-  workOrderId: string
-): Promise<(WorkOrderSummaryRow & { description?: string | null }) | null> {
-  const { data, error } = await supabase
-    .from('v_work_orders')
-    .select(
-      [
-        'id',
-        'title',
-        'status',
-        'priority',
-        'due_date',
-        'assigned_to',
-        'assigned_to_name',
-        'asset_id',
-        'location_id',
-        'project_id',
-        'description',
-        'created_at',
-        'updated_at',
-      ].join(',')
-    )
-    .eq('id', workOrderId)
-    .maybeSingle();
-
-  if (error) {
-    throw normalizeError(error);
-  }
-  return data ?? null;
-}
-
-export async function listAssetsSummary(
-  supabase: SelectClient,
-  limit = 50
-): Promise<AssetSummaryRow[]> {
-  return runSelect<AssetSummaryRow>(
-    supabase
-      .from('v_assets')
-      .select('id,name,asset_number,barcode,status,location_id,updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(limit)
-  );
-}
-
-export async function listPartsSummary(
-  supabase: SelectClient,
-  limit = 50
-): Promise<PartSummaryRow[]> {
-  const rows = await runSelect<PartSummaryRow>(
-    supabase
-      .from('v_parts')
-      .select('id,name,part_number,barcode,preferred_supplier_id,updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(limit)
-  );
-  return rows;
-}
-
-export async function listPmSchedulesSummary(
-  supabase: SelectClient,
-  limit = 50
-): Promise<PmScheduleSummaryRow[]> {
-  return runSelect<PmScheduleSummaryRow>(
-    supabase
-      .from('v_pm_schedules')
-      .select('id,title,asset_id,asset_name,next_due_date,is_active,is_overdue,updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(limit)
-  );
-}
+export type AgentTenantCandidate = ResolveTenantCandidate;
+export type ResolveTenantOptions = EnsureTenantOptions;
+export type ResolveTenantSummary = AgentResolveTenantResult;
+export type AgentEnsureTenantOptions = EnsureTenantOptions;
+export type AgentSearchEntitiesOptions = AgentSearchEntitiesParams;
+export type AgentCreateWorkOrderSafeOptions = AgentCreateWorkOrderSafeParams;
+export type AgentWorkOrderSummaryRow = WorkOrderSummaryRow;
+export type AgentAssetSummaryRow = AssetSummaryRow;
+export type AgentPartSummaryRow = PartSummaryRow;
+export type AgentPmScheduleSummaryRow = PmScheduleSummaryRow;

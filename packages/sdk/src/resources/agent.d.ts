@@ -1,39 +1,76 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../database.types.js';
-import type { TenantsResource } from './tenants.js';
-import type { AssetsResource } from './assets.js';
-import type { PartsInventoryResource } from './parts-inventory.js';
-import type { PmResource } from './pm.js';
-import type { WorkOrdersResource } from './work-orders.js';
-import type { SemanticSearchResource } from './semantic-search.js';
-export type AgentTenantCandidate = {
+import type { DbClient } from '../types.js';
+export interface WorkOrderSummaryRow {
+    id: string;
+    title: string | null;
+    status: string | null;
+    priority: string | null;
+    due_date: string | null;
+    assigned_to: string | null;
+    assigned_to_name: string | null;
+    asset_id: string | null;
+    location_id: string | null;
+    project_id: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+export interface AssetSummaryRow {
+    id: string;
+    name: string | null;
+    asset_number: string | null;
+    barcode: string | null;
+    status: string | null;
+    location_id: string | null;
+    updated_at: string | null;
+}
+export interface PartSummaryRow {
+    id: string;
+    name: string | null;
+    part_number: string;
+    barcode: string | null;
+    preferred_supplier_id: string | null;
+    updated_at: string;
+}
+export interface PmScheduleSummaryRow {
+    id: string;
+    title: string | null;
+    asset_id: string | null;
+    asset_name: string | null;
+    next_due_date: string | null;
+    is_active: boolean | null;
+    is_overdue: boolean | null;
+    updated_at: string | null;
+}
+export interface ResolveTenantCandidate {
     tenant_id: string;
     name: string | null;
     slug: string | null;
-};
-export type ResolveTenantResult = {
+}
+export interface ResolveTenantResult {
     resolved: boolean;
     tenant_id: string | null;
     needs_set_tenant: boolean;
     needs_user_input: boolean;
-    candidates: AgentTenantCandidate[];
+    candidates: ResolveTenantCandidate[];
     next_actions: string[];
-};
-export type EnsureTenantOptions = {
+}
+export interface EnsureTenantOptions {
     tenantId: string;
     refreshSession?: boolean;
-};
-export type EnsureTenantResult = {
+}
+export interface EnsureTenantResult {
     tenant_id: string;
+    tenant_id_in_jwt: string | null;
     refreshed: boolean;
-};
-export type AgentSearchEntitiesParams = {
+    next_actions: string[];
+}
+export interface SearchEntitiesOptions {
     query: string;
     entityTypes?: string[] | null;
     limit?: number;
-};
-export type AgentSearchEntityRow = Awaited<ReturnType<SemanticSearchResource['searchEntityCandidatesV2']>>[number];
-export type CreateWorkOrderSafeParams = {
+}
+export interface CreateWorkOrderSafeOptions {
     tenantId: string;
     title: string;
     description?: string | null;
@@ -46,34 +83,21 @@ export type CreateWorkOrderSafeParams = {
     pmScheduleId?: string | null;
     projectId?: string | null;
     clientRequestId?: string | null;
-};
-export type CreateWorkOrderSafeResult = {
-    work_order_id: string;
-    client_request_id: string | null;
-};
-export type RecommendedWorkflowBundleId = 'tenant_bootstrap' | 'work_order_intake' | 'work_order_lookup' | 'maintenance_lookup';
-export type RecommendedWorkflowBundle = {
-    bundle_id: RecommendedWorkflowBundleId;
-    purpose: string;
-    recommended_methods: string[];
-    when_to_use: string;
-    when_not_to_use: string;
-};
-export type AgentHelpers = {
+}
+type SelectClient = SupabaseClient<Database> | DbClient['supabase'];
+export interface AgentHelpersResource {
     resolveTenant(): Promise<ResolveTenantResult>;
-    setTenantAndRefresh(tenantId: string): Promise<EnsureTenantResult>;
     ensureTenant(options: EnsureTenantOptions): Promise<EnsureTenantResult>;
-    searchEntities(params: AgentSearchEntitiesParams): Promise<AgentSearchEntityRow[]>;
-    createWorkOrderSafe(params: CreateWorkOrderSafeParams): Promise<CreateWorkOrderSafeResult>;
-    recommendWorkflowBundle(bundleId?: RecommendedWorkflowBundleId): RecommendedWorkflowBundle | RecommendedWorkflowBundle[];
-};
-export type AgentResourceDeps = {
-    supabase: SupabaseClient<Database>;
-    tenants: TenantsResource;
-    assets: AssetsResource;
-    partsInventory: PartsInventoryResource;
-    pm: PmResource;
-    workOrders: WorkOrdersResource;
-    semanticSearch: SemanticSearchResource;
-};
-export declare function createAgentHelpers(deps: AgentResourceDeps): AgentHelpers;
+    searchEntities(options: SearchEntitiesOptions): Promise<Awaited<ReturnType<DbClient['semanticSearch']['searchEntityCandidatesV2']>>>;
+    createWorkOrderSafe(options: CreateWorkOrderSafeOptions): Promise<{
+        work_order_id: string;
+    }>;
+}
+export declare function createAgentHelpers(client: DbClient): AgentHelpersResource;
+export declare function listWorkOrdersSummary(supabase: SelectClient, limit?: number): Promise<WorkOrderSummaryRow[]>;
+export declare function getWorkOrderSummary(supabase: SelectClient, workOrderId: string): Promise<(WorkOrderSummaryRow & {
+    description?: string | null;
+}) | null>;
+export declare function listAssetsSummary(supabase: SelectClient, limit?: number): Promise<AssetSummaryRow[]>;
+export declare function listPartsSummary(supabase: SelectClient, limit?: number): Promise<PartSummaryRow[]>;
+export declare function listPmSchedulesSummary(supabase: SelectClient, limit?: number): Promise<PmScheduleSummaryRow[]>;
