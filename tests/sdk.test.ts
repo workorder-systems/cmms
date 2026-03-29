@@ -3,7 +3,7 @@
  * DB contract is tested in other suites.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createDbClient, SdkError } from '@workorder-systems/sdk';
+import { createDbClient, SdkError } from '../packages/sdk/dist/index.js';
 import { waitForSupabase } from './helpers/supabase';
 import { createTestSdkClient, withAuthenticatedTenant } from './helpers/sdk';
 import { shortSlug } from './helpers/faker';
@@ -28,6 +28,9 @@ describe('SDK', () => {
       expect(sdk.integrations).toBeDefined();
       expect(sdk.notifications).toBeDefined();
       expect(typeof sdk.setTenant).toBe('function');
+      expect(typeof sdk.refreshTenantSession).toBe('function');
+      expect(typeof sdk.setTenantAndRefresh).toBe('function');
+      expect(sdk.agent).toBeDefined();
       expect(typeof sdk.clearTenant).toBe('function');
     });
   });
@@ -66,6 +69,12 @@ describe('SDK', () => {
         expect(err.code).toBeDefined();
         expect(err.message).toBeDefined();
       }
+    });
+
+    it('setTenantAndRefresh returns access token when authenticated', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const accessToken = await sdk.setTenantAndRefresh(tenantId);
+      expect(typeof accessToken === 'string' || accessToken === null).toBe(true);
     });
   });
 
@@ -133,6 +142,46 @@ describe('SDK', () => {
       expect(wo).not.toBeNull();
       expect((wo as { id: string }).id).toBe(woId);
       expect((wo as { title: string }).title).toBe('SDK Get WO');
+    });
+
+    it('listSummary and getSummary return lightweight selector rows', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const woId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK Summary WO',
+        priority: 'medium',
+      });
+
+      const rows = await sdk.workOrders.listSummary({ limit: 10 });
+      expect(Array.isArray(rows)).toBe(true);
+      const row = rows.find((item) => item.id === woId);
+      expect(row).toBeDefined();
+      expect(row?.title).toBe('SDK Summary WO');
+
+      const summary = await sdk.workOrders.getSummary(woId);
+      expect(summary).not.toBeNull();
+      expect(summary?.id).toBe(woId);
+      expect(summary?.title).toBe('SDK Summary WO');
+    });
+
+    it('create supports retry-safe clientRequestId', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const clientRequestId = `sdk-client-request-${Date.now()}`;
+
+      const firstId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK idempotent WO',
+        priority: 'medium',
+        clientRequestId,
+      });
+      const secondId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK idempotent WO retry',
+        priority: 'medium',
+        clientRequestId,
+      });
+
+      expect(secondId).toBe(firstId);
     });
 
     it('createRequest and listMyRequests (portal)', async () => {
@@ -276,6 +325,53 @@ describe('SDK', () => {
       const list = await sdk.partsInventory.listSupplierContracts();
       expect(list.some((c) => c.id === cid)).toBe(true);
     });
+
+    it('listSummary returns lightweight part selector rows', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const partId = await sdk.partsInventory.createPart({
+        tenantId,
+        partNumber: 'SDK-SUMMARY-1',
+        name: 'SDK Summary Part',
+        barcode: 'SDK-SUMMARY-BARCODE',
+      });
+
+      const rows = await sdk.partsInventory.listSummary(10);
+      const row = rows.find((item) => item.id === partId);
+      expect(row).toBeDefined();
+      expect(row?.part_number).toBe('SDK-SUMMARY-1');
+      expect(row?.barcode).toBe('SDK-SUMMARY-BARCODE');
+    });
+  });
+
+  describe('semanticSearch resource', () => {
+    it('searchEntityCandidatesV2 returns disambiguation fields', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      await sdk.partsInventory.createSupplier({
+        tenantId,
+        name: 'SDK Search Supplier',
+      });
+
+      const partId = await sdk.partsInventory.createPart({
+        tenantId,
+        partNumber: 'SDK-SEARCH-1',
+        name: 'SDK Search Part',
+        barcode: 'SDK-SEARCH-BARCODE',
+      });
+
+      const rows = await sdk.semanticSearch.searchEntityCandidatesV2({
+        query: 'SDK Search',
+        entityTypes: ['part'],
+        limit: 5,
+      });
+
+      expect(Array.isArray(rows)).toBe(true);
+      const part = rows.find((row) => row.entity_id === partId);
+      expect(part).toBeDefined();
+      expect(part?.entity_type).toBe('part');
+      expect(part?.part_number).toBe('SDK-SEARCH-1');
+      expect(part?.barcode).toBe('SDK-SEARCH-BARCODE');
+      expect(typeof part?.disambiguation_hint).toBe('string');
+    });
   });
 
   describe('assets resource', () => {
@@ -305,6 +401,22 @@ describe('SDK', () => {
       expect(resolved).toBe(assetId);
       const missing = await sdk.assets.resolveByScanCode(tenantId, 'nope');
       expect(missing).toBeNull();
+    });
+
+    it('listSummary returns lightweight asset selector rows', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK Summary Asset',
+        assetNumber: 'SDK-ASSET-1',
+        barcode: 'SDK-ASSET-BARCODE',
+      });
+
+      const rows = await sdk.assets.listSummary(10);
+      const row = rows.find((item) => item.id === assetId);
+      expect(row).toBeDefined();
+      expect(row?.asset_number).toBe('SDK-ASSET-1');
+      expect(row?.barcode).toBe('SDK-ASSET-BARCODE');
     });
 
     it('upsertWarranty and listWarranties', async () => {
@@ -350,6 +462,106 @@ describe('SDK', () => {
       const tools = await sdk.fieldOps.listTools();
       const row = tools.find((t) => t.id === toolId);
       expect(row?.name).toBe('SDK test torque wrench (updated)');
+    });
+  });
+
+  describe('pm resource', () => {
+    it('listSchedulesSummary returns lightweight PM rows', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK PM Asset',
+      });
+      const pmId = await sdk.pm.createSchedule({
+        tenantId,
+        assetId,
+        title: 'SDK PM Summary',
+        triggerType: 'time',
+        triggerConfig: { interval_days: 30 },
+      });
+
+      const rows = await sdk.pm.listSchedulesSummary({ limit: 10 });
+      const row = rows.find((item) => item.id === pmId);
+      expect(row).toBeDefined();
+      expect(row?.title).toBe('SDK PM Summary');
+      expect(row?.asset_id).toBe(assetId);
+    });
+  });
+
+  describe('agent helper layer', () => {
+    it('resolveTenant and ensureTenant guide tenant bootstrap', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const resolved = await sdk.agent.resolveTenant();
+      expect(resolved.resolved).toBe(true);
+      expect(resolved.tenant_id).toBe(tenantId);
+
+      const ensured = await sdk.agent.ensureTenant({
+        tenantId,
+        refreshSession: true,
+      });
+      expect(ensured.tenant_id).toBe(tenantId);
+      expect(Array.isArray(ensured.next_actions)).toBe(true);
+    });
+
+    it('searchEntities delegates to richer search helpers', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const assetId = await sdk.assets.create({
+        tenantId,
+        name: 'SDK Agent Search Asset',
+        assetNumber: 'SDK-AGENT-ASSET',
+      });
+
+      await sdk.setTenantAndRefresh(tenantId);
+      const rows = await sdk.agent.searchEntities({
+        query: 'SDK Agent Search Asset',
+        entityTypes: ['asset'],
+        limit: 5,
+      });
+      const asset = rows.find((row) => row.entity_id === assetId);
+      expect(asset).toBeDefined();
+      expect(asset?.entity_type).toBe('asset');
+    });
+
+    it('createWorkOrderSafe wraps retry-safe creation', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const clientRequestId = `sdk-agent-create-${Date.now()}`;
+
+      const first = await sdk.agent.createWorkOrderSafe({
+        tenantId,
+        title: 'SDK Agent WO',
+        clientRequestId,
+      });
+      const second = await sdk.agent.createWorkOrderSafe({
+        tenantId,
+        title: 'SDK Agent WO Retry',
+        clientRequestId,
+      });
+
+      expect(second.work_order_id).toBe(first.work_order_id);
+      expect(second.client_request_id).toBe(clientRequestId);
+    });
+
+    it('recommendWorkflowBundle returns curated guidance', () => {
+      const single = sdk.agent.recommendWorkflowBundle('work_order_intake');
+      expect(Array.isArray(single)).toBe(false);
+      if (!Array.isArray(single)) {
+        expect(single.bundle_id).toBe('work_order_intake');
+      }
+
+      const all = sdk.agent.recommendWorkflowBundle();
+      expect(Array.isArray(all)).toBe(true);
+      expect(all.length).toBeGreaterThan(1);
+    });
+
+    it('summary helper shortcuts delegate to resource summaries', async () => {
+      const { tenantId } = await withAuthenticatedTenant(sdk);
+      const workOrderId = await sdk.workOrders.create({
+        tenantId,
+        title: 'SDK Agent Summary WO',
+      });
+
+      const workOrders = await sdk.agent.listWorkOrdersSummary(10);
+      expect(workOrders.some((row) => row.id === workOrderId)).toBe(true);
     });
   });
 

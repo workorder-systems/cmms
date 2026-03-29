@@ -241,7 +241,7 @@ Coverage is aligned with the SDK: tenant context (`tenant_context.set` / `tenant
 |------|---------|
 | `tenants_list` | Organizations for the current user |
 | `set_active_tenant` | `rpc_set_tenant_context` (with optional refresh in stdio mode) |
-| `work_orders_list` | List WOs for JWT tenant context |
+| `work_orders_list` | List WOs for JWT tenant context; optional `include_draft: true` for drafts |
 | `work_orders_get` | Get one WO by id |
 | `work_orders_create` | Create WO via `rpc_create_work_order` |
 | `similar_past_work_orders` | (If `WORKORDER_SYSTEMS_EMBED_SEARCH_URL` is set) Text-in similarity over completed work orders via Edge **`embed-search`** |

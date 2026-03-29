@@ -4,6 +4,9 @@ const rpc = (supabase) => supabase.rpc.bind(supabase);
 export function formatEmbeddingForRpc(embedding) {
     return `[${embedding.join(',')}]`;
 }
+function normalizeEntityTypes(entityTypes) {
+    return entityTypes === undefined ? undefined : entityTypes ?? null;
+}
 export function createSemanticSearchResource(supabase) {
     const r = rpc(supabase);
     return {
@@ -117,7 +120,14 @@ export function createSemanticSearchResource(supabase) {
         async searchEntityCandidates(params) {
             return callRpc(r, 'rpc_search_entity_candidates', {
                 p_query: params.query,
-                p_entity_types: params.entityTypes ?? undefined,
+                p_entity_types: normalizeEntityTypes(params.entityTypes),
+                p_limit: params.limit ?? undefined,
+            });
+        },
+        async searchEntityCandidatesV2(params) {
+            return callRpc(r, 'rpc_search_entity_candidates_v2', {
+                p_query: params.query,
+                p_entity_types: normalizeEntityTypes(params.entityTypes),
                 p_limit: params.limit ?? undefined,
             });
         },

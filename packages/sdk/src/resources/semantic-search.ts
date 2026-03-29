@@ -19,6 +19,8 @@ export type SimilarAssetRow = Database['public']['Functions']['rpc_similar_asset
 export type SimilarPartRow = Database['public']['Functions']['rpc_similar_parts']['Returns'][number];
 
 export type EntityCandidateRow = Database['public']['Functions']['rpc_search_entity_candidates']['Returns'][number];
+export type EntityCandidateV2Row =
+  Database['public']['Functions']['rpc_search_entity_candidates_v2']['Returns'][number];
 
 export type NextWorkOrderForEmbeddingRow =
   Database['public']['Functions']['rpc_next_work_orders_for_embedding']['Returns'][number];
@@ -131,6 +133,11 @@ export interface SemanticSearchResource {
     entityTypes?: string[] | null;
     limit?: number;
   }): Promise<EntityCandidateRow[]>;
+  searchEntityCandidatesV2(params: {
+    query: string;
+    entityTypes?: string[] | null;
+    limit?: number;
+  }): Promise<EntityCandidateV2Row[]>;
   claimIdempotency(params: {
     tenantId: string;
     scope: string;
@@ -307,6 +314,18 @@ export function createSemanticSearchResource(supabase: SupabaseClient<Database>)
       limit?: number;
     }): Promise<EntityCandidateRow[]> {
       return callRpc<EntityCandidateRow[]>(r, 'rpc_search_entity_candidates', {
+        p_query: params.query,
+        p_entity_types: params.entityTypes ?? undefined,
+        p_limit: params.limit ?? undefined,
+      });
+    },
+
+    async searchEntityCandidatesV2(params: {
+      query: string;
+      entityTypes?: string[] | null;
+      limit?: number;
+    }): Promise<EntityCandidateV2Row[]> {
+      return callRpc<EntityCandidateV2Row[]>(r, 'rpc_search_entity_candidates_v2', {
         p_query: params.query,
         p_entity_types: params.entityTypes ?? undefined,
         p_limit: params.limit ?? undefined,

@@ -32,6 +32,17 @@ export type UpcomingPmRow = Database['public']['Views']['v_upcoming_pms'] extend
   ? R
   : Record<string, unknown>;
 
+export interface PmScheduleSummaryRow {
+  id: string | null;
+  title: string | null;
+  asset_id: string | null;
+  asset_name: string | null;
+  next_due_date: string | null;
+  is_active: boolean | null;
+  is_overdue: boolean | null;
+  updated_at: string | null;
+}
+
 /** Row from v_pm_history view. */
 export type PmHistoryRow = Database['public']['Views']['v_pm_history'] extends { Row: infer R }
   ? R
@@ -126,6 +137,10 @@ export interface TriggerManualPmParams {
   pmScheduleId: string;
 }
 
+export interface ListSummaryOptions {
+  limit?: number;
+}
+
 const rpc = (supabase: SupabaseClient<Database>) =>
   (supabase as unknown as { rpc: (n: string, p?: object) => Promise<{ data: unknown; error: unknown }> }).rpc.bind(
     supabase
@@ -157,6 +172,20 @@ export function createPmResource(supabase: SupabaseClient<Database>) {
       const { data, error } = await supabase.from('v_pm_schedules').select('*');
       if (error) throw normalizeError(error);
       return (data ?? []) as PmScheduleRow[];
+    },
+
+    /** List PM schedules with a lightweight shape for selectors and agent flows. */
+    async listSchedulesSummary(options?: ListSummaryOptions): Promise<PmScheduleSummaryRow[]> {
+      let q = supabase
+        .from('v_pm_schedules')
+        .select('id,title,asset_id,asset_name,next_due_date,is_active,is_overdue,updated_at')
+        .order('updated_at', { ascending: false });
+      if (options?.limit) {
+        q = q.limit(options.limit);
+      }
+      const { data, error } = await q;
+      if (error) throw normalizeError(error);
+      return (data ?? []) as PmScheduleSummaryRow[];
     },
 
     /** List due PMs (v_due_pms). */

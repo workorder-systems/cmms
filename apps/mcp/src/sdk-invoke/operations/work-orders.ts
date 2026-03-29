@@ -43,7 +43,7 @@ export const workOrdersOperations: Record<string, SdkOperationDef> = {
     },
   },
   'work_orders.create': {
-    description: 'Create a work order (rpc_create_work_order).',
+    description: 'Create a work order (rpc_create_work_order). Supports optional client_request_id for retry-safe automation.',
     annotations: ann.write,
     inputSchema: workOrdersCreateInputSchema,
     async invoke(client, args) {
@@ -60,6 +60,7 @@ export const workOrdersOperations: Record<string, SdkOperationDef> = {
         dueDate: a.due_date ?? null,
         pmScheduleId: a.pm_schedule_id ?? null,
         projectId: a.project_id ?? null,
+        clientRequestId: a.client_request_id ?? null,
       });
     },
   },

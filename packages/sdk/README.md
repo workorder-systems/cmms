@@ -30,6 +30,7 @@ const id = await client.workOrders.create({
   tenantId,
   title: 'Fix pump',
   priority: 'high',
+  clientRequestId: crypto.randomUUID(),
 });
 ```
 
@@ -39,6 +40,66 @@ const id = await client.workOrders.create({
 - **Tenant context** is required for tenant-scoped data. Call `client.setTenant(tenantId)` before querying `v_*` views or calling tenant-scoped RPCs. The backend uses `authz.get_current_tenant_id()` from the JWT or session.
 - **Refresh session** after `setTenant()` so the new JWT includes the `tenant_id` claim (e.g. `const { data } = await client.supabase.auth.getSession(); await client.supabase.auth.setSession({ ... });`).
 - To clear context (e.g. when switching tenants): `await client.clearTenant()`.
+
+## Retry-safe automation
+
+For agent or workflow automation, prefer idempotent writes where available.
+
+`client.workOrders.create()` now accepts an optional `clientRequestId`. When you retry the same create call with the same `tenantId + clientRequestId`, the backend returns the original `work_order_id` instead of creating a duplicate.
+
+```ts
+const workOrderId = await client.workOrders.create({
+  tenantId,
+  title: 'Investigate pump vibration',
+  priority: 'high',
+  clientRequestId: 'agent-run-2026-03-29-001',
+})
+```
+
+Use a stable request id for retries of the *same* logical create operation. Use a new request id when you truly want a new work order.
+
+## Agent-first helper layer
+
+The SDK now includes an explicit **`client.agent`** helper layer for common agent-style workflows. This layer is additive: raw domain resources still exist and are the right choice for conventional app code, while `client.agent` provides smaller, workflow-oriented helpers for automation.
+
+Examples:
+
+- `client.agent.resolveTenant()` — determine whether tenant choice is already resolved or still needs user input
+- `client.agent.ensureTenant({ tenantId, refreshSession: true })` — set tenant context and refresh the session in one step
+- `client.agent.searchEntities({ query, entityTypes, limit })` — richer entity resolution using the v2 disambiguation contract
+- `client.agent.createWorkOrderSafe(...)` — retry-safe work order creation with `clientRequestId`
+- `client.agent.listWorkOrdersSummary()` / `listAssetsSummary()` / `listPartsSummary()` / `listPmSchedulesSummary()` — token-efficient selector helpers
+
+```ts
+const tenant = await client.agent.resolveTenant()
+if (tenant.needs_set_tenant && tenant.tenant_id) {
+  await client.agent.ensureTenant({
+    tenantId: tenant.tenant_id,
+    refreshSession: true,
+  })
+}
+
+const candidates = await client.agent.searchEntities({
+  query: 'north pump 7',
+  entityTypes: ['asset'],
+  limit: 5,
+})
+```
+
+### Summary-first SDK methods
+
+The core resources now also expose smaller summary-first methods directly:
+
+- `client.workOrders.listSummary(...)`
+- `client.workOrders.getSummary(id)`
+- `client.assets.listSummary(...)`
+- `client.partsInventory.listSummary(...)`
+- `client.pm.listSchedulesSummary(...)`
+
+These are useful for:
+- agents that need lightweight selectors
+- UIs building pickers or search results
+- services that want “selection before detail” behavior
 
 ## Resources
 
@@ -72,6 +133,15 @@ const id = await client.workOrders.create({
 Server-side notification delivery uses **`rpc_process_due_notifications`** (service role / scheduled jobs only)—not exposed on `client.notifications`. See the docs site **Notifications** page.
 
 All resource methods throw `SdkError` (with `code`, `message`, `details`, `hint`) on failure. Success returns typed data.
+
+### Entity resolution for agents
+
+The semantic-search resource exposes two entity-resolution methods:
+
+- `client.semanticSearch.searchEntityCandidates(...)` — the original compact alias/name search
+- `client.semanticSearch.searchEntityCandidatesV2(...)` — richer disambiguation for agents, including fields such as location path, site name, asset number, barcode, part number, supplier name, and a `disambiguation_hint`
+
+Prefer the v2 method for agent workflows that need to choose the correct asset, part, or location before writing data.
 
 ### Asset lifecycle and cost of ownership
 

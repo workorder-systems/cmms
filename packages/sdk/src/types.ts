@@ -26,6 +26,7 @@ import type { FieldOperationsResource } from './resources/field-operations.js';
 import type { IntegrationsResource } from './resources/integrations.js';
 import type { NotificationsResource } from './resources/notifications.js';
 import type { SemanticSearchResource } from './resources/semantic-search.js';
+import type { AgentHelpers } from './resources/agent.js';
 
 /**
  * Options for creating the SDK client. Pass runtime-specific fetch and
@@ -107,4 +108,10 @@ export type DbClient = {
   notifications: NotificationsResource;
   /** Semantic search, embeddings RPCs, ontology candidates, idempotency helpers (AI-native CMMS). */
   semanticSearch: SemanticSearchResource;
+  /** Agent-first helper layer: tenant bootstrap, summary-first selectors, and safe multi-step helpers. */
+  agent: AgentHelpers;
+  /** Refresh the current Supabase session so tenant_id and other JWT claims are re-issued. Returns the new access token or null when there is no active session. */
+  refreshTenantSession(): Promise<string | null>;
+  /** Convenience helper for the common flow: set tenant context and immediately refresh the session. Returns the new access token or null when no active session exists. */
+  setTenantAndRefresh(tenantId: string): Promise<string | null>;
 };

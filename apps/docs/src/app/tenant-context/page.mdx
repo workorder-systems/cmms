@@ -63,6 +63,14 @@ const workOrders = await client.workOrders.list()
 
 Without that refresh, the JWT may still omit **`tenant_id`**, so tenant-scoped calls can fail or return nothing.
 
+<Note>
+  **HTTP MCP clients:** after calling <code>set_active_tenant</code>, send
+  <code>X-Supabase-Refresh-Token</code> with the Supabase <code>refresh_token</code>
+  so the MCP server can refresh the access token in-request. If you do not provide
+  a refresh token, reconnect OAuth or otherwise obtain a fresh Bearer token before
+  retrying tenant-scoped tools.
+</Note>
+
 ## Clear tenant context
 
 When switching tenants or logging out, clear the context first:

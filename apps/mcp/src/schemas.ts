@@ -23,8 +23,24 @@ export const workOrdersGetInputSchema = z.object({
   work_order_id: uuidSchema,
 });
 
+/** Optional args for full work order list (same tenant JWT as other list tools). */
+export const workOrdersListInputSchema = z.object({
+  include_draft: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true, include work orders in draft status. Default false (matches historical behavior and reduces noise).'
+    ),
+});
+
 export const workOrdersListSummaryInputSchema = z.object({
   limit: listLimitSchema,
+  include_draft: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true, include rows with status draft. Default false; use true when the user asks for drafts or intake queues.'
+    ),
 });
 
 export const workOrdersGetSummaryInputSchema = workOrdersGetInputSchema;
@@ -41,14 +57,45 @@ export const workOrdersCreateInputSchema = z.object({
   due_date: z.string().nullable().optional().describe('ISO date or timestamp.'),
   pm_schedule_id: z.string().uuid().nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
+  client_request_id: z
+    .string()
+    .min(1)
+    .max(256)
+    .nullable()
+    .optional()
+    .describe('Optional idempotency key for retry-safe automation. Reuse the same value when retrying the same create request.'),
+});
+
+export const assetsListSummaryInputSchema = z.object({
+  limit: listLimitSchema,
+});
+
+export const partsListSummaryInputSchema = z.object({
+  limit: listLimitSchema,
+});
+
+export const pmSchedulesListSummaryInputSchema = z.object({
+  limit: listLimitSchema,
+});
+
+export const workflowBundleInputSchema = z.object({
+  bundle_id: z
+    .enum(['tenant_bootstrap', 'work_order_intake', 'work_order_lookup', 'maintenance_lookup'])
+    .optional()
+    .describe('Optional curated workflow bundle id. Omit to list every available bundle.'),
 });
 
 export type SetActiveTenantInput = z.infer<typeof setActiveTenantInputSchema>;
 export type ResolveActiveTenantInput = z.infer<typeof resolveActiveTenantInputSchema>;
 export type WorkOrdersGetInput = z.infer<typeof workOrdersGetInputSchema>;
+export type WorkOrdersListInput = z.infer<typeof workOrdersListInputSchema>;
 export type WorkOrdersListSummaryInput = z.infer<typeof workOrdersListSummaryInputSchema>;
 export type WorkOrdersGetSummaryInput = z.infer<typeof workOrdersGetSummaryInputSchema>;
 export type WorkOrdersCreateInput = z.infer<typeof workOrdersCreateInputSchema>;
+export type AssetsListSummaryInput = z.infer<typeof assetsListSummaryInputSchema>;
+export type PartsListSummaryInput = z.infer<typeof partsListSummaryInputSchema>;
+export type PmSchedulesListSummaryInput = z.infer<typeof pmSchedulesListSummaryInputSchema>;
+export type WorkflowBundleInput = z.infer<typeof workflowBundleInputSchema>;
 
 /** Generic SDK invoke: operation_id from sdk_catalog; args validated per operation. */
 export const sdkInvokeInputSchema = z.object({

@@ -29,6 +29,17 @@ export function createPmResource(supabase) {
                 throw normalizeError(error);
             return (data ?? []);
         },
+        async listSchedulesSummary(options) {
+            const limit = Math.max(1, Math.min(options?.limit ?? 50, 200));
+            const { data, error } = await supabase
+                .from('v_pm_schedules')
+                .select('id,title,asset_id,asset_name,next_due_date,is_active,is_overdue,updated_at')
+                .order('next_due_date', { ascending: true, nullsFirst: false })
+                .limit(limit);
+            if (error)
+                throw normalizeError(error);
+            return (data ?? []);
+        },
         /** List due PMs (v_due_pms). */
         async listDue() {
             const { data, error } = await supabase.from('v_due_pms').select('*');

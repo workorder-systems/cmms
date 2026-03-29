@@ -103,6 +103,36 @@ describe('Work Orders', () => {
       expect(error).toBeDefined();
       expect(error?.message).toContain('Invalid priority');
     });
+
+    it('should create work orders idempotently when client request id is reused', async () => {
+      const { user } = await createTestUser(client);
+      const tenantId = await createTestTenant(client);
+
+      const payload = {
+        p_tenant_id: tenantId,
+        p_title: 'Idempotent Work Order',
+        p_priority: 'medium',
+        p_client_request_id: `wo-create-${Date.now()}`,
+      };
+
+      const { data: firstId, error: firstError } = await client.rpc('rpc_create_work_order', payload);
+      expect(firstError).toBeNull();
+      expect(typeof firstId).toBe('string');
+
+      const { data: secondId, error: secondError } = await client.rpc('rpc_create_work_order', payload);
+      expect(secondError).toBeNull();
+      expect(secondId).toBe(firstId);
+
+      await setTenantContext(client, tenantId);
+      const { data: rows, error: viewError } = await client
+        .from('v_work_orders')
+        .select('id, title')
+        .eq('title', 'Idempotent Work Order');
+
+      expect(viewError).toBeNull();
+      expect(rows?.length).toBe(1);
+      expect(rows?.[0]?.id).toBe(firstId);
+    });
   });
 
   describe('Tenant isolation', () => {

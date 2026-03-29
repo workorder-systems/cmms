@@ -93,6 +93,61 @@ const workOrders = await client.workOrders.list()
 
 </CodeGroup>
 
+<CodeGroup title="Agent-first: resolve tenant and switch once">
+
+```ts
+const resolution = await client.agent.resolveTenant()
+
+if (resolution.needs_user_input) {
+  // ask the user which tenant to use
+}
+
+if (resolution.tenant_id) {
+  await client.agent.ensureTenant({
+    tenantId: resolution.tenant_id,
+    refreshSession: true,
+  })
+}
+
+const workOrders = await client.agent.listWorkOrdersSummary()
+```
+
+</CodeGroup>
+
+<CodeGroup title="Retry-safe work order creation">
+
+```ts
+const workOrderId = await client.workOrders.create({
+  tenantId,
+  title: 'Repair boiler pump',
+  priority: 'high',
+  clientRequestId: 'agent-run-2026-03-29-001',
+})
+```
+
+</CodeGroup>
+
+<CodeGroup title="Agent-first: search then create safely">
+
+```ts
+const matches = await client.agent.searchEntities({
+  query: 'north pump 7',
+  entityTypes: ['asset'],
+  limit: 5,
+})
+
+const workOrder = await client.agent.createWorkOrderSafe({
+  tenantId,
+  title: 'Investigate pump vibration',
+  assetId: matches[0]?.entity_id ?? null,
+  clientRequestId: 'agent-run-2026-03-29-002',
+})
+```
+
+</CodeGroup>
+
+Reuse the same `clientRequestId` if your automation retries the same create request. The API returns the original `workOrderId` instead of creating a duplicate row.
+
 Tenant-scoped calls need **both** a signed-in user and a JWT that includes **`tenant_id`** after `setTenant` and session refresh:
 
 ```mermaid

@@ -26,6 +26,7 @@ import { createFieldOperationsResource } from './resources/field-operations.js';
 import { createIntegrationsResource } from './resources/integrations.js';
 import { createNotificationsResource } from './resources/notifications.js';
 import { createSemanticSearchResource } from './resources/semantic-search.js';
+import { createAgentResource } from './resources/agent.js';
 /**
  * Create a typed database client. Use this in browser, Node, or edge runtimes.
  *
@@ -90,6 +91,7 @@ function buildDbClientFromSupabase(supabase) {
         integrations: createIntegrationsResource(supabase),
         notifications: createNotificationsResource(supabase),
         semanticSearch: createSemanticSearchResource(supabase),
+        agent: undefined,
         async setTenant(tenantId) {
             const { error } = await supabase.rpc('rpc_set_tenant_context', { p_tenant_id: tenantId });
             unwrapResult(null, error);
@@ -98,6 +100,28 @@ function buildDbClientFromSupabase(supabase) {
             const { error } = await supabase.rpc('rpc_clear_tenant_context', {});
             unwrapResult(null, error);
         },
+        async refreshTenantSession() {
+            const { data, error } = await supabase.auth.getSession();
+            if (error) {
+                throw error;
+            }
+            if (!data.session) {
+                return null;
+            }
+            const refreshed = await supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+            });
+            if (refreshed.error) {
+                throw refreshed.error;
+            }
+            return refreshed.data.session ?? null;
+        },
+        async setTenantAndRefresh(tenantId) {
+            await client.setTenant(tenantId);
+            return client.refreshTenantSession();
+        },
     };
+    client.agent = createAgentResource(client);
     return client;
 }

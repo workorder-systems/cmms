@@ -1,22 +1,35 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { DbClient, TenantRow } from '@workorder-systems/sdk';
-import { jsonCompactResult, jsonCompactToolError, jsonResult, jsonToolError, jsonToolTry } from './json-tool-result.js';
+import {
+  jsonCompactResult,
+  jsonCompactToolError,
+  jsonResult,
+  jsonStructuredToolError,
+  jsonToolError,
+  jsonToolTry,
+} from './json-tool-result.js';
 import { MCP_SERVER_INSTRUCTIONS } from './mcp-instructions.js';
 import { MCP_PACKAGE_VERSION } from './server-version.js';
 import { registerSdkInvokeTools } from './sdk-invoke/register-sdk-invoke.js';
 import { getSessionTenantId } from './sdk-invoke/session-tenant.js';
 import { callEmbedSearch, type EmbedSearchTransportContext } from './embed-search-client.js';
+import { toStructuredToolError } from './tool-errors.js';
 import {
   cmmsSimilarPastTextInputSchema,
   entitySearchInputSchema,
+  partsListSummaryInputSchema,
+  pmSchedulesListSummaryInputSchema,
   resolveActiveTenantInputSchema,
   semanticSearchTextInputSchema,
   setActiveTenantInputSchema,
+  workflowBundleInputSchema,
   workOrdersCreateInputSchema,
   workOrdersGetInputSchema,
   workOrdersGetSummaryInputSchema,
+  workOrdersListInputSchema,
   workOrdersListSummaryInputSchema,
+  assetsListSummaryInputSchema,
 } from './schemas.js';
 
 /** Optional: call Supabase Edge embed-search with the same user JWT (text-in similarity). */
@@ -28,6 +41,74 @@ const toolAnn = {
   writeTenantContext: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } satisfies ToolAnnotations,
   writeWorkOrder: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } satisfies ToolAnnotations,
 } as const;
+
+const TENANT_REQUIRED_GUIDANCE = {
+  ok: false,
+  error: {
+    message: 'Tenant context required before using this tenant-scoped tool.',
+    code: 'TENANT_CONTEXT_REQUIRED',
+    details:
+      'Call resolve_active_tenant first. If it suggests or requires a tenant, call set_active_tenant and ensure the access token is refreshed so the JWT includes tenant_id.',
+    hint: 'HTTP MCP clients should send X-Supabase-Refresh-Token so set_active_tenant can refresh the access token in-request.',
+  },
+  next_actions: [
+    'Call resolve_active_tenant.',
+    'If needed, call set_active_tenant with the chosen tenant_id.',
+    'Retry this tool after the JWT has tenant_id.',
+  ],
+} as const;
+
+const WORKFLOW_BUNDLES = {
+  tenant_bootstrap: {
+    bundle_id: 'tenant_bootstrap',
+    purpose: 'Resolve tenant context before tenant-scoped reads or writes.',
+    recommended_tools: ['resolve_active_tenant', 'set_active_tenant', 'tenants_list'],
+    when_to_use:
+      'At the beginning of a session, after OAuth reconnects, or whenever tenant-scoped tools return tenant-context guidance.',
+    when_not_to_use: 'When tenant_id is already present in the JWT/session and tenant-scoped tools are working.',
+  },
+  work_order_intake: {
+    bundle_id: 'work_order_intake',
+    purpose: 'Resolve entities and create a work order safely from automation.',
+    recommended_tools: [
+      'resolve_active_tenant',
+      'set_active_tenant',
+      'entity_search',
+      'assets_list_summary',
+      'parts_list_summary',
+      'work_orders_create',
+    ],
+    when_to_use:
+      'When creating a work order from natural language intent, especially if assets or locations must be disambiguated first.',
+    when_not_to_use:
+      'When you already have canonical asset_id / location_id values and only need the generic sdk_invoke surface.',
+  },
+  work_order_lookup: {
+    bundle_id: 'work_order_lookup',
+    purpose: 'Browse and inspect work orders with summary-first reads.',
+    recommended_tools: ['work_orders_list_summary', 'work_orders_get_summary', 'work_orders_get'],
+    when_to_use:
+      'When selecting or disambiguating a work order before opening full detail. Pass include_draft: true on work_orders_list_summary (or work_orders_list) when the user cares about draft / intake rows.',
+    when_not_to_use: 'When you already know the exact work order id and need full fields immediately.',
+  },
+  maintenance_lookup: {
+    bundle_id: 'maintenance_lookup',
+    purpose: 'Browse assets, parts, and PM schedules with token-efficient reads.',
+    recommended_tools: ['assets_list_summary', 'parts_list_summary', 'pm_schedules_list_summary'],
+    when_to_use: 'When agents need lightweight lists for selection, routing, or follow-up clarification.',
+    when_not_to_use: 'When analytics/reporting summaries or raw sdk_invoke operations are a better fit.',
+  },
+} as const;
+
+type WorkflowBundleId = keyof typeof WORKFLOW_BUNDLES;
+
+async function requireTenantContext(
+  client: DbClient,
+  getBearerAccessToken?: () => Promise<string | undefined>
+): Promise<string | undefined> {
+  const bearer = await getBearerAccessToken?.();
+  return getSessionTenantId(client, bearer);
+}
 
 export type RegisterToolsOptions = {
   /**
@@ -62,6 +143,30 @@ export function registerTools(
     getBearerAccessToken: options?.getMcpBearerAccessToken,
     embeddingEdgeConfigured: Boolean(options?.embedSearch),
   });
+
+  server.registerTool(
+    'workflow_bundle_guide',
+    {
+      title: 'Workflow bundle guide',
+      description:
+        'Curated workflow bundles for common agent tasks such as tenant bootstrap, work-order intake, and maintenance lookup.',
+      inputSchema: workflowBundleInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async (raw: unknown) => {
+      try {
+        const { bundle_id } = workflowBundleInputSchema.parse(raw);
+        if (bundle_id) {
+          return jsonResult(WORKFLOW_BUNDLES[bundle_id as WorkflowBundleId]);
+        }
+        return jsonResult({
+          bundles: Object.values(WORKFLOW_BUNDLES),
+        });
+      } catch (err) {
+        return jsonStructuredToolError(err);
+      }
+    }
+  );
 
   server.registerTool(
     'resolve_active_tenant',
@@ -127,8 +232,7 @@ export function registerTools(
           ],
         });
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        return jsonCompactToolError(message);
+        return jsonCompactToolError(toStructuredToolError(e));
       }
     }
   );
@@ -153,13 +257,19 @@ export function registerTools(
     {
       title: 'List work orders',
       description:
-        'List work orders for the active tenant (JWT tenant_id claim). Excludes draft by default. Call set_active_tenant first if needed, then refresh the OAuth session if views are empty.',
+        'List work orders for the active tenant (JWT tenant_id claim). Excludes draft unless include_draft is true. Call set_active_tenant first if needed, then refresh the OAuth session if views are empty.',
+      inputSchema: workOrdersListInputSchema,
       annotations: toolAnn.readTenantData,
     },
-    async () =>
+    async (raw: unknown) =>
       jsonToolTry(async () => {
         const client = await getClient();
-        return client.workOrders.list();
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          throw TENANT_REQUIRED_GUIDANCE.error;
+        }
+        const args = workOrdersListInputSchema.parse(raw ?? {});
+        return args.include_draft ? client.workOrders.listIncludingDraft() : client.workOrders.list();
       })
   );
 
@@ -168,16 +278,21 @@ export function registerTools(
     {
       title: 'List work orders (summary)',
       description:
-        'Token-efficient list of work orders for the active tenant (JWT tenant_id claim). Returns only key fields for selection/disambiguation; use work_orders_get_summary or work_orders_get for details.',
+        'Token-efficient list of work orders for the active tenant (JWT tenant_id claim). Returns only key fields for selection/disambiguation; use work_orders_get_summary or work_orders_get for details. Excludes draft rows unless include_draft is true.',
       inputSchema: workOrdersListSummaryInputSchema,
       annotations: toolAnn.readTenantData,
     },
-    async (raw) => {
+    async (raw: unknown) => {
       try {
         const client = await getClient();
-        const args = workOrdersListSummaryInputSchema.parse(raw);
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          return jsonCompactResult(TENANT_REQUIRED_GUIDANCE);
+        }
+        const args = workOrdersListSummaryInputSchema.parse(raw ?? {});
         const limit = args.limit ?? 50;
-        const { data, error } = await client.supabase
+        const includeDraft = args.include_draft === true;
+        let query = client.supabase
           .from('v_work_orders')
           .select(
             [
@@ -195,26 +310,31 @@ export function registerTools(
               'updated_at',
             ].join(',')
           )
-          .neq('status', 'draft')
-          .order('updated_at', { ascending: false })
-          .limit(limit);
-        if (error) {
-          return jsonCompactToolError(error.message);
+          .order('updated_at', { ascending: false });
+        if (!includeDraft) {
+          query = query.neq('status', 'draft');
         }
-        const bearer = await options?.getMcpBearerAccessToken?.();
-        const tenantId = await getSessionTenantId(client, bearer);
+        const { data, error } = await query.limit(limit);
+        if (error) {
+          return jsonCompactToolError(toStructuredToolError(error));
+        }
+        const nextActions = [
+          'Pick a work_order_id and call work_orders_get_summary (or work_orders_get for full fields).',
+        ];
+        if (!includeDraft) {
+          nextActions.push(
+            'If the user asked for drafts or the list looks incomplete, retry with include_draft: true.'
+          );
+        }
         return jsonCompactResult({
           ok: true,
-          tenant_id: tenantId ?? null,
+          tenant_id: tenantId,
           returned_count: (data ?? []).length,
           rows: data ?? [],
-          next_actions: [
-            'Pick a work_order_id and call work_orders_get_summary (or work_orders_get for full fields).',
-          ],
+          next_actions: nextActions,
         });
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        return jsonCompactToolError(message);
+        return jsonCompactToolError(toStructuredToolError(e));
       }
     }
   );
@@ -230,6 +350,10 @@ export function registerTools(
     async (args) =>
       jsonToolTry(async () => {
         const client = await getClient();
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          throw TENANT_REQUIRED_GUIDANCE.error;
+        }
         return client.workOrders.getById(args.work_order_id);
       })
   );
@@ -246,6 +370,10 @@ export function registerTools(
     async (raw) => {
       try {
         const client = await getClient();
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          return jsonCompactResult(TENANT_REQUIRED_GUIDANCE);
+        }
         const args = workOrdersGetSummaryInputSchema.parse(raw);
         const { data, error } = await client.supabase
           .from('v_work_orders')
@@ -269,20 +397,17 @@ export function registerTools(
           .eq('id', args.work_order_id)
           .maybeSingle();
         if (error) {
-          return jsonCompactToolError(error.message);
+          return jsonCompactToolError(toStructuredToolError(error));
         }
-        const bearer = await options?.getMcpBearerAccessToken?.();
-        const tenantId = await getSessionTenantId(client, bearer);
         return jsonCompactResult({
           ok: true,
-          tenant_id: tenantId ?? null,
+          tenant_id: tenantId,
           work_order_id: args.work_order_id,
           row: data ?? null,
           next_actions: ['Call work_orders_get if you need full text fields (cause, resolution, SLA fields, etc.).'],
         });
       } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        return jsonCompactToolError(message);
+        return jsonCompactToolError(toStructuredToolError(e));
       }
     }
   );
@@ -310,9 +435,129 @@ export function registerTools(
           dueDate: args.due_date ?? null,
           pmScheduleId: args.pm_schedule_id ?? null,
           projectId: args.project_id ?? null,
+          clientRequestId: args.client_request_id ?? null,
         });
         return { work_order_id: id };
       })
+  );
+
+  server.registerTool(
+    'assets_list_summary',
+    {
+      title: 'List assets (summary)',
+      description:
+        'Token-efficient asset list for the active tenant. Returns asset ids, names, identifiers, and location hints for selection/disambiguation.',
+      inputSchema: assetsListSummaryInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async (raw) => {
+      try {
+        const client = await getClient();
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          return jsonCompactResult(TENANT_REQUIRED_GUIDANCE);
+        }
+        const args = assetsListSummaryInputSchema.parse(raw);
+        const limit = args.limit ?? 50;
+        const { data, error } = await client.supabase
+          .from('v_assets')
+          .select('id,name,asset_number,barcode,status,location_id,updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(limit);
+        if (error) {
+          return jsonCompactToolError(toStructuredToolError(error));
+        }
+        return jsonCompactResult({
+          ok: true,
+          tenant_id: tenantId,
+          returned_count: (data ?? []).length,
+          rows: data ?? [],
+          next_actions: ['Use entity_search or sdk_invoke for richer asset detail when needed.'],
+        });
+      } catch (err) {
+        return jsonCompactToolError(toStructuredToolError(err));
+      }
+    }
+  );
+
+  server.registerTool(
+    'parts_list_summary',
+    {
+      title: 'List parts (summary)',
+      description:
+        'Token-efficient parts list for the active tenant. Returns part ids, names, numbers, barcode, and supplier hints for selection/disambiguation.',
+      inputSchema: partsListSummaryInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async (raw) => {
+      try {
+        const client = await getClient();
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          return jsonCompactResult(TENANT_REQUIRED_GUIDANCE);
+        }
+        const args = partsListSummaryInputSchema.parse(raw);
+        const limit = args.limit ?? 50;
+        const rows = await client.partsInventory.listParts();
+        return jsonCompactResult({
+          ok: true,
+          tenant_id: tenantId,
+          returned_count: rows.slice(0, limit).length,
+          rows: rows.slice(0, limit).map((row) => ({
+            id: row.id,
+            name: row.name,
+            part_number: row.part_number,
+            barcode: 'barcode' in row ? row.barcode ?? null : null,
+            preferred_supplier_id: row.preferred_supplier_id,
+            updated_at: row.updated_at,
+          })),
+          next_actions: ['Use entity_search or sdk_invoke for richer inventory detail when needed.'],
+        });
+      } catch (err) {
+        return jsonCompactToolError(toStructuredToolError(err));
+      }
+    }
+  );
+
+  server.registerTool(
+    'pm_schedules_list_summary',
+    {
+      title: 'List PM schedules (summary)',
+      description:
+        'Token-efficient PM schedule list for the active tenant. Returns ids, titles, asset references, next due date, and active status.',
+      inputSchema: pmSchedulesListSummaryInputSchema,
+      annotations: toolAnn.readTenantData,
+    },
+    async (raw) => {
+      try {
+        const client = await getClient();
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          return jsonCompactResult(TENANT_REQUIRED_GUIDANCE);
+        }
+        const args = pmSchedulesListSummaryInputSchema.parse(raw);
+        const limit = args.limit ?? 50;
+        const rows = await client.pm.listSchedules();
+        return jsonCompactResult({
+          ok: true,
+          tenant_id: tenantId,
+          returned_count: rows.slice(0, limit).length,
+          rows: rows.slice(0, limit).map((row) => ({
+            id: row.id,
+            title: row.title,
+            asset_id: row.asset_id,
+            asset_name: row.asset_name,
+            next_due_date: row.next_due_date,
+            is_active: row.is_active,
+            is_overdue: row.is_overdue,
+            updated_at: row.updated_at,
+          })),
+          next_actions: ['Use sdk_invoke for full PM schedule detail or generation actions.'],
+        });
+      } catch (err) {
+        return jsonCompactToolError(toStructuredToolError(err));
+      }
+    }
   );
 
   server.registerTool(
@@ -333,7 +578,9 @@ export function registerTools(
                 'similar_past_work_orders / semantic_search (text-in embed-search; optional detail_level)',
               ]
             : []),
+          'assets_list_summary / parts_list_summary / pm_schedules_list_summary for adjacent maintenance selection',
           'work_orders_list_summary / work_orders_get_summary; work_orders_get for full fields',
+          'workflow_bundle_guide for curated bundle recommendations',
           'sdk_catalog_compact, sdk_operation_schema as needed, sdk_invoke',
         ],
       })
@@ -352,7 +599,11 @@ export function registerTools(
       jsonToolTry(async () => {
         const client = await getClient();
         const parsed = entitySearchInputSchema.parse(args);
-        return client.semanticSearch.searchEntityCandidates({
+        const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
+        if (!tenantId) {
+          throw TENANT_REQUIRED_GUIDANCE.error;
+        }
+        return client.semanticSearch.searchEntityCandidatesV2({
           query: parsed.query,
           entityTypes: parsed.entity_types ?? null,
           limit: parsed.limit,
@@ -389,8 +640,7 @@ export function registerTools(
           }
           return jsonResult(out.data);
         } catch (e) {
-          const message = e instanceof Error ? e.message : String(e);
-          return jsonToolError(message);
+          return jsonToolError(toStructuredToolError(e));
         }
       }
     );
@@ -424,8 +674,7 @@ export function registerTools(
           }
           return jsonResult(out.data);
         } catch (e) {
-          const message = e instanceof Error ? e.message : String(e);
-          return jsonToolError(message);
+          return jsonToolError(toStructuredToolError(e));
         }
       }
     );
@@ -469,8 +718,7 @@ export function registerTools(
               }
         );
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return jsonToolError(message);
+        return jsonToolError(toStructuredToolError(err));
       }
     }
   );

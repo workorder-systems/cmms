@@ -36,6 +36,17 @@ export function createPartsInventoryResource(supabase) {
                 throw normalizeError(error);
             return (data ?? []);
         },
+        async listSummary(limit = 50) {
+            const rows = await this.listParts();
+            return rows.slice(0, Math.max(1, limit)).map((row) => ({
+                id: row.id,
+                name: row.name,
+                part_number: row.part_number,
+                barcode: row.barcode ?? null,
+                preferred_supplier_id: row.preferred_supplier_id,
+                updated_at: row.updated_at,
+            }));
+        },
         /** Get part by id. */
         async getPartById(id) {
             const { data, error } = await supabase.from('v_parts').select('*').eq('id', id).maybeSingle();
