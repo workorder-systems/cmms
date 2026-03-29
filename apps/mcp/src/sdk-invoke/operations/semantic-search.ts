@@ -201,6 +201,29 @@ export const semanticSearchOperations: Record<string, SdkOperationDef> = {
       });
     },
   },
+  'semantic_search.search_entity_candidates_v2': {
+    description: 'Agent-oriented entity search with richer disambiguation hints (site, path, identifiers, supplier).',
+    annotations: ann.read,
+    inputSchema: z.object({
+      p_query: z.string().min(1),
+      p_entity_types: z.array(z.string()).optional(),
+      p_limit: z.number().int().optional(),
+    }),
+    async invoke(client, args) {
+      const p = z
+        .object({
+          p_query: z.string().min(1),
+          p_entity_types: z.array(z.string()).optional(),
+          p_limit: z.number().int().optional(),
+        })
+        .parse(args);
+      return client.semanticSearch.searchEntityCandidatesV2({
+        query: p.p_query,
+        entityTypes: p.p_entity_types ?? null,
+        limit: p.p_limit,
+      });
+    },
+  },
   'semantic_search.register_entity_alias': {
     description: 'Register entity alias (tenant.admin).',
     annotations: ann.write,

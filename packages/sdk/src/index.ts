@@ -321,6 +321,7 @@ export type {
   SimilarAssetRow,
   SimilarPartRow,
   EntityCandidateRow,
+  EntityCandidateV2Row,
   NextWorkOrderForEmbeddingRow,
   NextAssetForEmbeddingRow,
   NextPartForEmbeddingRow,

@@ -22,6 +22,8 @@ export interface CreateWorkOrderParams {
   dueDate?: string | null;
   pmScheduleId?: string | null;
   projectId?: string | null;
+  /** Optional idempotency key for retry-safe automation. Reusing the same key returns the original work order id. */
+  clientRequestId?: string | null;
 }
 
 /** Single row for bulk import (title required; others optional, use catalog keys). */
@@ -205,7 +207,7 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
       return data as WorkOrderRow | null;
     },
 
-    /** Create a work order. Returns the new work order UUID. */
+    /** Create a work order. Returns the new work order UUID. Optional clientRequestId makes retries idempotent. */
     async create(params: CreateWorkOrderParams): Promise<string> {
       return callRpc(rpc(supabase), 'rpc_create_work_order', {
         p_tenant_id: params.tenantId,
@@ -219,6 +221,7 @@ export function createWorkOrdersResource(supabase: SupabaseClient<Database>) {
         p_due_date: params.dueDate ?? null,
         p_pm_schedule_id: params.pmScheduleId ?? null,
         p_project_id: params.projectId ?? null,
+        p_client_request_id: params.clientRequestId ?? null,
       });
     },
 

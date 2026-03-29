@@ -67,47 +67,6 @@ declare
 begin
   v_client_request_id := nullif(trim(p_client_request_id), '');
 
-  /*
-   * for agents and other programmatic clients, retries should be safe. we claim
-   * the tenant-scoped idempotency key before rate limiting or insert work. if a
-   * previous successful call already created the work order, return that id.
-   */
-  if v_client_request_id is not null then
-    insert into app.client_idempotency (
-      tenant_id,
-      scope,
-      idempotency_key,
-      resource_id
-    )
-    values (
-      p_tenant_id,
-      v_idempotency_scope,
-      v_client_request_id,
-      null
-    )
-    on conflict (tenant_id, scope, idempotency_key) do nothing;
-
-    if not found then
-      select c.resource_id
-      into v_existing_work_order_id
-      from app.client_idempotency c
-      where c.tenant_id = p_tenant_id
-        and c.scope = v_idempotency_scope
-        and c.idempotency_key = v_client_request_id;
-
-      if v_existing_work_order_id is not null then
-        return v_existing_work_order_id;
-      end if;
-
-      raise exception using
-        message = format(
-          'work order create request %s is already in progress; retry with the same client_request_id',
-          v_client_request_id
-        ),
-        errcode = '40001';
-    end if;
-  end if;
-
   perform util.check_rate_limit('work_order_create', null, 10, 1, auth.uid(), p_tenant_id);
 
   v_user_id := authz.rpc_setup(p_tenant_id, 'workorder.create');
@@ -176,6 +135,47 @@ begin
     end if;
 
     perform util.validate_tenant_match(p_tenant_id, v_project_tenant_id, 'Project');
+  end if;
+
+  /*
+   * claim the idempotency key only after validation passes so a bad request does
+   * not permanently poison the key. if a previous successful call already created
+   * the work order, return that id instead of duplicating the write.
+   */
+  if v_client_request_id is not null then
+    insert into app.client_idempotency (
+      tenant_id,
+      scope,
+      idempotency_key,
+      resource_id
+    )
+    values (
+      p_tenant_id,
+      v_idempotency_scope,
+      v_client_request_id,
+      null
+    )
+    on conflict (tenant_id, scope, idempotency_key) do nothing;
+
+    if not found then
+      select c.resource_id
+      into v_existing_work_order_id
+      from app.client_idempotency c
+      where c.tenant_id = p_tenant_id
+        and c.scope = v_idempotency_scope
+        and c.idempotency_key = v_client_request_id;
+
+      if v_existing_work_order_id is not null then
+        return v_existing_work_order_id;
+      end if;
+
+      raise exception using
+        message = format(
+          'work order create request %s is already in progress; retry with the same client_request_id',
+          v_client_request_id
+        ),
+        errcode = '40001';
+    end if;
   end if;
 
   v_initial_status := cfg.get_default_status(

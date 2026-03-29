@@ -42,6 +42,7 @@ export function createWorkOrdersResource(supabase) {
                 p_due_date: params.dueDate ?? null,
                 p_pm_schedule_id: params.pmScheduleId ?? null,
                 p_project_id: params.projectId ?? null,
+                p_client_request_id: params.clientRequestId ?? null,
             });
         },
         /** Bulk import work orders. Status/priority set on insert (no transition). Returns created ids and per-row errors. */

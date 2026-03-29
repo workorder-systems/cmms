@@ -6,6 +6,7 @@ export type SimilarPastWorkOrderRow = Database['public']['Functions']['rpc_simil
 export type SimilarAssetRow = Database['public']['Functions']['rpc_similar_assets']['Returns'][number];
 export type SimilarPartRow = Database['public']['Functions']['rpc_similar_parts']['Returns'][number];
 export type EntityCandidateRow = Database['public']['Functions']['rpc_search_entity_candidates']['Returns'][number];
+export type EntityCandidateV2Row = Database['public']['Functions']['rpc_search_entity_candidates_v2']['Returns'][number];
 export type NextWorkOrderForEmbeddingRow = Database['public']['Functions']['rpc_next_work_orders_for_embedding']['Returns'][number];
 export type NextAssetForEmbeddingRow = Database['public']['Functions']['rpc_next_assets_for_embedding']['Returns'][number];
 export type NextPartForEmbeddingRow = Database['public']['Functions']['rpc_next_parts_for_embedding']['Returns'][number];
@@ -106,6 +107,11 @@ export interface SemanticSearchResource {
         entityTypes?: string[] | null;
         limit?: number;
     }): Promise<EntityCandidateRow[]>;
+    searchEntityCandidatesV2(params: {
+        query: string;
+        entityTypes?: string[] | null;
+        limit?: number;
+    }): Promise<EntityCandidateV2Row[]>;
     claimIdempotency(params: {
         tenantId: string;
         scope: string;

@@ -21,6 +21,7 @@ export interface CreateWorkOrderParams {
     dueDate?: string | null;
     pmScheduleId?: string | null;
     projectId?: string | null;
+    clientRequestId?: string | null;
 }
 /** Single row for bulk import (title required; others optional, use catalog keys). */
 export interface BulkImportRow {

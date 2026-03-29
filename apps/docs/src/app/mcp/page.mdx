@@ -9,6 +9,8 @@ export const sections = [
   { title: 'Run the server', id: 'run-the-server' },
   { title: 'Clients and OAuth', id: 'clients-and-oauth' },
   { title: 'Tenant context and tools', id: 'tenant-context-and-tools' },
+  { title: 'Summary-first tools', id: 'summary-first-tools' },
+  { title: 'Bundles and structured errors', id: 'bundles-and-structured-errors' },
   { title: 'Full reference', id: 'full-reference' },
 ]
 
@@ -61,6 +63,39 @@ Read [Authentication](/authentication) for how sessions work; MCP reuses that mo
 - **Generic access:** **`sdk_catalog`** lists operations and JSON Schema args; **`sdk_invoke`** runs any SDK operation by id.
 - **Shortcuts:** convenience tools (e.g. work order list/get/create) wrap the same RPCs.
 
+The recommended MCP flow is:
+
+1. `resolve_active_tenant`
+2. `set_active_tenant`
+3. retry with the refreshed JWT if the tool response says tenant context is still missing
+4. use summary or search tools before opening full detail
+
+## Summary-first tools
+
+For agents, token efficiency matters. This MCP server exposes lightweight tools for selection and disambiguation before full-row reads:
+
+- `work_orders_list_summary`
+- `work_orders_get_summary`
+- `assets_list_summary`
+- `parts_list_summary`
+- `pm_schedules_list_summary`
+
+Use these first when the goal is “pick the right row” rather than “inspect every field”.
+
+## Bundles and structured errors
+
+- `workflow_guide` provides the recommended high-level order of operations.
+- `workflow_bundle` returns a curated bundle such as `tenant_bootstrap`, `work_order_intake`, `work_order_lookup`, or `maintenance_lookup`.
+- MCP errors preserve structured fields when available:
+  - `message`
+  - `code`
+  - `details`
+  - `hint`
+
+For example, missing tenant context returns an explicit guidance payload instead of silently returning an empty list where possible.
+
+For a full agent-builder guide, see [Building agents](/agents).
+
 ## Full reference
 
 **[apps/mcp/README.md](https://github.com/workorder-systems/db/blob/main/apps/mcp/README.md)** — Cursor config, `mcp-remote` callback ports, Claude Code HTTP transport, env vars, and troubleshooting.
@@ -71,5 +106,8 @@ Read [Authentication](/authentication) for how sessions work; MCP reuses that mo
   </Button>
   <Button href="/tenant-context" variant="text" arrow="right">
     <>Tenant context</>
+  </Button>
+  <Button href="/agents" variant="text" arrow="right">
+    <>Building agents</>
   </Button>
 </div>

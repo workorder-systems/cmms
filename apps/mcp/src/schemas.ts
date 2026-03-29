@@ -41,6 +41,25 @@ export const workOrdersCreateInputSchema = z.object({
   due_date: z.string().nullable().optional().describe('ISO date or timestamp.'),
   pm_schedule_id: z.string().uuid().nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
+  client_request_id: z
+    .string()
+    .min(1)
+    .max(256)
+    .nullable()
+    .optional()
+    .describe('Optional idempotency key for retry-safe automation. Reuse the same value when retrying the same create request.'),
+});
+
+export const assetsListSummaryInputSchema = z.object({
+  limit: listLimitSchema,
+});
+
+export const partsListSummaryInputSchema = z.object({
+  limit: listLimitSchema,
+});
+
+export const pmSchedulesListSummaryInputSchema = z.object({
+  limit: listLimitSchema,
 });
 
 export type SetActiveTenantInput = z.infer<typeof setActiveTenantInputSchema>;
@@ -49,6 +68,9 @@ export type WorkOrdersGetInput = z.infer<typeof workOrdersGetInputSchema>;
 export type WorkOrdersListSummaryInput = z.infer<typeof workOrdersListSummaryInputSchema>;
 export type WorkOrdersGetSummaryInput = z.infer<typeof workOrdersGetSummaryInputSchema>;
 export type WorkOrdersCreateInput = z.infer<typeof workOrdersCreateInputSchema>;
+export type AssetsListSummaryInput = z.infer<typeof assetsListSummaryInputSchema>;
+export type PartsListSummaryInput = z.infer<typeof partsListSummaryInputSchema>;
+export type PmSchedulesListSummaryInput = z.infer<typeof pmSchedulesListSummaryInputSchema>;
 
 /** Generic SDK invoke: operation_id from sdk_catalog; args validated per operation. */
 export const sdkInvokeInputSchema = z.object({

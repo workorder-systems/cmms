@@ -1,3 +1,5 @@
+import { SdkError, normalizeError } from '@workorder-systems/sdk';
+
 /**
  * Shared JSON text responses for MCP tools (success and error).
  */
@@ -52,12 +54,48 @@ export function jsonCompactToolError(message: string) {
   };
 }
 
+export function jsonStructuredToolError(
+  error: unknown,
+  options?: {
+    next_action?: string;
+    retryable?: boolean;
+    compact?: boolean;
+    extra?: Record<string, unknown>;
+  }
+) {
+  const normalized = normalizeError(error);
+  const payload = {
+    error: {
+      message: normalized.message,
+      code: normalized.code ?? null,
+      details: normalized.details ?? null,
+      hint: normalized.hint ?? null,
+      retryable: options?.retryable ?? null,
+      next_action: options?.next_action ?? null,
+      ...(options?.extra ?? {}),
+    },
+  };
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(payload, null, options?.compact ? 0 : 2),
+      },
+    ],
+    isError: true as const,
+  };
+}
+
+export function isSdkLikeError(error: unknown): error is SdkError {
+  return error instanceof SdkError;
+}
+
 export async function jsonToolTry<T>(fn: () => Promise<T>) {
   try {
     const data = await fn();
     return jsonResult(data);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return jsonToolError(message);
+    return jsonStructuredToolError(err);
   }
 }

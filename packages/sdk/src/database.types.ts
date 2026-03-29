@@ -10528,6 +10528,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_batch_upsert_asset_embeddings: {
+        Args: { p_rows: Json }
+        Returns: number
+      }
+      rpc_batch_upsert_part_embeddings: {
+        Args: { p_rows: Json }
+        Returns: number
+      }
+      rpc_batch_upsert_work_order_embeddings: {
+        Args: { p_rows: Json }
+        Returns: number
+      }
       rpc_bulk_import_assets: {
         Args: { p_rows: Json; p_tenant_id: string }
         Returns: Json
@@ -10543,18 +10555,6 @@ export type Database = {
       rpc_bulk_import_work_orders: {
         Args: { p_rows: Json; p_tenant_id: string }
         Returns: Json
-      }
-      rpc_batch_upsert_work_order_embeddings: {
-        Args: { p_rows: Json }
-        Returns: number
-      }
-      rpc_batch_upsert_asset_embeddings: {
-        Args: { p_rows: Json }
-        Returns: number
-      }
-      rpc_batch_upsert_part_embeddings: {
-        Args: { p_rows: Json }
-        Returns: number
       }
       rpc_check_shift_conflicts: {
         Args: {
@@ -10582,7 +10582,6 @@ export type Database = {
         }
         Returns: string
       }
-      rpc_clear_tenant_context: { Args: never; Returns: undefined }
       rpc_claim_idempotency: {
         Args: {
           p_idempotency_key: string
@@ -10592,6 +10591,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      rpc_clear_tenant_context: { Args: never; Returns: undefined }
       rpc_close_incident: {
         Args: { p_incident_id: string; p_status?: string; p_tenant_id: string }
         Returns: undefined
@@ -11036,6 +11036,7 @@ export type Database = {
         Args: {
           p_asset_id?: string
           p_assigned_to?: string
+          p_client_request_id?: string
           p_description?: string
           p_due_date?: string
           p_location_id?: string
@@ -11341,6 +11342,15 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_register_entity_alias: {
+        Args: {
+          p_alias_text: string
+          p_entity_id: string
+          p_entity_type: string
+          p_tenant_id: string
+        }
+        Returns: number
+      }
       rpc_register_entity_attachment: {
         Args: {
           p_entity_id: string
@@ -11392,15 +11402,6 @@ export type Database = {
         }
         Returns: string
       }
-      rpc_register_entity_alias: {
-        Args: {
-          p_alias_text: string
-          p_entity_id: string
-          p_entity_type: string
-          p_tenant_id: string
-        }
-        Returns: number
-      }
       rpc_resolve_asset_by_scan_code: {
         Args: { p_code: string; p_tenant_id: string }
         Returns: string
@@ -11447,17 +11448,31 @@ export type Database = {
         Returns: string
       }
       rpc_search_entity_candidates: {
-        Args: {
-          p_entity_types?: string[]
-          p_limit?: number
-          p_query: string
-        }
+        Args: { p_entity_types?: string[]; p_limit?: number; p_query: string }
         Returns: {
           entity_id: string
           entity_type: string
           label: string
           match_type: string
           score: number
+        }[]
+      }
+      rpc_search_entity_candidates_v2: {
+        Args: { p_entity_types?: string[]; p_limit?: number; p_query: string }
+        Returns: {
+          asset_number: string
+          barcode: string
+          disambiguation_hint: string
+          entity_id: string
+          entity_type: string
+          label: string
+          location_path: string
+          match_type: string
+          part_number: string
+          score: number
+          site_name: string
+          subtitle: string
+          supplier_name: string
         }[]
       }
       rpc_set_audit_retention_config: {
@@ -11914,37 +11929,13 @@ export type Database = {
       }
       rpc_upsert_asset_embedding: {
         Args: {
-          p_content_hash?: string
-          p_embedding: string
-          p_embedding_profile?: string
           p_asset_id: string
-          p_model_name?: string
-          p_model_version?: string
-          p_source_text?: string
-        }
-        Returns: undefined
-      }
-      rpc_upsert_part_embedding: {
-        Args: {
-          p_content_hash?: string
-          p_embedding: string
-          p_embedding_profile?: string
-          p_model_name?: string
-          p_model_version?: string
-          p_part_id: string
-          p_source_text?: string
-        }
-        Returns: undefined
-      }
-      rpc_upsert_work_order_embedding: {
-        Args: {
           p_content_hash?: string
           p_embedding: string
           p_embedding_profile?: string
           p_model_name?: string
           p_model_version?: string
           p_source_text?: string
-          p_work_order_id: string
         }
         Returns: undefined
       }
@@ -11982,6 +11973,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      rpc_upsert_part_embedding: {
+        Args: {
+          p_content_hash?: string
+          p_embedding: string
+          p_embedding_profile?: string
+          p_model_name?: string
+          p_model_version?: string
+          p_part_id: string
+          p_source_text?: string
+        }
+        Returns: undefined
+      }
       rpc_upsert_plugin_webhook_subscription: {
         Args: {
           p_changed_fields_allowlist?: string[]
@@ -11993,6 +11996,18 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: string
+      }
+      rpc_upsert_work_order_embedding: {
+        Args: {
+          p_content_hash?: string
+          p_embedding: string
+          p_embedding_profile?: string
+          p_model_name?: string
+          p_model_version?: string
+          p_source_text?: string
+          p_work_order_id: string
+        }
+        Returns: undefined
       }
       rpc_upsert_work_order_sla_rule: {
         Args: {

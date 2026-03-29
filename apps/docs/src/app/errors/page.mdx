@@ -60,9 +60,14 @@ Errors come from Supabase/PostgREST and your RPCs. Typical sources:
 - **PGRST***: PostgREST (e.g. invalid filter, missing column). Check [PostgREST errors](https://postgrest.org/en/stable/errors.html) for code meanings.
 - **Auth**: Supabase Auth (e.g. invalid credentials, session expired). Check [Supabase Auth docs](https://supabase.com/docs/guides/auth) for handling.
 - **RPC**: your `rpc_*` functions can return custom messages and codes; `details` and `hint` may contain server-set text.
+- **Agent / MCP contract**: MCP tool errors preserve `message`, `code`, `details`, and `hint` in structured JSON, so automation can distinguish tenant-context problems, permission failures, validation errors, and retryable write conflicts.
 
 ## Status codes
 
 The SDK does not expose HTTP status codes directly; it throws on error. Under the hood, Supabase uses standard HTTP: 2xx for success, 4xx for client errors (e.g. 401 unauthorized, 403 forbidden, 404 not found), 5xx for server errors. Use `SdkError.message` and `code` / `details` / `hint` to decide how to handle failures in your app.
 
 **Permission denied (42501):** When an RPC requires a permission or scope the user does not have, the backend returns an error (often with a message like “Permission denied … tenant.admin required” or “Unauthorized … workorder.edit”). See [Authorization (RBAC & ABAC)](/authorization) for how roles, permissions, and scopes work.
+
+**Tenant context required (`P0001` or MCP `TENANT_CONTEXT_REQUIRED`):** Tenant-scoped reads and some RPCs require `tenant_id` in the JWT/session. In SDK code, call `setTenant()` and refresh the session before retrying. In MCP, use `resolve_active_tenant`, then `set_active_tenant`, and ensure the client can refresh the OAuth session (for HTTP MCP this typically means sending `X-Supabase-Refresh-Token`).
+
+**Retry-safe work-order creation (`40001` during in-flight duplicate request):** `rpc_create_work_order` accepts an optional client request id. If the same request is retried after the first call finishes, the original `work_order_id` is returned. If the first request is still in progress, the backend can respond with a retryable conflict so automation knows to retry later with the same client request id.
