@@ -6,6 +6,7 @@ import {
   sdkOperationSchemaInputSchema,
   workOrdersCreateInputSchema,
   workOrdersGetInputSchema,
+  workOrdersListInputSchema,
   workOrdersListSummaryInputSchema,
 } from './schemas.js';
 
@@ -33,9 +34,26 @@ describe('workOrdersGetInputSchema', () => {
   });
 });
 
+describe('workOrdersListInputSchema', () => {
+  it('accepts empty args (defaults omit include_draft)', () => {
+    expect(workOrdersListInputSchema.parse({})).toEqual({});
+  });
+
+  it('accepts include_draft', () => {
+    expect(workOrdersListInputSchema.parse({ include_draft: true })).toEqual({ include_draft: true });
+  });
+});
+
 describe('workOrdersListSummaryInputSchema', () => {
   it('accepts optional limit', () => {
     expect(workOrdersListSummaryInputSchema.parse({ limit: 10 })).toEqual({ limit: 10 });
+  });
+
+  it('accepts include_draft with limit', () => {
+    expect(workOrdersListSummaryInputSchema.parse({ limit: 5, include_draft: true })).toEqual({
+      limit: 5,
+      include_draft: true,
+    });
   });
 
   it('rejects invalid limit', () => {

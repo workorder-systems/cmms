@@ -23,8 +23,24 @@ export const workOrdersGetInputSchema = z.object({
   work_order_id: uuidSchema,
 });
 
+/** Optional args for full work order list (same tenant JWT as other list tools). */
+export const workOrdersListInputSchema = z.object({
+  include_draft: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true, include work orders in draft status. Default false (matches historical behavior and reduces noise).'
+    ),
+});
+
 export const workOrdersListSummaryInputSchema = z.object({
   limit: listLimitSchema,
+  include_draft: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true, include rows with status draft. Default false; use true when the user asks for drafts or intake queues.'
+    ),
 });
 
 export const workOrdersGetSummaryInputSchema = workOrdersGetInputSchema;
@@ -72,6 +88,7 @@ export const workflowBundleInputSchema = z.object({
 export type SetActiveTenantInput = z.infer<typeof setActiveTenantInputSchema>;
 export type ResolveActiveTenantInput = z.infer<typeof resolveActiveTenantInputSchema>;
 export type WorkOrdersGetInput = z.infer<typeof workOrdersGetInputSchema>;
+export type WorkOrdersListInput = z.infer<typeof workOrdersListInputSchema>;
 export type WorkOrdersListSummaryInput = z.infer<typeof workOrdersListSummaryInputSchema>;
 export type WorkOrdersGetSummaryInput = z.infer<typeof workOrdersGetSummaryInputSchema>;
 export type WorkOrdersCreateInput = z.infer<typeof workOrdersCreateInputSchema>;

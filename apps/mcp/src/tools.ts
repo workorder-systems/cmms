@@ -27,6 +27,7 @@ import {
   workOrdersCreateInputSchema,
   workOrdersGetInputSchema,
   workOrdersGetSummaryInputSchema,
+  workOrdersListInputSchema,
   workOrdersListSummaryInputSchema,
   assetsListSummaryInputSchema,
 } from './schemas.js';
@@ -86,7 +87,8 @@ const WORKFLOW_BUNDLES = {
     bundle_id: 'work_order_lookup',
     purpose: 'Browse and inspect work orders with summary-first reads.',
     recommended_tools: ['work_orders_list_summary', 'work_orders_get_summary', 'work_orders_get'],
-    when_to_use: 'When selecting or disambiguating a work order before opening full detail.',
+    when_to_use:
+      'When selecting or disambiguating a work order before opening full detail. Pass include_draft: true on work_orders_list_summary (or work_orders_list) when the user cares about draft / intake rows.',
     when_not_to_use: 'When you already know the exact work order id and need full fields immediately.',
   },
   maintenance_lookup: {
@@ -255,17 +257,19 @@ export function registerTools(
     {
       title: 'List work orders',
       description:
-        'List work orders for the active tenant (JWT tenant_id claim). Excludes draft by default. Call set_active_tenant first if needed, then refresh the OAuth session if views are empty.',
+        'List work orders for the active tenant (JWT tenant_id claim). Excludes draft unless include_draft is true. Call set_active_tenant first if needed, then refresh the OAuth session if views are empty.',
+      inputSchema: workOrdersListInputSchema,
       annotations: toolAnn.readTenantData,
     },
-    async () =>
+    async (raw: unknown) =>
       jsonToolTry(async () => {
         const client = await getClient();
         const tenantId = await requireTenantContext(client, options?.getMcpBearerAccessToken);
         if (!tenantId) {
           throw TENANT_REQUIRED_GUIDANCE.error;
         }
-        return client.workOrders.list();
+        const args = workOrdersListInputSchema.parse(raw ?? {});
+        return args.include_draft ? client.workOrders.listIncludingDraft() : client.workOrders.list();
       })
   );
 
@@ -274,7 +278,7 @@ export function registerTools(
     {
       title: 'List work orders (summary)',
       description:
-        'Token-efficient list of work orders for the active tenant (JWT tenant_id claim). Returns only key fields for selection/disambiguation; use work_orders_get_summary or work_orders_get for details.',
+        'Token-efficient list of work orders for the active tenant (JWT tenant_id claim). Returns only key fields for selection/disambiguation; use work_orders_get_summary or work_orders_get for details. Excludes draft rows unless include_draft is true.',
       inputSchema: workOrdersListSummaryInputSchema,
       annotations: toolAnn.readTenantData,
     },
@@ -285,9 +289,10 @@ export function registerTools(
         if (!tenantId) {
           return jsonCompactResult(TENANT_REQUIRED_GUIDANCE);
         }
-        const args = workOrdersListSummaryInputSchema.parse(raw);
+        const args = workOrdersListSummaryInputSchema.parse(raw ?? {});
         const limit = args.limit ?? 50;
-        const { data, error } = await client.supabase
+        const includeDraft = args.include_draft === true;
+        let query = client.supabase
           .from('v_work_orders')
           .select(
             [
@@ -305,20 +310,28 @@ export function registerTools(
               'updated_at',
             ].join(',')
           )
-          .neq('status', 'draft')
-          .order('updated_at', { ascending: false })
-          .limit(limit);
+          .order('updated_at', { ascending: false });
+        if (!includeDraft) {
+          query = query.neq('status', 'draft');
+        }
+        const { data, error } = await query.limit(limit);
         if (error) {
           return jsonCompactToolError(toStructuredToolError(error));
+        }
+        const nextActions = [
+          'Pick a work_order_id and call work_orders_get_summary (or work_orders_get for full fields).',
+        ];
+        if (!includeDraft) {
+          nextActions.push(
+            'If the user asked for drafts or the list looks incomplete, retry with include_draft: true.'
+          );
         }
         return jsonCompactResult({
           ok: true,
           tenant_id: tenantId,
           returned_count: (data ?? []).length,
           rows: data ?? [],
-          next_actions: [
-            'Pick a work_order_id and call work_orders_get_summary (or work_orders_get for full fields).',
-          ],
+          next_actions: nextActions,
         });
       } catch (e) {
         return jsonCompactToolError(toStructuredToolError(e));
